@@ -23,6 +23,40 @@
         --glass-border: rgba(255, 255, 255, 0.1);
         --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.4);
         --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.6);
+        --primary-gradient: linear-gradient(135deg, #ec3750 0%, #ff6b7a 50%, #ff8c82 100%);
+        --secondary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --accent-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    /* Dark theme hero section override */
+    [data-theme="dark"] .hero-section {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+        color: #f1f5f9 !important;
+    }
+
+    /* Dark theme features section override */
+    [data-theme="dark"] .features-section {
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+        color: #f1f5f9 !important;
+    }
+
+    /* Dark theme stats section override */
+    [data-theme="dark"] .stats-section {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+        color: #f1f5f9 !important;
+    }
+
+    /* Dark theme scrollbar overrides */
+    [data-theme="dark"] ::-webkit-scrollbar-track {
+        background: #334155 !important;
+    }
+
+    /* Dark theme text overrides */
+    [data-theme="dark"] .features-section h2 {
+        background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%) !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
     }
 
     @keyframes float {

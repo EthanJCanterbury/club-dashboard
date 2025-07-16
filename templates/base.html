@@ -51,6 +51,8 @@
             --shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
             --border-radius: 8px;
             --transition: all 0.2s ease;
+        }
+
         /* Dark theme variables */
         [data-theme="dark"] {
             --primary: #ec3750;
@@ -854,6 +856,7 @@
             // Apply saved theme
             document.documentElement.setAttribute('data-theme', savedTheme);
             updateThemeIcon(savedTheme);
+            applyThemeStyles(savedTheme);
             
             // Theme toggle event listener
             if (themeToggle) {
@@ -864,7 +867,58 @@
                     document.documentElement.setAttribute('data-theme', newTheme);
                     localStorage.setItem('theme', newTheme);
                     updateThemeIcon(newTheme);
+                    applyThemeStyles(newTheme);
                 });
+            }
+        }
+        
+        function applyThemeStyles(theme) {
+            // Apply theme styles to homepage sections
+            const heroSection = document.querySelector('.hero-section');
+            const featuresSection = document.querySelector('.features-section');
+            const statsSection = document.querySelector('.stats-section');
+            const featuresH2 = document.querySelector('.features-section h2');
+            
+            if (theme === 'dark') {
+                // Apply dark theme styles directly
+                if (heroSection) {
+                    heroSection.style.background = 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)';
+                    heroSection.style.color = '#f1f5f9';
+                }
+                if (featuresSection) {
+                    featuresSection.style.background = 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)';
+                    featuresSection.style.color = '#f1f5f9';
+                }
+                if (statsSection) {
+                    statsSection.style.background = 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)';
+                    statsSection.style.color = '#f1f5f9';
+                }
+                if (featuresH2) {
+                    featuresH2.style.background = 'linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%)';
+                    featuresH2.style.webkitBackgroundClip = 'text';
+                    featuresH2.style.webkitTextFillColor = 'transparent';
+                    featuresH2.style.backgroundClip = 'text';
+                }
+            } else {
+                // Reset to light theme styles
+                if (heroSection) {
+                    heroSection.style.background = 'linear-gradient(135deg, #ec3750 0%, #ff6b7a 100%)';
+                    heroSection.style.color = 'white';
+                }
+                if (featuresSection) {
+                    featuresSection.style.background = 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)';
+                    featuresSection.style.color = '';
+                }
+                if (statsSection) {
+                    statsSection.style.background = 'linear-gradient(135deg, #1a202c 0%, #2d3748 100%)';
+                    statsSection.style.color = '';
+                }
+                if (featuresH2) {
+                    featuresH2.style.background = 'linear-gradient(135deg, #1a202c 0%, #4a5568 100%)';
+                    featuresH2.style.webkitBackgroundClip = 'text';
+                    featuresH2.style.webkitTextFillColor = 'transparent';
+                    featuresH2.style.backgroundClip = 'text';
+                }
             }
         }
         
