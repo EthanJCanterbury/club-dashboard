@@ -1,0 +1,12 @@
+flask
+flask-login
+flask-sqlalchemy
+requests
+psycopg2-binary
+werkzeug
+flask-limiter
+better-profanity
+gunicorn
+Flask-WTF
+python-dotenv
+Pillow>=10.0.0

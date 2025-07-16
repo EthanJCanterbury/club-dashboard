@@ -465,19 +465,6 @@ def add_security_headers(response):
     # Strict Transport Security (HTTPS only)
     if request.is_secure:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    # Content Security Policy - more restrictive
-    if not response.headers.get('Content-Security-Policy'):
-        response.headers['Content-Security-Policy'] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://server.fillout.com; "
-            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-            "font-src 'self' https://cdnjs.cloudflare.com; "
-            "img-src 'self' data: https:; "
-            "connect-src 'self' https://api.hackclub.com; "
-            "frame-src 'self' https://forms.hackclub.com https://server.fillout.com; "
-            "object-src 'none'; "
-            "base-uri 'self'"
-        )
     # Permissions Policy (formerly Feature Policy)
     response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
     return response
@@ -1475,7 +1462,7 @@ def get_current_user():
             return None
         return user
     except Exception as e:
-        app.logger.error(f"Error getting current user: {e}")
+        app.logger.error(f"Error getting current user for user_id {user_id}: {e}")
         try:
             db.session.rollback()
             # Create a new session for retry
@@ -1485,7 +1472,7 @@ def get_current_user():
                 session.clear()
             return user
         except Exception as e2:
-            app.logger.error(f"Error on retry getting current user: {e2}")
+            app.logger.error(f"Error on retry getting current user for user_id {user_id}: {e2}")
             session.clear()
             return None
 
@@ -1632,21 +1619,31 @@ class AirtableService:
     def _safe_request(self, method, url, **kwargs):
         """Make a safe HTTP request with URL validation and timeout"""
         if not self._validate_airtable_url(url):
+            log_security_event("SSRF_ATTEMPT", f"Invalid Airtable URL detected: {url}", ip_address=get_real_ip())
             raise ValueError(f"Invalid Airtable URL: {url}")
         
         # Add timeout to prevent hanging requests
-        kwargs.setdefault('timeout', 30)
-        
-        if method.upper() == 'GET':
-            return requests.get(url, **kwargs)
-        elif method.upper() == 'POST':
-            return requests.post(url, **kwargs)
-        elif method.upper() == 'PATCH':
-            return requests.patch(url, **kwargs)
-        elif method.upper() == 'DELETE':
-            return requests.delete(url, **kwargs)
-        else:
-            raise ValueError(f"Unsupported HTTP method: {method}")
+        kwargs.setdefault('timeout', 10) # Reduced timeout
+
+        try:
+            if method.upper() == 'GET':
+                response = requests.get(url, **kwargs)
+            elif method.upper() == 'POST':
+                response = requests.post(url, **kwargs)
+            elif method.upper() == 'PATCH':
+                response = requests.patch(url, **kwargs)
+            elif method.upper() == 'DELETE':
+                response = requests.delete(url, **kwargs)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
+            response.raise_for_status()  # Raise an exception for bad status codes
+            return response
+
+        except requests.exceptions.RequestException as e:
+            log_security_event("AIRTABLE_REQUEST_FAILED", f"Airtable request failed: {e}", ip_address=get_real_ip())
+            app.logger.error(f"Airtable request error: {e}")
+            return None
 
     def _check_school_variations(self, club_name, venue):
         """Check for common school name variations"""
@@ -1747,13 +1744,13 @@ class AirtableService:
                 return False
                 
             elif response.status_code == 403:
-                app.logger.error(f"Airtable 403 Forbidden - check API token permissions. Response: {response.text}")
+                app.logger.error(f"Airtable 403 Forbidden - check API token permissions. Response: {response.text if response else 'No response'}")
                 return False
             elif response.status_code == 404:
-                app.logger.error(f"Airtable 404 Not Found - check base ID and table name. Response: {response.text}")
+                app.logger.error(f"Airtable 404 Not Found - check base ID and table name. Response: {response.text if response else 'No response'}")
                 return False
             else:
-                app.logger.error(f"Airtable API error {response.status_code}: {response.text}")
+                app.logger.error(f"Airtable API error {response.status_code}: {response.text if response else 'No response'}")
                 return False
                 
         except Exception as e:
@@ -1848,9 +1845,9 @@ class AirtableService:
             
             response = requests.post(project_url, headers=self.headers, json=payload)
             
-            app.logger.info(f"Airtable response status: {response.status_code}")
-            if response.status_code not in [200, 201]:
-                app.logger.error(f"Airtable submission failed: {response.text}")
+            app.logger.info(f"Airtable response status: {response.status_code if response else 'No response'}")
+            if not response or response.status_code not in [200, 201]:
+                app.logger.error(f"Airtable submission failed: {response.text if response else 'No response'}")
                 return None
             
             app.logger.info("Successfully submitted to Airtable")
@@ -1882,14 +1879,16 @@ class AirtableService:
         payload = {'records': [{'fields': fields}]}
 
         try:
-            response = requests.post(grants_url, headers=self.headers, json=payload)
-            app.logger.debug(f"Airtable response status: {response.status_code}")
-            app.logger.debug(f"Airtable response body: {response.text}")
-            if response.status_code in [200, 201]:
-                return response.json()
-            else:
-                app.logger.error(f"Airtable error: {response.text}")
-                return None
+            response = self._safe_request('POST', grants_url, headers=self.headers, json=payload)
+            if response:
+                app.logger.debug(f"Airtable response status: {response.status_code}")
+                app.logger.debug(f"Airtable response body: {response.text}")
+                if response.status_code in [200, 201]:
+                    return response.json()
+                else:
+                    app.logger.error(f"Airtable error: {response.text}")
+                    return None
+            return None
         except Exception as e:
             app.logger.error(f"Exception submitting to Airtable: {str(e)}")
             return None
@@ -1919,14 +1918,16 @@ class AirtableService:
         payload = {'records': [{'fields': fields}]}
 
         try:
-            response = requests.post(fulfillment_url, headers=self.headers, json=payload)
-            app.logger.debug(f"Airtable Grant Fulfillment response status: {response.status_code}")
-            app.logger.debug(f"Airtable Grant Fulfillment response body: {response.text}")
-            if response.status_code in [200, 201]:
-                return response.json()
-            else:
-                app.logger.error(f"Airtable Grant Fulfillment error: {response.text}")
-                return None
+            response = self._safe_request('POST', fulfillment_url, headers=self.headers, json=payload)
+            if response:
+                app.logger.debug(f"Airtable Grant Fulfillment response status: {response.status_code}")
+                app.logger.debug(f"Airtable Grant Fulfillment response body: {response.text}")
+                if response.status_code in [200, 201]:
+                    return response.json()
+                else:
+                    app.logger.error(f"Airtable Grant Fulfillment error: {response.text}")
+                    return None
+            return None
         except Exception as e:
             app.logger.error(f"Exception submitting to Airtable Grant Fulfillment: {str(e)}")
             return None
@@ -1940,8 +1941,8 @@ class AirtableService:
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
             
-            response = requests.get(project_url, headers=self.headers)
-            if response.status_code == 200:
+            response = self._safe_request('GET', project_url, headers=self.headers)
+            if response and response.status_code == 200:
                 data = response.json()
                 records = data.get('records', [])
 
@@ -1973,7 +1974,7 @@ class AirtableService:
 
                 return submissions
             else:
-                app.logger.error(f"Failed to fetch submissions: {response.status_code} - {response.text}")
+                app.logger.error(f"Failed to fetch submissions: {response.status_code if response else 'No response'} - {response.text if response else 'No response'}")
                 return []
         except Exception as e:
             app.logger.error(f"Error fetching pizza grant submissions: {str(e)}")
@@ -1989,8 +1990,8 @@ class AirtableService:
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
             url = f"{project_url}/{submission_id}"
             
-            response = requests.get(url, headers=self.headers)
-            if response.status_code == 200:
+            response = self._safe_request('GET', url, headers=self.headers)
+            if response and response.status_code == 200:
                 data = response.json()
                 fields = data.get('fields', {})
                 return {
@@ -2018,8 +2019,8 @@ class AirtableService:
             status = 'Approved' if action == 'approve' else 'Rejected'
             
             # First, try to get the current record to see what fields exist
-            get_response = requests.get(url, headers=self.headers)
-            if get_response.status_code == 200:
+            get_response = self._safe_request('GET', url, headers=self.headers)
+            if get_response and get_response.status_code == 200:
                 current_record = get_response.json()
                 fields = current_record.get('fields', {})
                 app.logger.info(f"Current record fields: {list(fields.keys())}")
@@ -2027,6 +2028,7 @@ class AirtableService:
             # Try different status field names one by one
             possible_status_fields = ['Status', 'Grant Status', 'Review Status', 'Approval Status']
             
+            last_response = None
             for field_name in possible_status_fields:
                 update_data = {
                     'fields': {
@@ -2034,16 +2036,17 @@ class AirtableService:
                     }
                 }
                 
-                response = requests.patch(url, headers=self.headers, json=update_data)
+                response = self._safe_request('PATCH', url, headers=self.headers, json=update_data)
+                last_response = response
                 
-                if response.status_code == 200:
+                if response and response.status_code == 200:
                     app.logger.info(f"Submission {submission_id} status updated to {status} using field '{field_name}'")
                     return True
                 else:
-                    app.logger.debug(f"Failed to update with field '{field_name}': {response.status_code} - {response.text}")
+                    app.logger.debug(f"Failed to update with field '{field_name}': {response.status_code if response else 'No Response'} - {response.text if response else 'No Response'}")
             
             # If no field worked, log the error and return False
-            app.logger.error(f"Failed to update submission status with any field name. Last response: {response.status_code} - {response.text}")
+            app.logger.error(f"Failed to update submission status with any field name. Last response: {last_response.status_code if last_response else 'No Response'} - {last_response.text if last_response else 'No Response'}")
             return False
         except Exception as e:
             app.logger.error(f"Error updating submission status: {str(e)}")
@@ -2059,8 +2062,10 @@ class AirtableService:
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
             url = f"{project_url}/{submission_id}"
             
-            response = requests.delete(url, headers=self.headers)
-            return response.status_code == 200
+            response = self._safe_request('DELETE', url, headers=self.headers)
+            if response:
+                return response.status_code == 200
+            return False
         except Exception as e:
             app.logger.error(f"Error deleting submission: {str(e)}")
             return False
@@ -2079,9 +2084,9 @@ class AirtableService:
                 if offset:
                     params['offset'] = offset
                 
-                response = requests.get(self.clubs_base_url, headers=self.headers, params=params)
-                if response.status_code != 200:
-                    app.logger.error(f"Airtable API error: {response.status_code} - {response.text}")
+                response = self._safe_request('GET', self.clubs_base_url, headers=self.headers, params=params)
+                if not response or response.status_code != 200:
+                    app.logger.error(f"Airtable API error: {response.status_code if response else 'No Response'} - {response.text if response else 'No Response'}")
                     break
                 
                 data = response.json()
@@ -2330,11 +2335,11 @@ class AirtableService:
                 
                 response = self._safe_request('POST', self.email_verification_url, headers=self.headers, json=payload)
             
-            if response.status_code in [200, 201]:
+            if response and response.status_code in [200, 201]:
                 app.logger.info(f"Email verification code sent for {email}")
                 return verification_code
             else:
-                app.logger.error(f"Failed to send email verification: {response.status_code} - {response.text}")
+                app.logger.error(f"Failed to send email verification: {response.status_code if response else 'No Response'} - {response.text if response else 'No Response'}")
                 return None
                 
         except Exception as e:
@@ -2355,7 +2360,7 @@ class AirtableService:
             
             response = self._safe_request('GET', self.email_verification_url, headers=self.headers, params=filter_params)
             
-            if response.status_code == 200:
+            if response and response.status_code == 200:
                 data = response.json()
                 records = data.get('records', [])
                 
@@ -2372,17 +2377,17 @@ class AirtableService:
                     
                     update_response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
                     
-                    if update_response.status_code == 200:
+                    if update_response and update_response.status_code == 200:
                         app.logger.info(f"Email verification successful for {email}")
                         return True
                     else:
-                        app.logger.error(f"Failed to update verification status: {update_response.status_code}")
+                        app.logger.error(f"Failed to update verification status: {update_response.status_code if update_response else 'No Response'}")
                         return False
                 else:
                     app.logger.warning(f"No pending verification found for {email} with code {code}")
                     return False
             else:
-                app.logger.error(f"Error checking verification code: {response.status_code} - {response.text}")
+                app.logger.error(f"Error checking verification code: {response.status_code if response else 'No response'} - {response.text if response else 'No response'}")
                 return False
                 
         except Exception as e:
@@ -2430,7 +2435,7 @@ class AirtableService:
             app.logger.error(f"Error syncing all clubs with Airtable: {str(e)}")
             return {
                 'success': False,
-                'error': str(e)
+                'error': "An internal error occurred during the sync process."
             }
 
     def submit_project_data(self, submission_data):
@@ -2481,9 +2486,9 @@ class AirtableService:
             
             response = self._safe_request('POST', project_url, headers=self.headers, json=payload)
             
-            app.logger.info(f"AIRTABLE: Response status: {response.status_code}")
-            if response.status_code not in [200, 201]:
-                app.logger.error(f"AIRTABLE: Submission failed: {response.text}")
+            app.logger.info(f"AIRTABLE: Response status: {response.status_code if response else 'No response'}")
+            if not response or response.status_code not in [200, 201]:
+                app.logger.error(f"AIRTABLE: Submission failed: {response.text if response else 'No response'}")
                 return None
             
             result = response.json()
@@ -2514,8 +2519,8 @@ class AirtableService:
                 
                 response = self._safe_request('GET', project_url, headers=self.headers, params=params)
                 
-                if response.status_code != 200:
-                    app.logger.error(f"AIRTABLE: Failed to fetch project submissions: {response.text}")
+                if not response or response.status_code != 200:
+                    app.logger.error(f"AIRTABLE: Failed to fetch project submissions: {response.text if response else 'No response'}")
                     break
                 
                 data = response.json()
@@ -2598,11 +2603,11 @@ class AirtableService:
             
             response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
             
-            if response.status_code == 200:
+            if response and response.status_code == 200:
                 app.logger.info(f"AIRTABLE: Successfully updated project submission {record_id}")
                 return True
             else:
-                app.logger.error(f"AIRTABLE: Failed to update project submission: {response.text}")
+                app.logger.error(f"AIRTABLE: Failed to update project submission: {response.text if response else 'No Response'}")
                 return False
                 
         except Exception as e:
@@ -2621,11 +2626,11 @@ class AirtableService:
             
             response = self._safe_request('DELETE', delete_url, headers=self.headers)
             
-            if response.status_code == 200:
+            if response and response.status_code == 200:
                 app.logger.info(f"AIRTABLE: Successfully deleted project submission {record_id}")
                 return True
             else:
-                app.logger.error(f"AIRTABLE: Failed to delete project submission: {response.text}")
+                app.logger.error(f"AIRTABLE: Failed to delete project submission: {response.text if response else 'No Response'}")
                 return False
                 
         except Exception as e:
@@ -2666,13 +2671,15 @@ class AirtableService:
 
         try:
             response = requests.post(orders_url, headers=self.headers, json=payload)
-            app.logger.debug(f"Airtable Orders response status: {response.status_code}")
-            app.logger.debug(f"Airtable Orders response body: {response.text}")
-            if response.status_code in [200, 201]:
-                return response.json()
-            else:
-                app.logger.error(f"Airtable Orders error: {response.text}")
-                return None
+            if response:
+                app.logger.debug(f"Airtable Orders response status: {response.status_code}")
+                app.logger.debug(f"Airtable Orders response body: {response.text}")
+                if response.status_code in [200, 201]:
+                    return response.json()
+                else:
+                    app.logger.error(f"Airtable Orders error: {response.text}")
+                    return None
+            return None
         except Exception as e:
             app.logger.error(f"Exception submitting to Airtable Orders: {str(e)}")
             return None
@@ -2692,8 +2699,8 @@ class AirtableService:
                 'filterByFormula': f"{{Club Name}} = '{club_name}'"
             }
             
-            response = requests.get(orders_url, headers=self.headers, params=params)
-            if response.status_code == 200:
+            response = self._safe_request('GET', orders_url, headers=self.headers, params=params)
+            if response and response.status_code == 200:
                 data = response.json()
                 records = data.get('records', [])
                 
@@ -2724,7 +2731,7 @@ class AirtableService:
                 
                 return orders
             else:
-                app.logger.error(f"Failed to fetch orders: {response.status_code} - {response.text}")
+                app.logger.error(f"Failed to fetch orders: {response.status_code if response else 'No Response'} - {response.text if response else 'No Response'}")
                 return []
         except Exception as e:
             app.logger.error(f"Error fetching orders for club {club_name}: {str(e)}")
@@ -2748,8 +2755,8 @@ class AirtableService:
                 if offset:
                     params['offset'] = offset
                 
-                response = requests.get(orders_url, headers=self.headers, params=params)
-                if response.status_code == 200:
+                response = self._safe_request('GET', orders_url, headers=self.headers, params=params)
+                if response and response.status_code == 200:
                     data = response.json()
                     records = data.get('records', [])
                     
@@ -2782,7 +2789,7 @@ class AirtableService:
                     if not offset:
                         break
                 else:
-                    app.logger.error(f"Failed to fetch all orders: {response.status_code} - {response.text}")
+                    app.logger.error(f"Failed to fetch all orders: {response.status_code if response else 'No Response'} - {response.text if response else 'No Response'}")
                     break
                     
             return all_orders
@@ -2807,14 +2814,16 @@ class AirtableService:
         payload = {'fields': fields}
 
         try:
-            response = requests.patch(update_url, headers=self.headers, json=payload)
-            app.logger.debug(f"Airtable order update response status: {response.status_code}")
-            app.logger.debug(f"Airtable order update response body: {response.text}")
-            if response.status_code == 200:
-                return response.json()
-            else:
-                app.logger.error(f"Airtable order update error: {response.text}")
-                return False
+            response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
+            if response:
+                app.logger.debug(f"Airtable order update response status: {response.status_code}")
+                app.logger.debug(f"Airtable order update response body: {response.text}")
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    app.logger.error(f"Airtable order update error: {response.text}")
+                    return False
+            return False
         except Exception as e:
             app.logger.error(f"Exception updating order status: {str(e)}")
             return False
@@ -2829,14 +2838,16 @@ class AirtableService:
         delete_url = f'https://api.airtable.com/v0/{shop_base_id}/{orders_table_name}/{order_id}'
 
         try:
-            response = requests.delete(delete_url, headers=self.headers)
-            app.logger.debug(f"Airtable order delete response status: {response.status_code}")
-            app.logger.debug(f"Airtable order delete response body: {response.text}")
-            if response.status_code == 200:
-                return response.json()
-            else:
-                app.logger.error(f"Airtable order delete error: {response.text}")
-                return False
+            response = self._safe_request('DELETE', delete_url, headers=self.headers)
+            if response:
+                app.logger.debug(f"Airtable order delete response status: {response.status_code}")
+                app.logger.debug(f"Airtable order delete response body: {response.text}")
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    app.logger.error(f"Airtable order delete error: {response.text}")
+                    return False
+            return False
         except Exception as e:
             app.logger.error(f"Exception deleting order: {str(e)}")
             return False
@@ -2869,14 +2880,14 @@ class AirtableService:
             
             response = self._safe_request('POST', gallery_url, headers=self.headers, json=payload)
             
-            app.logger.info(f"AIRTABLE: Gallery post response status: {response.status_code}")
+            app.logger.info(f"AIRTABLE: Gallery post response status: {response.status_code if response else 'No Response'}")
             
-            if response.status_code == 200:
+            if response and response.status_code == 200:
                 result = response.json()
                 app.logger.info(f"AIRTABLE: Successfully logged gallery post! Record ID: {result.get('id', 'UNKNOWN')}")
                 return True
             else:
-                app.logger.error(f"AIRTABLE: Gallery post logging failed: {response.text}")
+                app.logger.error(f"AIRTABLE: Gallery post logging failed: {response.text if response else 'No Response'}")
                 return False
                 
         except Exception as e:
@@ -2896,11 +2907,14 @@ class HackatimeService:
         url = f"{self.base_url}/users/my/stats?features=projects"
         headers = {"Authorization": f"Bearer {api_key}"}
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
                 return response.json()
-            return None
-        except:
+            else:
+                app.logger.error(f"Hackatime API error: {response.status_code} - {response.text}")
+                return None
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Hackatime API request failed: {str(e)}")
             return None
 
     def get_user_projects(self, api_key):
@@ -2961,15 +2975,16 @@ class HackClubIdentityService:
             'grant_type': 'authorization_code'
         }
         try:
-            response = requests.post(f'{self.base_url}/oauth/token', json=data)
+            response = requests.post(f'{self.base_url}/oauth/token', json=data, timeout=10)
             return response.json()
-        except:
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Identity token exchange failed: {str(e)}")
             return {'error': 'Request failed'}
 
     def get_user_identity(self, access_token):
         headers = {'Authorization': f'Bearer {access_token}'}
         try:
-            response = requests.get(f'{self.base_url}/api/v1/me', headers=headers)
+            response = requests.get(f'{self.base_url}/api/v1/me', headers=headers, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 app.logger.debug(f"Identity API response: {data}")
@@ -2977,7 +2992,7 @@ class HackClubIdentityService:
             else:
                 app.logger.warning(f"Identity API error: {response.status_code} - {response.text}")
                 return None
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             app.logger.error(f"Identity API request failed: {str(e)}")
             return None
 
@@ -3009,34 +3024,41 @@ class SlackOAuthService:
             'redirect_uri': redirect_uri
         }
         try:
-            response = requests.post('https://slack.com/api/oauth.v2.access', data=data)
+            response = requests.post('https://slack.com/api/oauth.v2.access', data=data, timeout=10)
             return response.json()
-        except:
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Slack token exchange failed: {str(e)}")
             return {'ok': False, 'error': 'Request failed'}
 
     def get_user_info(self, access_token):
         headers = {'Authorization': f'Bearer {access_token}'}
         identity_url = f'{self.base_url}/users.identity'
-        identity_response = requests.get(identity_url, headers=headers)
-        if identity_response.status_code != 200:
-            return None
         try:
+            identity_response = requests.get(identity_url, headers=headers, timeout=10)
+            if identity_response.status_code != 200:
+                app.logger.error(f"Slack users.identity API error: {identity_response.status_code} - {identity_response.text}")
+                return None
+
             identity_data = identity_response.json()
             if not identity_data.get('ok'):
+                app.logger.error(f"Slack users.identity API call not ok: {identity_data.get('error', 'Unknown error')}")
                 return None
+
             user_id = identity_data['user']['id']
             profile_url = f'{self.base_url}/users.info'
             profile_params = {'user': user_id}
-            profile_response = requests.get(profile_url, headers=headers, params=profile_params)
+            profile_response = requests.get(profile_url, headers=headers, params=profile_params, timeout=10)
+
             if profile_response.status_code == 200:
-                try:
-                    profile_data = profile_response.json()
-                    if profile_data.get('ok'):
-                        identity_data['user']['profile'] = profile_data['user']['profile']
-                except:
-                    pass
+                profile_data = profile_response.json()
+                if profile_data.get('ok'):
+                    identity_data['user']['profile'] = profile_data['user']['profile']
+                else:
+                    app.logger.warning(f"Slack users.info API call not ok: {profile_data.get('error', 'Unknown error')}")
+
             return identity_data
-        except:
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Slack API request failed: {str(e)}")
             return None
 
 slack_oauth_service = SlackOAuthService()
@@ -3268,6 +3290,10 @@ def login():
         else:
             log_security_event("FAILED_LOGIN", f"Failed login attempt for email: {email}", ip_address=get_real_ip())
             flash('Invalid email or password', 'error')
+            if user:
+                app.logger.warning(f"Failed login attempt for user {user.username} (ID: {user.id}) from IP: {get_real_ip()}")
+            else:
+                app.logger.warning(f"Failed login attempt for non-existent email {email} from IP: {get_real_ip()}")
 
     # Check if mobile device
     user_agent = request.headers.get('User-Agent', '').lower()
@@ -3442,11 +3468,10 @@ def club_dashboard(club_id=None):
 
     if club_id:
         club = Club.query.get_or_404(club_id)
-        is_leader = club.leader_id == current_user.id
-        is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+        is_leader, _ = verify_club_leadership(club, current_user)
         is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
 
-        if not is_leader and not is_co_leader and not is_member:
+        if not is_leader and not is_member:
             flash('You are not a member of this club', 'error')
             return redirect(url_for('dashboard'))
             
@@ -3635,13 +3660,9 @@ def club_shop(club_id):
         return redirect(url_for('login'))
 
     club = Club.query.get_or_404(club_id)
-    
-    # Check if user is leader or co-leader of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-    
-    if not is_leader and not is_co_leader:
-        flash('Only club leaders and co-leaders can access the shop', 'error')
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized:
+        flash('Only club leaders can access the shop', 'error')
         return redirect(url_for('dashboard'))
 
     return render_template('club_shop.html', club=club, current_user=current_user)
@@ -3652,12 +3673,10 @@ def club_orders(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader, co-leader, or member of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
-    
-    if not is_leader and not is_co_leader and not is_member:
+
+    if not is_authorized and not is_member:
         flash('You do not have permission to access this page', 'error')
         return redirect(url_for('dashboard'))
 
@@ -3670,11 +3689,8 @@ def get_shop_items(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader or co-leader of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-    
-    if not is_leader and not is_co_leader:
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized:
         return jsonify({'error': 'Unauthorized'}), 403
 
     try:
@@ -3834,12 +3850,9 @@ def submit_order(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Check if user is leader or co-leader of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-    
-    if not is_leader and not is_co_leader:
-        return jsonify({'error': 'Only club leaders and co-leaders can place orders'}), 403
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized:
+        return jsonify({'error': 'Only club leaders can place orders'}), 403
 
     data = request.get_json()
     
@@ -3924,12 +3937,10 @@ def get_orders(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Check if user is leader, co-leader, or member of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
     
-    if not is_leader and not is_co_leader and not is_member:
+    if not is_authorized and not is_member:
         return jsonify({'error': 'Unauthorized'}), 403
 
     try:
@@ -3946,12 +3957,9 @@ def purchase_cosmetic(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader or co-leader of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-    
-    if not is_leader and not is_co_leader:
-        return jsonify({'error': 'Only club leaders and co-leaders can purchase cosmetics'}), 403
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized:
+        return jsonify({'error': 'Only club leaders can purchase cosmetics'}), 403
     
     data = request.get_json()
     
@@ -4045,12 +4053,10 @@ def get_club_cosmetics(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader, co-leader, or member of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
-    
-    if not is_leader and not is_co_leader and not is_member:
+
+    if not is_authorized and not is_member:
         return jsonify({'error': 'Unauthorized'}), 403
     
     try:
@@ -4080,12 +4086,9 @@ def get_club_slack_settings(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader or co-leader
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-    
-    if not is_leader and not is_co_leader:
-        return jsonify({'error': 'Only club leaders and co-leaders can access Slack settings'}), 403
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized:
+        return jsonify({'error': 'Only club leaders can access Slack settings'}), 403
     
     try:
         slack_settings = ClubSlackSettings.query.filter_by(club_id=club_id).first()
@@ -4104,12 +4107,9 @@ def update_club_slack_settings(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader or co-leader
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-    
-    if not is_leader and not is_co_leader:
-        return jsonify({'error': 'Only club leaders and co-leaders can update Slack settings'}), 403
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized:
+        return jsonify({'error': 'Only club leaders can update Slack settings'}), 403
     
     data = request.get_json()
     
@@ -4158,12 +4158,9 @@ def invite_member_to_slack(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader or co-leader
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-    
-    if not is_leader and not is_co_leader:
-        return jsonify({'error': 'Only club leaders and co-leaders can invite members to Slack'}), 403
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized:
+        return jsonify({'error': 'Only club leaders can invite members to Slack'}), 403
     
     data = request.get_json()
     email = data.get('email', '').strip()
@@ -4212,12 +4209,9 @@ def bulk_invite_members_to_slack(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader or co-leader
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-    
-    if not is_leader and not is_co_leader:
-        return jsonify({'error': 'Only club leaders and co-leaders can invite members to Slack'}), 403
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized:
+        return jsonify({'error': 'Only club leaders can invite members to Slack'}), 403
     
     # Get club Slack settings
     slack_settings = ClubSlackSettings.query.filter_by(club_id=club_id).first()
@@ -4289,12 +4283,10 @@ def project_submission(club_id):
 
     club = Club.query.get_or_404(club_id)
     
-    # Check if user is leader, co-leader, or member of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
 
-    if not is_leader and not is_co_leader and not is_member:
+    if not is_authorized and not is_member:
         flash('You are not a member of this club', 'error')
         return redirect(url_for('dashboard'))
         
@@ -5109,17 +5101,16 @@ def club_posts(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
 
-    if not is_leader and not is_co_leader and not is_member:
+    if not is_authorized and not is_member:
         return jsonify({'error': 'Unauthorized'}), 403
 
     if request.method == 'POST':
         # Only leaders and co-leaders can create posts
-        if not is_leader and not is_co_leader:
-            return jsonify({'error': 'Only club leaders and co-leaders can create posts'}), 403
+        if not is_authorized:
+            return jsonify({'error': 'Only club leaders can create posts'}), 403
             
         data = request.get_json()
         content = data.get('content')
@@ -5860,19 +5851,15 @@ def club_assignments(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
 
-    if not is_leader and not is_co_leader and not is_member:
+    if not is_authorized and not is_member:
         return jsonify({'error': 'Unauthorized'}), 403
 
     if request.method == 'POST':
-        is_leader = club.leader_id == current_user.id
-        is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-        
-        if not is_leader and not is_co_leader:
-            return jsonify({'error': 'Only club leaders and co-leaders can create assignments'}), 403
+        if not is_authorized:
+            return jsonify({'error': 'Only club leaders can create assignments'}), 403
 
         data = request.get_json()
         title = data.get('title')
@@ -5948,19 +5935,15 @@ def club_meetings(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
 
-    if not is_leader and not is_co_leader and not is_member:
+    if not is_authorized and not is_member:
         return jsonify({'error': 'Unauthorized'}), 403
 
     if request.method == 'POST':
-        is_leader = club.leader_id == current_user.id
-        is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-        
-        if not is_leader and not is_co_leader:
-            return jsonify({'error': 'Only club leaders and co-leaders can schedule meetings'}), 403
+        if not is_authorized:
+            return jsonify({'error': 'Only club leaders can schedule meetings'}), 403
 
         data = request.get_json()
         title = data.get('title')
@@ -6021,8 +6004,8 @@ def club_meeting_detail(club_id, meeting_id):
     club = Club.query.get_or_404(club_id)
     meeting = ClubMeeting.query.get_or_404(meeting_id)
 
-    # Check if user is club leader or admin
-    if club.leader_id != current_user.id and not current_user.is_admin:
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized and not current_user.is_admin:
         return jsonify({'error': 'Only club leaders can manage meetings'}), 403
 
     if meeting.club_id != club_id:
@@ -6054,12 +6037,10 @@ def submit_project(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Check if user is leader, co-leader, or member of this club
-    is_leader = club.leader_id == current_user.id
-    is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
 
-    if not is_leader and not is_co_leader and not is_member:
+    if not is_authorized and not is_member:
         return jsonify({'error': 'Unauthorized'}), 403
 
     data = request.get_json()
@@ -6480,18 +6461,15 @@ def club_resources(club_id):
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    is_leader = club.leader_id == current_user.id
+    is_authorized, _ = verify_club_leadership(club, current_user)
     is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
 
-    if not is_leader and not is_member:
+    if not is_authorized and not is_member:
         return jsonify({'error': 'Unauthorized'}), 403
 
     if request.method == 'POST':
-        is_leader = club.leader_id == current_user.id
-        is_co_leader = club.co_leader_id == current_user.id if club.co_leader_id else False
-        
-        if not is_leader and not is_co_leader:
-            return jsonify({'error': 'Only club leaders and co-leaders can add resources'}), 403
+        if not is_authorized:
+            return jsonify({'error': 'Only club leaders can add resources'}), 403
 
         data = request.get_json()
         title = data.get('title')
@@ -6581,8 +6559,8 @@ def club_resource_detail(club_id, resource_id):
     club = Club.query.get_or_404(club_id)
     resource = ClubResource.query.get_or_404(resource_id)
 
-    # Check if user is club leader or admin
-    if club.leader_id != current_user.id and not current_user.is_admin:
+    is_authorized, _ = verify_club_leadership(club, current_user)
+    if not is_authorized and not current_user.is_admin:
         return jsonify({'error': 'Only club leaders can manage resources'}), 403
 
     if resource.club_id != club_id:
@@ -7016,12 +6994,12 @@ def update_club_settings(club_id):
             
             if airtable_fields:
                 payload = {'fields': airtable_fields}
-                response = requests.patch(update_url, headers=airtable_service.headers, json=payload)
+                response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
                 
-                if response.status_code == 200:
+                if response and response.status_code == 200:
                     app.logger.info(f"Successfully synced club {club_id} changes to Airtable")
                 else:
-                    app.logger.warning(f"Failed to sync club {club_id} to Airtable: {response.status_code} - {response.text}")
+                    app.logger.warning(f"Failed to sync club {club_id} to Airtable: {response.status_code if response else 'No Response'} - {response.text if response else 'No Response'}")
         except Exception as e:
             app.logger.error(f"Error syncing club {club_id} to Airtable: {str(e)}")
     
@@ -7454,25 +7432,25 @@ def upload_screenshot():
         app.logger.error("Empty filename")
         return jsonify({'success': False, 'error': 'No file selected'}), 400
 
-        # Enhanced file validation
-        if not file.content_type.startswith('image/'):
-            app.logger.error(f"Invalid content type: {file.content_type}")
-            return jsonify({'success': False, 'error': 'File must be an image'}), 400
+    # Enhanced file validation
+    if not file.content_type.startswith('image/'):
+        app.logger.error(f"Invalid content type: {file.content_type}")
+        return jsonify({'success': False, 'error': 'File must be an image'}), 400
 
-        # Additional MIME type validation
-        allowed_mime_types = {'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'}
-        if file.content_type not in allowed_mime_types:
-            app.logger.error(f"Disallowed MIME type: {file.content_type}")
-            return jsonify({'success': False, 'error': 'Invalid image format. Only JPEG, PNG, GIF, and WebP allowed.'}), 400
+    # Additional MIME type validation
+    allowed_mime_types = {'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'}
+    if file.content_type not in allowed_mime_types:
+        app.logger.error(f"Disallowed MIME type: {file.content_type}")
+        return jsonify({'success': False, 'error': 'Invalid image format. Only JPEG, PNG, GIF, and WebP allowed.'}), 400
 
-        # Check file size (max 50MB)
-        file.seek(0, 2)  # Seek to end
-        file_size = file.tell()
-        file.seek(0)  # Reset to beginning
-        
-        max_size = 50 * 1024 * 1024  # 50MB
-        if file_size > max_size:
-            return jsonify({'success': False, 'error': 'File too large. Maximum size is 50MB.'}), 400
+    # Check file size (max 5MB)
+    file.seek(0, 2)  # Seek to end
+    file_size = file.tell()
+    file.seek(0)  # Reset to beginning
+
+    max_size = 5 * 1024 * 1024  # 5MB
+    if file_size > max_size:
+        return jsonify({'success': False, 'error': 'File too large. Maximum size is 5MB.'}), 400
 
     try:
         import uuid
