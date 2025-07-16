@@ -199,6 +199,105 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
+
+    /* Dark theme overrides - inline styles with same origin specificity */
+    [data-theme="dark"] .auth-container {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+        color: #f1f5f9 !important;
+    }
+
+    [data-theme="dark"] .auth-container::before {
+        filter: blur(3px) brightness(0.3) !important;
+    }
+
+    [data-theme="dark"] .auth-container::after {
+        background: rgba(0, 0, 0, 0.7) !important;
+    }
+
+    [data-theme="dark"] .auth-card {
+        background: rgba(30, 41, 59, 0.95) !important;
+        border: 1px solid #334155 !important;
+        color: #f1f5f9 !important;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.5) !important;
+        backdrop-filter: blur(10px) !important;
+    }
+
+    [data-theme="dark"] .auth-header h1 {
+        color: #f1f5f9 !important;
+    }
+
+    [data-theme="dark"] .auth-header p {
+        color: #94a3b8 !important;
+    }
+
+    [data-theme="dark"] .form-label {
+        color: #f1f5f9 !important;
+    }
+
+    [data-theme="dark"] .form-control {
+        background: rgba(15, 23, 42, 0.8) !important;
+        border: 2px solid #334155 !important;
+        color: #f1f5f9 !important;
+    }
+
+    [data-theme="dark"] .form-control:focus {
+        border-color: #ec3750 !important;
+        box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.25) !important;
+        background: rgba(15, 23, 42, 0.9) !important;
+    }
+
+    [data-theme="dark"] .form-control::placeholder {
+        color: #94a3b8 !important;
+    }
+
+    [data-theme="dark"] .btn-auth {
+        background: linear-gradient(135deg, #ec3750, #d63146) !important;
+        border: none !important;
+        color: white !important;
+    }
+
+    [data-theme="dark"] .btn-auth:hover {
+        background: linear-gradient(135deg, #d63146, #c12a3f) !important;
+        box-shadow: 0 4px 15px rgba(236, 55, 80, 0.4) !important;
+    }
+
+    [data-theme="dark"] .auth-footer {
+        border-top: 1px solid #334155 !important;
+        color: #f1f5f9 !important;
+    }
+
+    [data-theme="dark"] .auth-footer a {
+        color: #ec3750 !important;
+    }
+
+    [data-theme="dark"] .auth-footer a:hover {
+        color: #ff5e73 !important;
+    }
+
+    [data-theme="dark"] .checkbox-group {
+        background: rgba(15, 23, 42, 0.8) !important;
+        border: 2px solid #334155 !important;
+        color: #f1f5f9 !important;
+    }
+
+    [data-theme="dark"] .checkbox-group:hover {
+        border-color: #ec3750 !important;
+    }
+
+    [data-theme="dark"] .checkbox-group label {
+        color: #f1f5f9 !important;
+    }
+
+    [data-theme="dark"] .leader-badge {
+        background: linear-gradient(135deg, #ec3750, #d63146) !important;
+        color: white !important;
+    }
+
+    [data-theme="dark"] #leader-info {
+        background: rgba(51, 65, 85, 0.8) !important;
+        border: 1px solid #475569 !important;
+        color: #f1f5f9 !important;
+    }
 </style>
 {% endblock %}
 
