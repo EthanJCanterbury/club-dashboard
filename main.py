@@ -10169,6 +10169,17 @@ def oauth_user_projects():
         'total_projects': len(projects_data)
     })
 
+def get_user_club_ids(user_id):
+    """Get all club IDs where user is leader or member efficiently"""
+    led_clubs = db.session.query(Club.id).filter(Club.leader_id == user_id)
+    member_clubs = db.session.query(ClubMembership.club_id).filter(ClubMembership.user_id == user_id)
+    
+    all_club_ids = db.session.query(
+        db.union(led_clubs, member_clubs)
+    ).all()
+    
+    return [row[0] for row in all_club_ids]
+
 @app.route('/oauth/user/assignments', methods=['GET'])
 @oauth_required(['assignments:read'])
 @limiter.limit("200 per hour")
@@ -10176,9 +10187,7 @@ def oauth_user_assignments():
     user = request.oauth_user
     
     # Get clubs where user is member or leader
-    led_club_ids = [club.id for club in Club.query.filter_by(leader_id=user.id).all()]
-    member_club_ids = [m.club_id for m in ClubMembership.query.filter_by(user_id=user.id).all()]
-    all_club_ids = list(set(led_club_ids + member_club_ids))
+    all_club_ids = get_user_club_ids(user.id)
     
     # Get assignments from all user's clubs
     assignments = ClubAssignment.query.filter(ClubAssignment.club_id.in_(all_club_ids)).order_by(ClubAssignment.created_at.desc()).all()
@@ -10210,9 +10219,7 @@ def oauth_user_meetings():
     user = request.oauth_user
     
     # Get clubs where user is member or leader
-    led_club_ids = [club.id for club in Club.query.filter_by(leader_id=user.id).all()]
-    member_club_ids = [m.club_id for m in ClubMembership.query.filter_by(user_id=user.id).all()]
-    all_club_ids = list(set(led_club_ids + member_club_ids))
+    all_club_ids = get_user_club_ids(user.id)
     
     # Get meetings from all user's clubs
     meetings = ClubMeeting.query.filter(ClubMeeting.club_id.in_(all_club_ids)).order_by(ClubMeeting.meeting_date.desc()).all()
