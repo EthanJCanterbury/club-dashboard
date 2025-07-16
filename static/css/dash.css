@@ -5115,3 +5115,199 @@ html[data-theme="dark"] body .auth-footer a:hover {
 [data-theme="dark"] .border-light {
     border-color: var(--border) !important;
 }
+
+/* Authenticated Pages Dark Theme - Dashboard, Gallery, Leaderboard, Account */
+[data-theme="dark"] .dashboard-container {
+    background: var(--background) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .dashboard-content {
+    background: var(--background) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .leaderboard-container {
+    background: var(--background) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .gallery-container {
+    background: var(--background) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .account-container {
+    background: var(--background) !important;
+    color: var(--text) !important;
+}
+
+/* Content Cards and Sections */
+[data-theme="dark"] .content-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .info-card,
+[data-theme="dark"] .settings-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+}
+
+/* Modal and Popup Content */
+[data-theme="dark"] .modal-content {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+/* Form Elements in Authenticated Pages */
+[data-theme="dark"] .form-group {
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .form-group label {
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea {
+    background: var(--background) !important;
+    border: 2px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus,
+[data-theme="dark"] .form-group textarea:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.25) !important;
+}
+
+/* Tables and Data Display */
+[data-theme="dark"] .table,
+[data-theme="dark"] .data-table {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table td {
+    border-color: var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
+    background: rgba(51, 65, 85, 0.3) !important;
+}
+
+/* Buttons in Authenticated Pages */
+[data-theme="dark"] .btn-secondary {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background: var(--border) !important;
+    color: var(--text) !important;
+}
+
+/* Navigation and Sidebar Elements */
+[data-theme="dark"] .sidebar {
+    background: var(--surface) !important;
+    border-right: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .nav-tabs {
+    border-bottom: 1px solid var(--border) !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link.active {
+    background: var(--background) !important;
+    border-bottom-color: var(--background) !important;
+    color: var(--text) !important;
+}
+
+/* Alert and Message Components */
+[data-theme="dark"] .alert {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .alert-info {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border-color: var(--info) !important;
+    color: var(--info) !important;
+}
+
+[data-theme="dark"] .alert-success {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: var(--success) !important;
+    color: var(--success) !important;
+}
+
+[data-theme="dark"] .alert-warning {
+    background: rgba(245, 158, 11, 0.1) !important;
+    border-color: var(--warning) !important;
+    color: var(--warning) !important;
+}
+
+[data-theme="dark"] .alert-danger {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-color: var(--error) !important;
+    color: var(--error) !important;
+}
+
+/* Account Page Specific Dark Theme */
+[data-theme="dark"] .account-section {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+}
+
+[data-theme="dark"] .section-header {
+    background: transparent !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .section-header h2 {
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .section-icon {
+    color: var(--primary) !important;
+}
+
+[data-theme="dark"] .slack-status {
+    background: var(--background) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .slack-disconnected {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-color: var(--error) !important;
+    color: var(--error) !important;
+}
+
+[data-theme="dark"] .club-verification {
+    background: var(--background) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+
+[data-theme="dark"] .verification-status {
+    background: var(--background) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}

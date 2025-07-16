@@ -899,6 +899,9 @@
                     featuresH2.style.webkitTextFillColor = 'transparent';
                     featuresH2.style.backgroundClip = 'text';
                 }
+                
+                // Apply comprehensive dark theme fixes for authenticated pages
+                applyAuthenticatedPageDarkTheme();
             } else {
                 // Reset to light theme styles
                 if (heroSection) {
@@ -919,7 +922,113 @@
                     featuresH2.style.webkitTextFillColor = 'transparent';
                     featuresH2.style.backgroundClip = 'text';
                 }
+                
+                // Reset authenticated page styles to light theme
+                resetAuthenticatedPageLightTheme();
             }
+        }
+        
+        function applyAuthenticatedPageDarkTheme() {
+            // Force dark background on body and main elements
+            document.body.style.background = '#0f172a';
+            document.body.style.color = '#f1f5f9';
+            
+            const main = document.querySelector('main');
+            if (main) {
+                main.style.background = '#0f172a';
+                main.style.color = '#f1f5f9';
+            }
+            
+            // Apply dark theme to account sections
+            const accountSections = document.querySelectorAll('.account-section');
+            accountSections.forEach(section => {
+                section.style.background = '#1e293b';
+                section.style.color = '#f1f5f9';
+                section.style.borderColor = '#334155';
+                section.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)';
+            });
+            
+            // Style section headers
+            const sectionHeaders = document.querySelectorAll('.section-header h2');
+            sectionHeaders.forEach(header => {
+                header.style.color = '#f1f5f9';
+            });
+            
+            // Style form controls
+            const formControls = document.querySelectorAll('.form-control');
+            formControls.forEach(control => {
+                control.style.background = '#334155';
+                control.style.color = '#f1f5f9';
+                control.style.borderColor = '#475569';
+            });
+            
+            // Style form labels
+            const formLabels = document.querySelectorAll('.form-label');
+            formLabels.forEach(label => {
+                label.style.color = '#f1f5f9';
+            });
+            
+            // Target all white/light background elements more aggressively
+            const allElements = document.querySelectorAll('*');
+            allElements.forEach(element => {
+                const computedStyle = window.getComputedStyle(element);
+                const bgColor = computedStyle.backgroundColor;
+                
+                // If element has white or very light background, make it dark
+                if (bgColor === 'rgb(255, 255, 255)' || bgColor === 'rgba(255, 255, 255, 1)' || 
+                    bgColor === 'rgb(248, 249, 250)' || bgColor === 'rgba(248, 249, 250, 1)') {
+                    element.style.background = '#1e293b';
+                    element.style.color = '#f1f5f9';
+                    element.style.borderColor = '#334155';
+                }
+                
+                // Also check for light gray backgrounds
+                if (bgColor === 'rgb(243, 244, 246)' || bgColor === 'rgba(243, 244, 246, 1)') {
+                    element.style.background = '#334155';
+                    element.style.color = '#f1f5f9';
+                }
+            });
+        }
+        
+        function resetAuthenticatedPageLightTheme() {
+            // Reset body and main elements to light theme
+            document.body.style.background = '';
+            document.body.style.color = '';
+            
+            const main = document.querySelector('main');
+            if (main) {
+                main.style.background = '';
+                main.style.color = '';
+            }
+            
+            // Reset account sections
+            const accountSections = document.querySelectorAll('.account-section');
+            accountSections.forEach(section => {
+                section.style.background = '';
+                section.style.color = '';
+                section.style.borderColor = '';
+                section.style.boxShadow = '';
+            });
+            
+            // Reset section headers
+            const sectionHeaders = document.querySelectorAll('.section-header h2');
+            sectionHeaders.forEach(header => {
+                header.style.color = '';
+            });
+            
+            // Reset form controls
+            const formControls = document.querySelectorAll('.form-control');
+            formControls.forEach(control => {
+                control.style.background = '';
+                control.style.color = '';
+                control.style.borderColor = '';
+            });
+            
+            // Reset form labels
+            const formLabels = document.querySelectorAll('.form-label');
+            formLabels.forEach(label => {
+                label.style.color = '';
+            });
         }
         
         function updateThemeIcon(theme) {
