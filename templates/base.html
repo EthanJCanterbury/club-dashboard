@@ -652,6 +652,9 @@
                     <a href="{{ url_for('leaderboard') }}" class="nav-link">
                         <i class="fas fa-trophy"></i> Leaderboard
                     </a>
+                    <button id="themeToggle" class="nav-link" title="Toggle dark theme" style="background: none; border: none; cursor: pointer;">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
                     
                     {% if current_user.is_admin or current_user.is_reviewer %}
                     <div class="dropdown">
