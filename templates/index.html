@@ -17,6 +17,14 @@
         --text-dim: rgba(255, 255, 255, 0.7);
     }
 
+    /* Dark theme overrides for homepage */
+    [data-theme="dark"] {
+        --glass-bg: rgba(0, 0, 0, 0.2);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.4);
+        --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.6);
+    }
+
     @keyframes float {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }

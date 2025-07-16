@@ -51,6 +51,58 @@
             --shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
             --border-radius: 8px;
             --transition: all 0.2s ease;
+        /* Dark theme variables */
+        [data-theme="dark"] {
+            --primary: #ec3750;
+            --primary-dark: #d63146;
+            --primary-light: #ff5e73;
+            --secondary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,0.4);
+            --border-radius: 8px;
+            --transition: all 0.2s ease;
+        }
+
+        /* Smooth theme transition */
+        * {
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        }
+
+        /* Dark theme variables */
+        [data-theme="dark"] {
+            --primary: #ec3750;
+            --primary-dark: #d63146;
+            --primary-light: #ff5e73;
+            --secondary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,0.4);
+            --border-radius: 8px;
+            --transition: all 0.2s ease;
+        }
+
+        /* Smooth theme transition */
+        * {
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
         }
 
         * {
@@ -665,6 +717,9 @@
                     <a href="{{ url_for('leaderboard') }}" class="nav-link">
                         <i class="fas fa-trophy"></i> Leaderboard
                     </a>
+                    <button id="themeToggle" class="nav-link" title="Toggle dark theme" style="background: none; border: none; cursor: pointer;">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
                     <a href="{{ url_for('login') }}" class="nav-link">Login</a>
                     <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm">Sign Up</a>
                 {% endif %}
@@ -817,6 +872,39 @@
         window.addEventListener('appinstalled', (evt) => {
             console.log('PWA was installed');
         });
+
+        // Theme switching functionality
+        function initTheme() {
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            
+            // Apply saved theme
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+            
+            // Theme toggle event listener
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                    
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    updateThemeIcon(newTheme);
+                });
+            }
+        }
+        
+        function updateThemeIcon(theme) {
+            const themeIcon = document.getElementById('themeIcon');
+            if (themeIcon) {
+                themeIcon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+        }
+        
+        // Initialize theme on page load
+        document.addEventListener('DOMContentLoaded', initTheme);
     </script>
 
     {% block extra_scripts %}{% endblock %}

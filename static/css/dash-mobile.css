@@ -2271,3 +2271,173 @@ body.detail-section-open .mobile-nav {
             -2px -2px 4px rgba(255, 255, 255, 0.5);
     }
 }
+
+/* Dark theme mobile overrides */
+[data-theme="dark"] .mobile-club-dashboard {
+    background: var(--background);
+}
+
+[data-theme="dark"] .mobile-header {
+    background: linear-gradient(135deg, #ec3750, #d63146);
+}
+
+[data-theme="dark"] .mobile-nav {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+}
+
+[data-theme="dark"] .nav-tab {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .nav-tab.active {
+    color: var(--primary);
+    background: rgba(236, 55, 80, 0.1);
+}
+
+[data-theme="dark"] .mobile-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .pwa-install-card {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-post-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-assignment-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-member-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-form-control {
+    background: var(--background);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .mobile-btn-secondary {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .mobile-modal {
+    background: var(--surface);
+    color: var(--text);
+}
+
+[data-theme="dark"] .mobile-dropdown {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-list-item {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .mobile-text-secondary {
+    color: var(--text-secondary);
+}
+
+/* Dark theme mobile overrides */
+[data-theme="dark"] .mobile-club-dashboard {
+    background: var(--background);
+}
+
+[data-theme="dark"] .mobile-header {
+    background: linear-gradient(135deg, #ec3750, #d63146);
+}
+
+[data-theme="dark"] .mobile-nav {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+}
+
+[data-theme="dark"] .nav-tab {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .nav-tab.active {
+    color: var(--primary);
+    background: rgba(236, 55, 80, 0.1);
+}
+
+[data-theme="dark"] .mobile-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .pwa-install-card {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-post-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-assignment-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-member-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-form-control {
+    background: var(--background);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .mobile-btn-secondary {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .mobile-modal {
+    background: var(--surface);
+    color: var(--text);
+}
+
+[data-theme="dark"] .mobile-dropdown {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .mobile-list-item {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .mobile-text-secondary {
+    color: var(--text-secondary);
+}

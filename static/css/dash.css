@@ -3495,3 +3495,299 @@ textarea.form-control {
     right: 20px;
     z-index: 9999;
 }
+
+/* Dark theme overrides */
+[data-theme="dark"] body {
+    background: var(--background);
+    color: var(--text);
+}
+
+[data-theme="dark"] .club-dashboard {
+    background: var(--background) url(../assets/Dinos.jpg) center center / cover no-repeat fixed;
+}
+
+[data-theme="dark"] .club-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+[data-theme="dark"] .club-details h1 {
+    color: var(--text);
+}
+
+[data-theme="dark"] .club-meta {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .dashboard-sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+}
+
+[data-theme="dark"] .dashboard-main {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .dashboard-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+}
+
+[data-theme="dark"] .post-card,
+[data-theme="dark"] .assignment-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .post-composer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .modal-content {
+    background: var(--surface);
+    color: var(--text);
+}
+
+[data-theme="dark"] .form-control {
+    background: var(--background);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(236, 55, 80, 0.25);
+}
+
+[data-theme="dark"] .dropdown-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .dropdown-content a {
+    color: var(--text);
+}
+
+[data-theme="dark"] .dropdown-content a:hover {
+    background: var(--background);
+}
+
+[data-theme="dark"] .navbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+[data-theme="dark"] .nav-link {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .nav-link:hover {
+    color: var(--text);
+}
+
+[data-theme="dark"] .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .card-header {
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .card-body {
+    color: var(--text);
+}
+
+[data-theme="dark"] .table {
+    color: var(--text);
+}
+
+[data-theme="dark"] .table th {
+    border-color: var(--border);
+    background: var(--background);
+}
+
+[data-theme="dark"] .table td {
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .alert {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .btn-secondary {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background: var(--background);
+    border-color: var(--primary);
+}
+
+[data-theme="dark"] .text-muted {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .bg-light {
+    background: var(--surface) !important;
+}
+
+[data-theme="dark"] .border {
+    border-color: var(--border) !important;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] body {
+    background: var(--background);
+    color: var(--text);
+}
+
+[data-theme="dark"] .club-dashboard {
+    background: var(--background) url(../assets/Dinos.jpg) center center / cover no-repeat fixed;
+}
+
+[data-theme="dark"] .club-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+[data-theme="dark"] .club-details h1 {
+    color: var(--text);
+}
+
+[data-theme="dark"] .club-meta {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .dashboard-sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+}
+
+[data-theme="dark"] .dashboard-main {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .dashboard-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+}
+
+[data-theme="dark"] .post-card,
+[data-theme="dark"] .assignment-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .post-composer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .modal-content {
+    background: var(--surface);
+    color: var(--text);
+}
+
+[data-theme="dark"] .form-control {
+    background: var(--background);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(236, 55, 80, 0.25);
+}
+
+[data-theme="dark"] .dropdown-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .dropdown-content a {
+    color: var(--text);
+}
+
+[data-theme="dark"] .dropdown-content a:hover {
+    background: var(--background);
+}
+
+[data-theme="dark"] .navbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+[data-theme="dark"] .nav-link {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .nav-link:hover {
+    color: var(--text);
+}
+
+[data-theme="dark"] .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .card-header {
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .card-body {
+    color: var(--text);
+}
+
+[data-theme="dark"] .table {
+    color: var(--text);
+}
+
+[data-theme="dark"] .table th {
+    border-color: var(--border);
+    background: var(--background);
+}
+
+[data-theme="dark"] .table td {
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .alert {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .btn-secondary {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background: var(--background);
+    border-color: var(--primary);
+}
+
+[data-theme="dark"] .text-muted {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .bg-light {
+    background: var(--surface) !important;
+}
+
+[data-theme="dark"] .border {
+    border-color: var(--border) !important;
+}
