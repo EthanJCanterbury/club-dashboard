@@ -412,8 +412,8 @@ body.mobile-dashboard-active {
 
 /* Mobile Navigation */
 .mobile-nav {
-    background: white;
-    border-top: 1px solid #e2e8f0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
     position: fixed;
     bottom: 0;
     left: 0;
