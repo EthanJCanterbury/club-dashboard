@@ -53,6 +53,30 @@
             --transition: all 0.2s ease;
         }
 
+        /* Dark theme variables */
+        [data-theme="dark"] {
+            --primary: #ff6b7a;
+            --primary-dark: #ec3750;
+            --primary-light: #ff8c82;
+            --secondary: #60a5fa;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --error: #f87171;
+            --info: #60a5fa;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-hover: 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        /* Theme transition for smooth switching */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -101,7 +125,7 @@
         }
 
         .nav-link {
-            color: #64748b;
+            color: var(--text-secondary);
             text-decoration: none;
             font-weight: 500;
             padding: 0.5rem 1rem;
@@ -116,8 +140,28 @@
         }
 
         .nav-link:hover {
-            color: #ec3750;
+            color: var(--primary);
             background: rgba(236, 55, 80, 0.1);
+        }
+
+        /* Theme toggle button styling */
+        .theme-toggle {
+            background: none !important;
+            border: none !important;
+            color: var(--text-secondary) !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+            font-size: 1rem !important;
+        }
+
+        .theme-toggle:hover {
+            color: var(--primary) !important;
+            background: rgba(236, 55, 80, 0.1) !important;
+            transform: scale(1.1);
+        }
+
+        .theme-toggle:focus {
+            outline: none !important;
         }
 
         .dropdown {
@@ -129,18 +173,18 @@
         .dropdown-content {
             display: none;
             position: absolute;
-            background-color: white;
+            background-color: var(--surface);
             min-width: 180px;
             box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
             border-radius: 8px;
             z-index: 2147483647 !important;
             top: 100%;
             left: 0;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
         }
 
         .dropdown-content a {
-            color: #374151;
+            color: var(--text);
             padding: 12px 16px;
             text-decoration: none;
             display: block;
@@ -150,8 +194,8 @@
         }
 
         .dropdown-content a:hover {
-            background-color: #f3f4f6;
-            color: #ec3750;
+            background-color: var(--background);
+            color: var(--primary);
         }
 
         .dropdown-content a:first-child {
@@ -175,7 +219,7 @@
         /* Override admin dashboard dropdown styles for navbar */
         .navbar .dropdown-toggle {
             background: none !important;
-            color: #64748b !important;
+            color: var(--text-secondary) !important;
             border: none !important;
             border-radius: 8px !important;
             padding: 0.5rem 1rem !important;
@@ -191,7 +235,7 @@
         }
 
         .navbar .dropdown-toggle:hover {
-            color: #ec3750 !important;
+            color: var(--primary) !important;
             background: rgba(236, 55, 80, 0.1) !important;
             transform: none !important;
             box-shadow: none !important;
@@ -326,7 +370,8 @@
         }
 
         .toast {
-            background: white;
+            background: var(--surface);
+            color: var(--text);
             border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0,0,0,0.12);
             padding: 1rem;
@@ -616,6 +661,11 @@
             </a>
             
             <div class="navbar-nav">
+                <!-- Theme Toggle Button - Always visible -->
+                <button id="theme-toggle" class="nav-link theme-toggle" title="Toggle dark/light theme">
+                    <i class="fas fa-moon" id="theme-icon"></i>
+                </button>
+                
                 {% if current_user and current_user.id %}
                     <a href="{{ url_for('dashboard') }}" class="nav-link">
                         <i class="fas fa-tachometer-alt"></i> Dashboard
@@ -793,6 +843,47 @@
 
         // PWA Install prompt
         let deferredPrompt;
+
+        // Theme toggle functionality
+        function initTheme() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
+            const html = document.documentElement;
+            
+            // Get saved theme or default to light
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            
+            // Apply the saved theme
+            if (savedTheme === 'dark') {
+                html.setAttribute('data-theme', 'dark');
+                themeIcon.className = 'fas fa-sun';
+            } else {
+                html.removeAttribute('data-theme');
+                themeIcon.className = 'fas fa-moon';
+            }
+            
+            // Add click event listener
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = html.getAttribute('data-theme');
+                    
+                    if (currentTheme === 'dark') {
+                        // Switch to light theme
+                        html.removeAttribute('data-theme');
+                        themeIcon.className = 'fas fa-moon';
+                        localStorage.setItem('theme', 'light');
+                    } else {
+                        // Switch to dark theme
+                        html.setAttribute('data-theme', 'dark');
+                        themeIcon.className = 'fas fa-sun';
+                        localStorage.setItem('theme', 'dark');
+                    }
+                });
+            }
+        }
+        
+        // Initialize theme when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initTheme);
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
