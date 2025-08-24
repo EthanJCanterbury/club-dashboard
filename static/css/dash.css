@@ -1,6 +1,6 @@
 .club-dashboard {
   min-height: 100vh;
-  background: #f5f7fa url(../assets/Dinos.jpg) center center / cover no-repeat fixed;
+  background: var(--background) url(../assets/Dinos.jpg) center center / cover no-repeat fixed;
   position: relative;
 }
 
@@ -9,11 +9,11 @@
 }
 
 .club-header {
-  background: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: var(--surface);
+  box-shadow: var(--shadow);
   padding: 1.5rem 0;
   margin-bottom: 2rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 70px;
   z-index: 100;
@@ -49,7 +49,7 @@
 
 .club-details h1 {
   margin: 0 0 0.25rem 0;
-  color: #1a202c;
+  color: var(--text);
   font-size: clamp(1.25rem, 3vw, 1.75rem);
   font-weight: 700;
   word-wrap: break-word;
@@ -60,7 +60,7 @@
   display: flex;
   gap: 1rem;
   margin-top: 0.25rem;
-  color: #718096;
+  color: var(--text-secondary);
   flex-wrap: wrap;
 }
 
@@ -89,8 +89,8 @@
 }
 
 .club-detail-item {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.375rem 0.75rem;
   display: flex;
