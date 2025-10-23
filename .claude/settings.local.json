@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(python3:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Read(///**)"
     ],
     "deny": [],
     "ask": []
