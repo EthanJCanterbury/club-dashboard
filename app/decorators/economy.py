@@ -40,7 +40,8 @@ def economy_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Import here to avoid circular imports
-        from main import app, SystemSettings
+        from flask import current_app
+        from app.models.system import SystemSettings
         from app.utils.auth_helpers import get_current_user
 
         try:
@@ -56,7 +57,7 @@ def economy_required(f):
                     flash('This feature is currently disabled.', 'error')
                     return redirect(url_for('dashboard'))
         except Exception as e:
-            app.logger.error(f"Error checking economy status: {str(e)}")
+            current_app.logger.error(f"Error checking economy status: {str(e)}")
             # Allow access if we can't check the setting (fail open for availability)
 
         return f(*args, **kwargs)

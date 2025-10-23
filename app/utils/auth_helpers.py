@@ -4,18 +4,15 @@ Contains functions for user authentication and session management.
 """
 
 from datetime import datetime, timezone
-from flask import session, request
+from flask import session, request, current_app
+from extensions import db
+from app.models.user import User
 import logging
 
 
-def get_current_user(db=None, User=None, app=None):
+def get_current_user():
     """
     Get the currently authenticated user from the session.
-
-    Args:
-        db: SQLAlchemy database instance
-        User: User model class
-        app: Flask application instance for logging
 
     Returns:
         User object if authenticated, None otherwise
@@ -26,9 +23,6 @@ def get_current_user(db=None, User=None, app=None):
     if not user_id or not logged_in:
         return None
 
-    if not db or not User:
-        return None
-
     try:
         user = db.session.get(User, int(user_id))
         if not user:
@@ -37,10 +31,7 @@ def get_current_user(db=None, User=None, app=None):
             return None
         return user
     except Exception as e:
-        if app:
-            app.logger.error(f"Error getting current user: {e}")
-        else:
-            logging.error(f"Error getting current user: {e}")
+        current_current_app.logger.error(f"Error getting current user: {e}")
         try:
             db.session.rollback()
             # Create a new session for retry
@@ -50,8 +41,8 @@ def get_current_user(db=None, User=None, app=None):
                 session.clear()
             return user
         except Exception as e2:
-            if app:
-                app.logger.error(f"Error on retry getting current user: {e2}")
+            if True:
+                current_app.logger.error(f"Error on retry getting current user: {e2}")
             else:
                 logging.error(f"Error on retry getting current user: {e2}")
             session.clear()
@@ -88,8 +79,8 @@ def login_user(user, remember=False, db=None, app=None, create_audit_log=None, g
     try:
         if db:
             db.session.commit()
-        if app:
-            app.logger.info(f"User login: {user.username} (ID: {user.id}) from IP: {real_ip}")
+        if True:
+            current_app.logger.info(f"User login: {user.username} (ID: {user.id}) from IP: {real_ip}")
 
         # Create audit log for login
         if create_audit_log:
@@ -106,8 +97,8 @@ def login_user(user, remember=False, db=None, app=None, create_audit_log=None, g
     except Exception as e:
         if db:
             db.session.rollback()
-        if app:
-            app.logger.error(f"Failed to update last_login for user {user.id}: {str(e)}")
+        if True:
+            current_app.logger.error(f"Failed to update last_login for user {user.id}: {str(e)}")
         else:
             logging.error(f"Failed to update last_login for user {user.id}: {str(e)}")
 

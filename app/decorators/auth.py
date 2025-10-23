@@ -27,20 +27,22 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Import here to avoid circular imports
+        from flask import current_app
         from app.utils.auth_helpers import is_authenticated, get_current_user
-        from main import app, db, User
+        from extensions import db
+        from app.models.user import User
 
         authenticated = is_authenticated()
-        current_user = get_current_user(db=db, User=User, app=app)
+        current_user = get_current_user()
 
-        app.logger.debug(f"Auth check for {request.endpoint}: authenticated={authenticated}, user_id={session.get('user_id')}, logged_in={session.get('logged_in')}, current_user={current_user.username if current_user else None}")
+        current_app.logger.debug(f"Auth check for {request.endpoint}: authenticated={authenticated}, user_id={session.get('user_id')}, logged_in={session.get('logged_in')}, current_user={current_user.username if current_user else None}")
 
         if not authenticated or not current_user:
-            app.logger.warning(f"Authentication failed for {request.endpoint}: user_id={session.get('user_id')}, logged_in={session.get('logged_in')}")
+            current_app.logger.warning(f"Authentication failed for {request.endpoint}: user_id={session.get('user_id')}, logged_in={session.get('logged_in')}")
             if request.is_json:
                 return jsonify({'error': 'Authentication required'}), 401
             flash('Please log in to access this page.', 'info')
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
 
         # Check if user is suspended (but allow access to suspended page and logout)
         if current_user.is_suspended and request.endpoint not in ['suspended', 'logout']:
@@ -70,16 +72,18 @@ def permission_required(*permissions):
         def decorated_function(*args, **kwargs):
             # Import here to avoid circular imports
             from app.utils.auth_helpers import is_authenticated, get_current_user
-            from main import app, db, User
+            from flask import current_app
+            from extensions import db
+            from app.models.user import User
 
             authenticated = is_authenticated()
-            current_user = get_current_user(db=db, User=User, app=app)
+            current_user = get_current_user()
 
             if not authenticated or not current_user:
                 if request.is_json:
                     return jsonify({'error': 'Authentication required'}), 401
                 flash('Please log in to access this page.', 'info')
-                return redirect(url_for('login'))
+                return redirect(url_for('auth.login'))
 
             # Check if user has at least one of the required permissions
             has_permission = False
@@ -117,16 +121,18 @@ def role_required(*roles):
         def decorated_function(*args, **kwargs):
             # Import here to avoid circular imports
             from app.utils.auth_helpers import is_authenticated, get_current_user
-            from main import app, db, User
+            from flask import current_app
+            from extensions import db
+            from app.models.user import User
 
             authenticated = is_authenticated()
-            current_user = get_current_user(db=db, User=User, app=app)
+            current_user = get_current_user()
 
             if not authenticated or not current_user:
                 if request.is_json:
                     return jsonify({'error': 'Authentication required'}), 401
                 flash('Please log in to access this page.', 'info')
-                return redirect(url_for('login'))
+                return redirect(url_for('auth.login'))
 
             # Check if user has at least one of the required roles
             has_role = False
@@ -163,16 +169,18 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         # Import here to avoid circular imports
         from app.utils.auth_helpers import is_authenticated, get_current_user
-        from main import app, db, User
+        from flask import current_app
+        from extensions import db
+        from app.models.user import User
 
         authenticated = is_authenticated()
-        current_user = get_current_user(db=db, User=User, app=app)
+        current_user = get_current_user()
 
         if not authenticated or not current_user:
             if request.is_json:
                 return jsonify({'error': 'Authentication required'}), 401
             flash('Please log in to access this page.', 'info')
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
 
         # Check RBAC permissions
         has_admin_access = (
@@ -209,16 +217,18 @@ def reviewer_required(f):
     def decorated_function(*args, **kwargs):
         # Import here to avoid circular imports
         from app.utils.auth_helpers import is_authenticated, get_current_user
-        from main import app, db, User
+        from flask import current_app
+        from extensions import db
+        from app.models.user import User
 
         authenticated = is_authenticated()
-        current_user = get_current_user(db=db, User=User, app=app)
+        current_user = get_current_user()
 
         if not authenticated or not current_user:
             if request.is_json:
                 return jsonify({'error': 'Authentication required'}), 401
             flash('Please log in to access this page.', 'info')
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
 
         # Check RBAC permissions
         has_reviewer_access = (
@@ -262,7 +272,9 @@ def api_key_required(scopes=None):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Import here to avoid circular imports
-            from main import app, db, APIKey
+            from flask import current_app
+            from extensions import db
+            from app.models.auth import APIKey
 
             auth_header = request.headers.get('Authorization')
             if not auth_header:
@@ -338,7 +350,7 @@ def api_key_required(scopes=None):
                 key_obj.last_used_at = datetime.now(timezone.utc)
                 db.session.commit()
             except Exception as e:
-                app.logger.error(f"Failed to update API key last_used_at: {e}")
+                current_app.logger.error(f"Failed to update API key last_used_at: {e}")
 
             # Add key info to request context
             request.api_key = key_obj
@@ -370,7 +382,9 @@ def oauth_required(scopes=None):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Import here to avoid circular imports
-            from main import app, db, OAuthToken
+            from flask import current_app
+            from extensions import db
+            from app.models.auth import OAuthToken
 
             auth_header = request.headers.get('Authorization')
             if not auth_header:

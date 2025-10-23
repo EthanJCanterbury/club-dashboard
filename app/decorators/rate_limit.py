@@ -32,7 +32,7 @@ Common rate limiting patterns:
     - Multiple limits: ["10 per minute", "100 per hour"]
 
 To import the limiter instance:
-    from main import limiter
+    from extensions import limiter
 
     @limiter.limit("5 per minute")
     def my_route():

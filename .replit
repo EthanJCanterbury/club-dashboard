@@ -1,41 +1,12 @@
 run = "python main.py"
-modules = ["nodejs-20", "python-3.11"]
+modules = ["python-3.11"]
+
 [nix]
 channel = "stable-24_05"
-packages = [
-  "python312Packages.gunicorn",
-  "unzipNLS",
-  "postgresql_12",
-  "jq",
-  "firefox-beta-unwrapped",
-]
 
 [deployment]
-run = [
-  "sh",
-  "-c",
-  "gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --log-level debug --access-logfile - --error-logfile - --capture-output main:app",
-]
+run = ["sh", "-c", "gunicorn --config gunicorn.conf.py main:app"]
 
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 5001
-externalPort = 3000
-
-[workflows]
-runButton = "Run"
-
-[[workflows.workflow]]
-name = "Run"
-author = 17724980
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python main.py"
-
-[agent]
-expertMode = true

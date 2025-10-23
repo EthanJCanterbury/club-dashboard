@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.club import Club
 from app.models.gallery import GalleryPost
 from app.models.economy import LeaderboardExclusion
+from app.models.system import SystemSettings
 from extensions import db
 
 main_bp = Blueprint('main', __name__)
@@ -30,12 +31,18 @@ def dashboard():
     """User dashboard"""
     user = get_current_user()
 
-    # Get user's clubs
+    # Get user's club memberships and led clubs
     from app.models.club import ClubMembership
     memberships = ClubMembership.query.filter_by(user_id=user.id).all()
-    clubs = [membership.club for membership in memberships]
+    led_clubs = Club.query.filter_by(leader_id=user.id).all()
 
-    return render_template('dashboard.html', clubs=clubs)
+    # If user only has one club, redirect directly to it
+    all_club_ids = set([club.id for club in led_clubs] + [m.club.id for m in memberships])
+    if len(all_club_ids) == 1:
+        club_id = list(all_club_ids)[0]
+        return redirect(url_for('main.club_dashboard', club_id=club_id))
+
+    return render_template('dashboard.html', memberships=memberships, led_clubs=led_clubs)
 
 
 @main_bp.route('/club-dashboard')
@@ -47,33 +54,116 @@ def club_dashboard(club_id=None):
 
     if club_id:
         club = Club.query.get_or_404(club_id)
-        # Verify user is a member
-        from app.models.club import ClubMembership
-        membership = ClubMembership.query.filter_by(
-            club_id=club_id,
-            user_id=user.id
-        ).first()
-        if not membership:
-            flash('You are not a member of this club.', 'danger')
-            return redirect(url_for('main.dashboard'))
     else:
         # Get user's first club
-        from app.models.club import ClubMembership
-        membership = ClubMembership.query.filter_by(user_id=user.id).first()
-        if not membership:
-            flash('You are not a member of any club.', 'warning')
-            return redirect(url_for('main.dashboard'))
-        club = membership.club
-        return redirect(url_for('main.club_dashboard', club_id=club.id))
+        club = Club.query.filter_by(leader_id=user.id).first()
+        if not club:
+            from app.models.club import ClubMembership
+            membership = ClubMembership.query.filter_by(user_id=user.id).first()
+            if membership:
+                club = membership.club
 
-    return render_template('club_dashboard.html', club=club)
+        if not club:
+            flash('You are not a member of any club', 'error')
+            return redirect(url_for('main.dashboard'))
+
+    # Verify user has access to this club
+    from app.models.club import ClubMembership
+    is_leader = club.leader_id == user.id
+    is_co_leader = club.co_leader_id == user.id
+    membership = ClubMembership.query.filter_by(club_id=club.id, user_id=user.id).first()
+    is_member = membership is not None
+    is_admin_access = request.args.get('admin') == 'true' and user.is_admin
+
+    if not is_leader and not is_co_leader and not is_member and not is_admin_access:
+        flash('You are not a member of this club', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    # Check if club is suspended
+    if club.is_suspended and not user.is_admin:
+        flash('This club has been suspended', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    # Check if club has orders
+    from app.services.airtable import AirtableService
+    try:
+        airtable_service = AirtableService()
+        orders = airtable_service.get_orders_for_club(club.name)
+        has_orders = len(orders) > 0
+    except:
+        has_orders = False
+
+    # Check if club has gallery post
+    has_gallery_post = GalleryPost.query.filter_by(club_id=club.id).first() is not None
+
+    # Check if connected to directory
+    airtable_data = club.get_airtable_data()
+    is_connected_to_directory = airtable_data and airtable_data.get('airtable_id')
+
+    # Get banner settings
+    banner_settings = {
+        'enabled': SystemSettings.get_setting('banner_enabled', 'false') == 'true',
+        'title': SystemSettings.get_setting('banner_title', 'Design Contest'),
+        'subtitle': SystemSettings.get_setting('banner_subtitle', 'Submit your creative projects!'),
+        'icon': SystemSettings.get_setting('banner_icon', 'fas fa-palette'),
+        'primary_color': SystemSettings.get_setting('banner_primary_color', '#ec3750'),
+        'secondary_color': SystemSettings.get_setting('banner_secondary_color', '#d63146'),
+        'background_color': SystemSettings.get_setting('banner_background_color', '#ffffff'),
+        'text_color': SystemSettings.get_setting('banner_text_color', '#1a202c'),
+        'link_url': SystemSettings.get_setting('banner_link_url', '/gallery'),
+        'link_text': SystemSettings.get_setting('banner_link_text', 'Submit Entry')
+    }
+
+    # Get membership date
+    membership_date = membership.joined_at if membership else None
+
+    # Role variables for template
+    effective_is_leader = is_leader or is_admin_access
+    effective_is_co_leader = is_co_leader or is_admin_access
+    effective_can_manage = is_leader or is_co_leader or is_admin_access
+
+    # Check for mobile
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad'])
+    force_mobile = request.args.get('mobile', '').lower() == 'true'
+    force_desktop = request.args.get('desktop', '').lower() == 'true'
+
+    if (is_mobile or force_mobile) and not force_desktop:
+        return render_template('club_dashboard_mobile.html',
+                             club=club,
+                             membership_date=membership_date,
+                             has_orders=has_orders,
+                             has_gallery_post=has_gallery_post,
+                             is_leader=is_leader,
+                             is_co_leader=is_co_leader,
+                             is_admin_access=is_admin_access,
+                             effective_is_leader=effective_is_leader,
+                             effective_is_co_leader=effective_is_co_leader,
+                             effective_can_manage=effective_can_manage,
+                             banner_settings=banner_settings,
+                             is_connected_to_directory=is_connected_to_directory)
+
+    return render_template('club_dashboard.html',
+                         club=club,
+                         membership_date=membership_date,
+                         has_orders=has_orders,
+                         has_gallery_post=has_gallery_post,
+                         is_leader=is_leader,
+                         is_co_leader=is_co_leader,
+                         is_admin_access=is_admin_access,
+                         effective_is_leader=effective_is_leader,
+                         effective_is_co_leader=effective_is_co_leader,
+                         effective_can_manage=effective_can_manage,
+                         banner_settings=banner_settings,
+                         is_connected_to_directory=is_connected_to_directory)
 
 
 @main_bp.route('/gallery')
 def gallery():
     """Public gallery of club posts"""
-    # Get all gallery posts ordered by date
-    posts = GalleryPost.query.filter_by(is_public=True).order_by(
+    # Get all gallery posts ordered by date (featured first, then by date)
+    posts = GalleryPost.query.order_by(
+        GalleryPost.featured.desc(),
         GalleryPost.created_at.desc()
     ).limit(50).all()
 
@@ -98,12 +188,18 @@ def leaderboard(leaderboard_type='total_tokens'):
         ).order_by(Club.tokens.desc()).limit(100).all()
         title = "Top Clubs by Total Tokens"
     elif leaderboard_type == 'monthly_tokens':
-        # TODO: Implement monthly tokens tracking
-        clubs = []
+        # For now, use total tokens (TODO: track monthly separately)
+        clubs = Club.query.filter(
+            ~Club.id.in_(excluded_club_ids)
+        ).order_by(Club.tokens.desc()).limit(100).all()
         title = "Top Clubs by Monthly Tokens"
     else:
         clubs = []
         title = "Leaderboard"
+
+    # Add rank to each club
+    for i, club in enumerate(clubs, 1):
+        club.rank = i
 
     return render_template('leaderboard.html',
                          clubs=clubs,

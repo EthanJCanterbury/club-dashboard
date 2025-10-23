@@ -26,12 +26,12 @@ def blog_index():
         posts = BlogPost.query.order_by(BlogPost.published_at.desc()).all()
     else:
         posts = BlogPost.query.filter_by(
-            is_published=True
+            status='published'
         ).order_by(BlogPost.published_at.desc()).all()
 
     categories = BlogCategory.query.all()
 
-    return render_template('blog/index.html', posts=posts, categories=categories)
+    return render_template('blog_list.html', posts=posts, categories=categories)
 
 
 @blog_bp.route('/blog/<slug>')
@@ -68,12 +68,12 @@ def blog_create():
 
         if not title or not slug or not content:
             flash('Title, slug, and content are required.', 'error')
-            return render_template('blog/create.html', categories=BlogCategory.query.all())
+            return render_template('blog_create.html', categories=BlogCategory.query.all())
 
         # Check if slug already exists
         if BlogPost.query.filter_by(slug=slug).first():
             flash('A post with this slug already exists.', 'error')
-            return render_template('blog/create.html', categories=BlogCategory.query.all())
+            return render_template('blog_create.html', categories=BlogCategory.query.all())
 
         # Create new post
         post = BlogPost(
@@ -94,7 +94,7 @@ def blog_create():
         return redirect(url_for('blog.blog_post', slug=post.slug))
 
     categories = BlogCategory.query.all()
-    return render_template('blog/create.html', categories=categories)
+    return render_template('blog_create.html', categories=categories)
 
 
 @blog_bp.route('/blog/<slug>/edit', methods=['GET', 'POST'])
@@ -114,13 +114,13 @@ def blog_edit(slug):
 
         if not post.title or not new_slug or not post.content:
             flash('Title, slug, and content are required.', 'error')
-            return render_template('blog/edit.html', post=post, categories=BlogCategory.query.all())
+            return render_template('blog_edit.html', post=post, categories=BlogCategory.query.all())
 
         # Check if slug changed and is unique
         if new_slug != post.slug:
             if BlogPost.query.filter_by(slug=new_slug).first():
                 flash('A post with this slug already exists.', 'error')
-                return render_template('blog/edit.html', post=post, categories=BlogCategory.query.all())
+                return render_template('blog_edit.html', post=post, categories=BlogCategory.query.all())
             post.slug = new_slug
 
         post.category_id = category_id if category_id else None
@@ -141,7 +141,7 @@ def blog_edit(slug):
         return redirect(url_for('blog.blog_post', slug=post.slug))
 
     categories = BlogCategory.query.all()
-    return render_template('blog/edit.html', post=post, categories=categories)
+    return render_template('blog_edit.html', post=post, categories=categories)
 
 
 @blog_bp.route('/blog/<slug>/delete', methods=['POST'])
