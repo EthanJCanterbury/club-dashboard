@@ -25,20 +25,31 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 def dashboard():
     """Admin dashboard"""
     from app.models.club_content import ClubPost, ClubAssignment
-    
+
+    current_user = get_current_user()
+
     # Get statistics
     total_users = User.query.count()
     total_clubs = Club.query.count()
     total_posts = ClubPost.query.count()
     total_assignments = ClubAssignment.query.count()
     pending_projects = ProjectSubmission.query.filter_by(approved_at=None).count()
-    
+
     # Get total club balance
     total_club_balance = db.session.query(db.func.sum(Club.balance)).scalar() or 0
 
     # Get recent activity
     recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
     recent_clubs = Club.query.order_by(Club.created_at.desc()).limit(10).all()
+
+    # Check permissions for each tab
+    can_view_users = current_user.has_permission('users.view') or current_user.is_admin
+    can_view_clubs = current_user.has_permission('clubs.view') or current_user.is_admin
+    can_view_content = current_user.has_permission('content.view') or current_user.is_admin
+    can_manage_roles = current_user.has_permission('system.manage_roles') or current_user.has_role('super-admin')
+    can_manage_users = current_user.has_permission('users.edit') or current_user.is_admin
+    can_access_api = current_user.has_permission('admin.manage_api_keys') or current_user.is_admin
+    can_manage_settings = current_user.has_permission('system.manage_settings') or current_user.is_admin
 
     return render_template('admin_dashboard.html',
                          total_users=total_users,
@@ -48,7 +59,14 @@ def dashboard():
                          pending_projects=pending_projects,
                          total_club_balance=total_club_balance,
                          recent_users=recent_users,
-                         recent_clubs=recent_clubs)
+                         recent_clubs=recent_clubs,
+                         can_view_users=can_view_users,
+                         can_view_clubs=can_view_clubs,
+                         can_view_content=can_view_content,
+                         can_manage_roles=can_manage_roles,
+                         can_manage_users=can_manage_users,
+                         can_access_api=can_access_api,
+                         can_manage_settings=can_manage_settings)
 
 
 @admin_bp.route('/users')
@@ -106,7 +124,7 @@ def user_detail(user_id):
         AuditLog.timestamp.desc()
     ).limit(50).all()
 
-    return render_template('admin/user_detail.html',
+    return render_template('admin_user_detail.html',
                          user=user,
                          clubs=clubs,
                          audit_logs=audit_logs)
@@ -222,7 +240,7 @@ def club_detail(club_id):
         ClubTransaction.created_at.desc()
     ).limit(50).all()
 
-    return render_template('admin/club_detail.html',
+    return render_template('admin_club_detail.html',
                          club=club,
                          memberships=memberships,
                          transactions=transactions)
@@ -237,7 +255,7 @@ def review_projects():
         approved_at=None
     ).order_by(ProjectSubmission.submitted_at.desc()).all()
 
-    return render_template('admin/review_projects.html', projects=pending_projects)
+    return render_template('admin_review_projects.html', projects=pending_projects)
 
 
 @admin_bp.route('/projects/<int:project_id>/approve', methods=['POST'])
@@ -268,7 +286,7 @@ def approve_project(project_id):
 def review_orders():
     """Review pending shop orders"""
     # TODO: Implement order review system
-    return render_template('admin/review_orders.html', orders=[])
+    return render_template('admin_order_review.html', orders=[])
 
 
 @admin_bp.route('/settings', methods=['GET', 'POST'])
@@ -319,7 +337,7 @@ def stats():
         ).count(),
     }
 
-    return render_template('admin/stats.html', stats=stats_data)
+    return render_template('admin_stats.html', stats=stats_data)
 
 
 @admin_bp.route('/pizza-grants')
@@ -334,7 +352,7 @@ def pizza_grants():
         flash(f'Error loading grants: {str(e)}', 'error')
         grants = []
 
-    return render_template('admin/pizza_grants.html', grants=grants)
+    return render_template('admin_pizza_grants.html', grants=grants)
 
 
 @admin_bp.route('/activity')
@@ -350,6 +368,6 @@ def activity():
         AuditLog.timestamp.desc()
     ).paginate(page=page, per_page=per_page, error_out=False)
 
-    return render_template('admin/activity.html',
+    return render_template('admin_activity.html',
                          logs=logs_pagination.items,
                          pagination=logs_pagination)

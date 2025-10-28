@@ -69,7 +69,6 @@ def register_blueprints(app):
     from app.routes.main import main_bp
     from app.routes.auth import auth_bp
     from app.routes.clubs import clubs_bp
-    from app.routes.blog import blog_bp
     from app.routes.admin import admin_bp
     from app.routes.api import api_bp
     from app.routes.chat import chat_bp
@@ -82,7 +81,6 @@ def register_blueprints(app):
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(clubs_bp)
-    app.register_blueprint(blog_bp)
     app.register_blueprint(admin_bp)      # Prefix: /admin
     app.register_blueprint(api_bp)        # Prefix: /api
     app.register_blueprint(chat_bp)       # Routes: /api/club/<id>/chat/*

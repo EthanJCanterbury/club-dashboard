@@ -5,7 +5,6 @@ This package contains all Flask blueprints organized by functionality:
 - main: Home, dashboard, gallery, leaderboard
 - auth: Login, signup, OAuth flows
 - clubs: Club management, shop, projects
-- blog: Blog posts and categories
 - admin: Admin panel, user/club management, settings
 - api: Public API endpoints, admin API
 - chat: Club chat messaging
@@ -17,7 +16,6 @@ This package contains all Flask blueprints organized by functionality:
 from app.routes.main import main_bp
 from app.routes.auth import auth_bp
 from app.routes.clubs import clubs_bp
-from app.routes.blog import blog_bp
 from app.routes.admin import admin_bp
 from app.routes.api import api_bp
 from app.routes.chat import chat_bp
@@ -29,7 +27,6 @@ __all__ = [
     'main_bp',
     'auth_bp',
     'clubs_bp',
-    'blog_bp',
     'admin_bp',
     'api_bp',
     'chat_bp',

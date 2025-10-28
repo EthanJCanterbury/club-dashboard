@@ -63,8 +63,7 @@ def chat_messages(club_id):
                 'last_name': msg.user.last_name,
                 'message': msg.message,
                 'image_url': msg.image_url,
-                'created_at': msg.created_at.isoformat() if msg.created_at else None,
-                'updated_at': msg.updated_at.isoformat() if msg.updated_at else None
+                'created_at': msg.created_at.isoformat() if msg.created_at else None
             })
 
         return jsonify({
@@ -148,7 +147,8 @@ def chat_message_operations(club_id, message_id):
     ).first_or_404()
 
     # Verify user owns the message or is a leader
-    if message.user_id != user.id and not membership.is_leader and not user.is_admin:
+    is_leader = (user.id == club.leader_id or user.id == club.co_leader_id)
+    if message.user_id != user.id and not is_leader and not user.is_admin:
         return jsonify({'error': 'Not authorized to modify this message'}), 403
 
     if request.method == 'PUT':
@@ -171,8 +171,6 @@ def chat_message_operations(club_id, message_id):
             return jsonify({'error': validated_message}), 400
 
         message.message = validated_message
-        message.updated_at = datetime.now(timezone.utc)
-        message.is_edited = True
 
         db.session.commit()
 
@@ -181,8 +179,7 @@ def chat_message_operations(club_id, message_id):
             'message': {
                 'id': message.id,
                 'message': message.message,
-                'is_edited': message.is_edited,
-                'updated_at': message.updated_at.isoformat() if message.updated_at else None
+                'created_at': message.created_at.isoformat() if message.created_at else None
             }
         })
 

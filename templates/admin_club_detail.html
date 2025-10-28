@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Club Details - Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 2rem 0;">
+    <h1>Club Details: {{ club.name }}</h1>
+    
+    <div style="background: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2>Club Information</h2>
+        <p><strong>ID:</strong> {{ club.id }}</p>
+        <p><strong>Name:</strong> {{ club.name }}</p>
+        <p><strong>Description:</strong> {{ club.description or 'N/A' }}</p>
+        <p><strong>Location:</strong> {{ club.location or 'N/A' }}</p>
+        <p><strong>Tokens:</strong> {{ club.tokens }}</p>
+        <p><strong>Balance:</strong> ${{ club.balance }}</p>
+        <p><strong>Created:</strong> {{ club.created_at.strftime('%Y-%m-%d %H:%M') if club.created_at else 'N/A' }}</p>
+        {% if leader %}
+        <p><strong>Leader:</strong> <a href="{{ url_for('admin.user_detail', user_id=leader.id) }}">{{ leader.username }}</a></p>
+        {% endif %}
+    </div>
+    
+    <div style="background: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2>Members ({{ members|length }})</h2>
+        {% if members %}
+        <ul>
+            {% for membership in members %}
+            <li>
+                <a href="{{ url_for('admin.user_detail', user_id=membership.user.id) }}">{{ membership.user.username }}</a>
+                - {{ membership.role or 'Member' }}
+                {% if membership.is_leader %}<span style="color: #10b981;">(Leader)</span>{% endif %}
+                {% if membership.is_co_leader %}<span style="color: #3b82f6;">(Co-leader)</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No members</p>
+        {% endif %}
+    </div>
+    
+    <div style="margin-top: 2rem;">
+        <a href="{{ url_for('admin.clubs') }}" style="color: #3b82f6;">← Back to Clubs List</a>
+    </div>
+</div>
+{% endblock %}

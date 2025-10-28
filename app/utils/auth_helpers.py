@@ -31,7 +31,7 @@ def get_current_user():
             return None
         return user
     except Exception as e:
-        current_current_app.logger.error(f"Error getting current user: {e}")
+        current_app.logger.error(f"Error getting current user: {e}")
         try:
             db.session.rollback()
             # Create a new session for retry

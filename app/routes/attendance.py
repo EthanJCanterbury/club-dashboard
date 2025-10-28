@@ -230,7 +230,8 @@ def mark_attendance(club_id, session_id):
     user_id_to_mark = data.get('user_id', user.id)
 
     # Only leaders can mark attendance for others
-    if user_id_to_mark != user.id and not membership.is_leader and not user.is_admin:
+    is_leader = (user.id == session.club.leader_id or user.id == session.club.co_leader_id)
+    if user_id_to_mark != user.id and not is_leader and not user.is_admin:
         return jsonify({'error': 'Only leaders can mark attendance for others'}), 403
 
     # Check if already marked

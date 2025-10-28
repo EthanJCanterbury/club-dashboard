@@ -13,7 +13,6 @@ from app.models.chat import ClubChatMessage
 from app.models.attendance import AttendanceSession, AttendanceRecord, AttendanceGuest
 from app.models.economy import ClubTransaction, ProjectSubmission, WeeklyQuest, ClubQuestProgress, LeaderboardExclusion
 from app.models.gallery import GalleryPost
-from app.models.blog import BlogPost, BlogCategory
 from app.models.system import SystemSettings, StatusIncident, StatusUpdate
 
 # Import helper functions
@@ -39,8 +38,6 @@ __all__ = [
     'ClubTransaction', 'ProjectSubmission', 'WeeklyQuest', 'ClubQuestProgress', 'LeaderboardExclusion',
     # Gallery models
     'GalleryPost',
-    # Blog models
-    'BlogPost', 'BlogCategory',
     # System models
     'SystemSettings', 'StatusIncident', 'StatusUpdate',
     # Helper functions

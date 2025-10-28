@@ -2811,7 +2811,7 @@ async function loadUsers(page = 1, search = '', sort = 'created_at-desc') {
         const data = await response.json();
 
         if (response.ok) {
-            const users = data.items || [];
+            const users = data.users || [];
             usersData = users; // Store for search functionality
             renderUsersTable(users);
             totalUsers = data.total || 0;
@@ -3165,7 +3165,7 @@ async function loadClubs(page = 1, search = '') {
         const data = await response.json();
 
         if (response.ok) {
-            const clubs = data.items || [];
+            const clubs = data.clubs || [];
             clubsData = clubs; // Store for search functionality
             renderClubsTable(clubs);
             totalClubs = data.total || 0;
@@ -5063,7 +5063,8 @@ function populateUserInfo(data) {
 }
 
 function escapeHtml(unsafe) {
-    return unsafe
+    if (!unsafe) return '';
+    return String(unsafe)
          .replace(/&/g, "&amp;")
          .replace(/</g, "&lt;")
          .replace(/>/g, "&gt;")
@@ -5107,8 +5108,18 @@ async function loadLogs(page = 1) {
             logsData = data.logs;
             logsCurrentPage = page;
             renderLogsTable(data.logs);
-            renderLogsPagination(data.pagination);
-            
+
+            // Build pagination object from API response
+            const pagination = {
+                page: data.page,
+                pages: data.pages,
+                total: data.total,
+                per_page: data.per_page,
+                has_prev: data.page > 1,
+                has_next: data.page < data.pages
+            };
+            renderLogsPagination(pagination);
+
             logsLoading.style.display = 'none';
             logsTable.style.display = 'table';
         } else {
@@ -5328,67 +5339,60 @@ document.addEventListener('DOMContentLoaded', function() {
 // Settings Management Functions
 function loadSettings() {
     // Load current settings from backend
-    makeSecureRequest('/admin/api/settings')
+    makeSecureRequest('/api/admin/settings')
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                // Update toggle switches
-                document.getElementById('maintenanceMode').checked = data.settings.maintenance_mode === 'true';
-                document.getElementById('economyEnabled').checked = data.settings.economy_enabled === 'true';
-                document.getElementById('clubCreationEnabled').checked = data.settings.club_creation_enabled === 'true';
-                document.getElementById('userRegistrationEnabled').checked = data.settings.user_registration_enabled === 'true';
-                document.getElementById('heidiEnabled').checked = data.settings.heidi_enabled === 'true';
-                
-                // Load banner settings
-                const bannerEnabled = data.settings.banner_enabled === 'true';
-                document.getElementById('bannerEnabled').checked = bannerEnabled;
-                if (bannerEnabled) {
-                    document.getElementById('bannerConfigPanel').style.display = 'block';
-                    loadBannerSettings();
-                }
-                
-                // Handle admin economy override
-                const economyEnabled = data.settings.economy_enabled === 'true';
-                const adminOverride = data.settings.admin_economy_override === 'true';
-                const adminOverrideDiv = document.getElementById('adminEconomyOverride');
-                const adminOverrideCheckbox = document.getElementById('adminEconomyEnabled');
-                
+            // Update toggle switches - API returns boolean values directly
+            document.getElementById('maintenanceMode').checked = data.maintenance_mode === true;
+            document.getElementById('economyEnabled').checked = data.economy_enabled === true;
+            document.getElementById('clubCreationEnabled').checked = data.club_creation_enabled === true;
+            document.getElementById('userRegistrationEnabled').checked = data.registration_enabled === true;
+            document.getElementById('heidiEnabled').checked = data.heidi_enabled === true;
+
+            // Load banner settings - TODO: Add banner_enabled to API
+            // const bannerEnabled = data.banner_enabled === true;
+            // document.getElementById('bannerEnabled').checked = bannerEnabled;
+
+            // Handle admin economy override - TODO: Add to API if needed
+            const economyEnabled = data.economy_enabled === true;
+            const adminOverrideDiv = document.getElementById('adminEconomyOverride');
+            const adminOverrideCheckbox = document.getElementById('adminEconomyEnabled');
+
+            if (adminOverrideDiv && adminOverrideCheckbox) {
                 if (!economyEnabled) {
                     // Show admin override option when economy is disabled
                     adminOverrideDiv.style.display = 'block';
-                    adminOverrideCheckbox.checked = adminOverride;
+                    adminOverrideCheckbox.checked = false; // Default to false for now
                 } else {
                     // Hide admin override option when economy is enabled
                     adminOverrideDiv.style.display = 'none';
                     adminOverrideCheckbox.checked = false;
                 }
-                
-                // Update status display
-                document.getElementById('maintenanceStatus').textContent = 
-                    data.settings.maintenance_mode === 'true' ? 'Enabled' : 'Disabled';
-                document.getElementById('economyStatus').textContent = 
-                    data.settings.economy_enabled === 'true' ? 'Enabled' : 'Disabled';
-                document.getElementById('clubCreationStatus').textContent = 
-                    data.settings.club_creation_enabled === 'true' ? 'Enabled' : 'Disabled';
-                document.getElementById('userRegistrationStatus').textContent = 
-                    data.settings.user_registration_enabled === 'true' ? 'Enabled' : 'Disabled';
-                document.getElementById('heidiStatus').textContent = 
-                    data.settings.heidi_enabled === 'true' ? 'Enabled' : 'Disabled';
-                
-                // Update status colors
-                document.getElementById('maintenanceStatus').style.color = 
-                    data.settings.maintenance_mode === 'true' ? '#dc2626' : '#10b981';
-                document.getElementById('economyStatus').style.color = 
-                    data.settings.economy_enabled === 'true' ? '#10b981' : '#dc2626';
-                document.getElementById('clubCreationStatus').style.color = 
-                    data.settings.club_creation_enabled === 'true' ? '#10b981' : '#dc2626';
-                document.getElementById('userRegistrationStatus').style.color = 
-                    data.settings.user_registration_enabled === 'true' ? '#10b981' : '#dc2626';
-                document.getElementById('heidiStatus').style.color = 
-                    data.settings.heidi_enabled === 'true' ? '#10b981' : '#dc2626';
-            } else {
-                showToast('error', 'Failed to load settings: ' + data.message);
             }
+
+            // Update status display
+            document.getElementById('maintenanceStatus').textContent =
+                data.maintenance_mode === true ? 'Enabled' : 'Disabled';
+            document.getElementById('economyStatus').textContent =
+                data.economy_enabled === true ? 'Enabled' : 'Disabled';
+            document.getElementById('clubCreationStatus').textContent =
+                data.club_creation_enabled === true ? 'Enabled' : 'Disabled';
+            document.getElementById('userRegistrationStatus').textContent =
+                data.registration_enabled === true ? 'Enabled' : 'Disabled';
+            document.getElementById('heidiStatus').textContent =
+                data.heidi_enabled === true ? 'Enabled' : 'Disabled';
+
+            // Update status colors
+            document.getElementById('maintenanceStatus').style.color =
+                data.maintenance_mode === true ? '#dc2626' : '#10b981';
+            document.getElementById('economyStatus').style.color =
+                data.economy_enabled === true ? '#10b981' : '#dc2626';
+            document.getElementById('clubCreationStatus').style.color =
+                data.club_creation_enabled === true ? '#10b981' : '#dc2626';
+            document.getElementById('userRegistrationStatus').style.color =
+                data.registration_enabled === true ? '#10b981' : '#dc2626';
+            document.getElementById('heidiStatus').style.color =
+                data.heidi_enabled === true ? '#10b981' : '#dc2626';
         })
         .catch(error => {
             console.error('Error loading settings:', error);
@@ -5498,7 +5502,7 @@ function toggleHeidiChatbot() {
 function updateSetting(key, value) {
     console.log('[DEBUG] updateSetting called with key:', key, 'value:', value);
     console.log('[DEBUG] Stack trace:', new Error().stack);
-    makeSecureRequest('/admin/api/settings', {
+    makeSecureRequest('/api/admin/settings', {
         method: 'POST',
         body: JSON.stringify({
             key: key,

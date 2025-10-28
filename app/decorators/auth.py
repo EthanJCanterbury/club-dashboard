@@ -96,7 +96,7 @@ def permission_required(*permissions):
                 if request.is_json:
                     return jsonify({'error': 'Insufficient permissions'}), 403
                 flash('You do not have permission to access this resource.', 'error')
-                return redirect(url_for('index'))
+                return redirect(url_for('main.index'))
 
             return f(*args, **kwargs)
         return decorated_function
@@ -145,7 +145,7 @@ def role_required(*roles):
                 if request.is_json:
                     return jsonify({'error': 'Insufficient permissions'}), 403
                 flash('You do not have permission to access this resource.', 'error')
-                return redirect(url_for('index'))
+                return redirect(url_for('main.index'))
 
             return f(*args, **kwargs)
         return decorated_function
@@ -194,7 +194,7 @@ def admin_required(f):
             if request.is_json:
                 return jsonify({'error': 'Admin access required'}), 403
             flash('Admin access required', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('main.index'))
 
         return f(*args, **kwargs)
     return decorated_function
@@ -242,7 +242,7 @@ def reviewer_required(f):
             if request.is_json:
                 return jsonify({'error': 'Reviewer access required'}), 403
             flash('Reviewer access required', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('main.index'))
 
         return f(*args, **kwargs)
     return decorated_function

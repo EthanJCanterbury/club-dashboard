@@ -1425,3 +1425,7 @@ class AirtableService:
         except Exception as e:
             app.logger.error(f"AIRTABLE: Exception in log_gallery_post: {str(e)}")
             return False
+
+
+# Create singleton instance
+airtable_service = AirtableService()

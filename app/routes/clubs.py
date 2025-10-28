@@ -171,8 +171,9 @@ def get_club_members(club_id):
             'first_name': m.user.first_name,
             'last_name': m.user.last_name,
             'email': m.user.email,
-            'is_leader': m.is_leader,
-            'is_co_leader': m.is_co_leader,
+            'role': m.role,
+            'is_leader': m.user.id == club.leader_id,
+            'is_co_leader': m.user.id == club.co_leader_id,
             'joined_at': m.joined_at.isoformat() if m.joined_at else None
         }
         members_data.append(member_data)
