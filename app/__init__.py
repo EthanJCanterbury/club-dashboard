@@ -172,7 +172,6 @@ def register_template_helpers(app):
             is_maintenance_mode=SystemSettings.is_maintenance_mode(),
             is_economy_enabled=SystemSettings.is_economy_enabled(),
             is_mobile_enabled=SystemSettings.is_mobile_enabled(),
-            is_heidi_enabled=SystemSettings.is_heidi_enabled(),
             economy_enabled=SystemSettings.is_economy_enabled()  # Legacy compatibility
         )
     

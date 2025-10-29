@@ -1426,6 +1426,117 @@ class AirtableService:
             app.logger.error(f"AIRTABLE: Exception in log_gallery_post: {str(e)}")
             return False
 
+    def get_pizza_grants(self):
+        """Get all pizza grants from Grants table"""
+        if not self.api_token:
+            app.logger.error("AIRTABLE: API token not configured")
+            return []
+
+        try:
+            grants_table_name = urllib.parse.quote('Grants')
+            grants_url = f'https://api.airtable.com/v0/{self.base_id}/{grants_table_name}'
+
+            all_records = []
+            offset = None
+
+            while True:
+                params = {}
+                if offset:
+                    params['offset'] = offset
+
+                response = self._safe_request('GET', grants_url, headers=self.headers, params=params)
+
+                if response.status_code != 200:
+                    app.logger.error(f"AIRTABLE: Failed to fetch pizza grants: {response.text}")
+                    break
+
+                data = response.json()
+                records = data.get('records', [])
+                all_records.extend(records)
+
+                offset = data.get('offset')
+                if not offset:
+                    break
+
+            # Transform records to a more usable format
+            grants = []
+            for record in all_records:
+                fields = record.get('fields', {})
+                grants.append({
+                    'id': record.get('id'),
+                    'club': fields.get('Club', ''),
+                    'email': fields.get('Email', ''),
+                    'status': fields.get('Status', ''),
+                    'grant_amount': fields.get('Grant Amount', 0),
+                    'grant_type': fields.get('Grant Type', ''),
+                    'address': fields.get('Address', ''),
+                    'order_id': fields.get('Order ID', ''),
+                    'created_time': record.get('createdTime', '')
+                })
+
+            app.logger.info(f"AIRTABLE: Fetched {len(grants)} pizza grants")
+            return grants
+
+        except Exception as e:
+            app.logger.error(f"AIRTABLE: Exception in get_pizza_grants: {str(e)}")
+            return []
+
+    def update_pizza_grant(self, grant_id, status, notes, reviewer_username):
+        """Update a pizza grant status"""
+        if not self.api_token or not grant_id:
+            app.logger.error("AIRTABLE: API token not configured or no grant ID provided")
+            return False
+
+        try:
+            grants_table_name = urllib.parse.quote('Grants')
+            update_url = f'https://api.airtable.com/v0/{self.base_id}/{grants_table_name}/{grant_id}'
+
+            fields = {
+                'Status': status.capitalize(),
+                'Reviewer': reviewer_username
+            }
+
+            if notes:
+                fields['Notes'] = notes
+
+            payload = {'fields': fields}
+
+            response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
+
+            if response.status_code == 200:
+                app.logger.info(f"AIRTABLE: Successfully updated pizza grant {grant_id}")
+                return True
+            else:
+                app.logger.error(f"AIRTABLE: Failed to update pizza grant: {response.text}")
+                return False
+
+        except Exception as e:
+            app.logger.error(f"AIRTABLE: Exception in update_pizza_grant: {str(e)}")
+            return False
+
+    def delete_pizza_grant(self, grant_id):
+        """Delete a pizza grant from Grants table"""
+        if not self.api_token or not grant_id:
+            app.logger.error("AIRTABLE: API token not configured or no grant ID provided")
+            return False
+
+        try:
+            grants_table_name = urllib.parse.quote('Grants')
+            delete_url = f'https://api.airtable.com/v0/{self.base_id}/{grants_table_name}/{grant_id}'
+
+            response = self._safe_request('DELETE', delete_url, headers=self.headers)
+
+            if response.status_code == 200:
+                app.logger.info(f"AIRTABLE: Successfully deleted pizza grant {grant_id}")
+                return True
+            else:
+                app.logger.error(f"AIRTABLE: Failed to delete pizza grant: {response.text}")
+                return False
+
+        except Exception as e:
+            app.logger.error(f"AIRTABLE: Exception in delete_pizza_grant: {str(e)}")
+            return False
+
 
 # Create singleton instance
 airtable_service = AirtableService()

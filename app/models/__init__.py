@@ -14,6 +14,7 @@ from app.models.attendance import AttendanceSession, AttendanceRecord, Attendanc
 from app.models.economy import ClubTransaction, ProjectSubmission, WeeklyQuest, ClubQuestProgress, LeaderboardExclusion
 from app.models.gallery import GalleryPost
 from app.models.system import SystemSettings, StatusIncident, StatusUpdate
+from app.models.shop import ShopItem, Order
 
 # Import helper functions
 from app.models.user import create_audit_log, initialize_rbac_system, migrate_existing_users_to_rbac
@@ -40,6 +41,8 @@ __all__ = [
     'GalleryPost',
     # System models
     'SystemSettings', 'StatusIncident', 'StatusUpdate',
+    # Shop models
+    'ShopItem', 'Order',
     # Helper functions
     'create_audit_log', 'initialize_rbac_system', 'migrate_existing_users_to_rbac',
     'create_club_transaction', 'get_current_week_start', 'update_quest_progress',

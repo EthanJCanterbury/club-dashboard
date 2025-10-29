@@ -371,3 +371,14 @@ def activity():
     return render_template('admin_activity.html',
                          logs=logs_pagination.items,
                          pagination=logs_pagination)
+
+
+@admin_bp.route('/api/banner-settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def api_banner_settings():
+    """Get or update banner settings (admin only) - Alias for /api/admin/banner-settings"""
+    # Import here to avoid circular imports
+    from app.routes.api import admin_banner_settings
+    # Forward the request to the main API endpoint
+    return admin_banner_settings()

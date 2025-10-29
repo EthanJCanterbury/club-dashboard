@@ -7,7 +7,12 @@
       "Bash(touch:*)",
       "Bash(cat:*)",
       "Bash(find:*)",
-      "Read(///**)"
+      "Read(///**)",
+      "Bash(for file in /home/runner/workspace/templates/*.html)",
+      "Bash(done)",
+      "Bash(grep:*)",
+      "Bash(for file in gallery leaderboard status account project_review oauth_debug)",
+      "Bash(do echo \"=== $file.html ===\" grep -o \"fetch([''''\"\"][^''''\"\"]*\" /home/runner/workspace/templates/$file.html)"
     ],
     "deny": [],
     "ask": []

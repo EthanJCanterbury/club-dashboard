@@ -98,11 +98,6 @@ class SystemSettings(db.Model):
         """Check if mobile dashboard is enabled"""
         return SystemSettings.get_bool_setting('mobile_enabled', True)
 
-    @staticmethod
-    def is_heidi_enabled():
-        """Check if Heidi chatbot is enabled"""
-        return SystemSettings.get_bool_setting('heidi_enabled', True)
-
 
 class StatusIncident(db.Model):
     __tablename__ = 'status_incident'

@@ -332,7 +332,6 @@ def admin_settings():
             'economy_enabled': SystemSettings.is_economy_enabled(),
             'registration_enabled': SystemSettings.is_user_registration_enabled(),
             'mobile_enabled': SystemSettings.is_mobile_enabled(),
-            'heidi_enabled': SystemSettings.is_heidi_enabled(),
             'club_creation_enabled': SystemSettings.is_club_creation_enabled(),
             'announcement': SystemSettings.get_setting('announcement', '')
         })
@@ -349,8 +348,6 @@ def admin_settings():
             SystemSettings.set_setting('user_registration_enabled', str(data['registration_enabled']).lower(), current_user.id)
         if 'mobile_enabled' in data:
             SystemSettings.set_setting('mobile_enabled', str(data['mobile_enabled']).lower(), current_user.id)
-        if 'heidi_enabled' in data:
-            SystemSettings.set_setting('heidi_enabled', str(data['heidi_enabled']).lower(), current_user.id)
         if 'club_creation_enabled' in data:
             SystemSettings.set_setting('club_creation_enabled', str(data['club_creation_enabled']).lower(), current_user.id)
         if 'announcement' in data:
@@ -573,6 +570,2404 @@ def admin_get_audit_logs():
         'page': page,
         'per_page': per_page,
         'pages': logs_pagination.pages
+    })
+
+
+# ============================================================================
+# Admin User Management Endpoints
+# ============================================================================
+
+@api_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
+@login_required
+@admin_required
+def admin_update_user(user_id):
+    """Update user details (admin only)"""
+    user = User.query.get_or_404(user_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+
+    # Validate that root user cannot be modified (except by themselves for non-critical fields)
+    if user.is_root_user() and current_user.id != user.id:
+        return jsonify({'error': 'Cannot modify root user'}), 403
+
+    # Update allowed fields
+    if 'username' in data:
+        username = sanitize_string(data['username'], max_length=80)
+        if username != user.username:
+            # Check if username already exists
+            existing = User.query.filter_by(username=username).first()
+            if existing:
+                return jsonify({'error': 'Username already exists'}), 400
+            user.username = username
+
+    if 'email' in data:
+        email = sanitize_string(data['email'], max_length=120)
+        if email != user.email:
+            # Check if email already exists
+            existing = User.query.filter_by(email=email).first()
+            if existing:
+                return jsonify({'error': 'Email already exists'}), 400
+            user.email = email
+
+    if 'first_name' in data:
+        user.first_name = sanitize_string(data['first_name'], max_length=50)
+
+    if 'last_name' in data:
+        user.last_name = sanitize_string(data['last_name'], max_length=50)
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='user_update',
+        description=f'Admin {current_user.username} updated user {user.username}',
+        user=current_user,
+        target_type='user',
+        target_id=user_id,
+        details={'updated_fields': list(data.keys())},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'User updated successfully',
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name
+        }
+    })
+
+
+@api_bp.route('/admin/users/<int:user_id>/suspend', methods=['PUT'])
+@login_required
+@admin_required
+def admin_suspend_user(user_id):
+    """Suspend/unsuspend a user (admin only)"""
+    user = User.query.get_or_404(user_id)
+    current_user = get_current_user()
+
+    if user.is_root_user():
+        return jsonify({'error': 'Cannot suspend root user'}), 403
+
+    data = request.get_json()
+    suspend = data.get('suspended', True)
+    reason = sanitize_string(data.get('reason', ''), max_length=500)
+
+    user.is_suspended = suspend
+    db.session.commit()
+
+    action = 'suspended' if suspend else 'unsuspended'
+    create_audit_log(
+        action_type=f'user_{action}',
+        description=f'Admin {current_user.username} {action} user {user.username}',
+        user=current_user,
+        target_type='user',
+        target_id=user_id,
+        details={'reason': reason},
+        severity='warning' if suspend else 'info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'User {action} successfully',
+        'suspended': user.is_suspended
+    })
+
+
+@api_bp.route('/admin/users/<int:user_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_user(user_id):
+    """Delete a user (admin only)"""
+    user = User.query.get_or_404(user_id)
+    current_user = get_current_user()
+
+    if user.is_root_user():
+        return jsonify({'error': 'Cannot delete root user'}), 403
+
+    username = user.username
+    email = user.email
+
+    # Delete user (cascade will handle related records)
+    db.session.delete(user)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='user_delete',
+        description=f'Admin {current_user.username} deleted user {username}',
+        user=current_user,
+        target_type='user',
+        target_id=user_id,
+        details={'username': username, 'email': email},
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'User deleted successfully'
+    })
+
+
+@api_bp.route('/admin/users/group-by-ip', methods=['GET'])
+@login_required
+@admin_required
+def admin_get_users_by_ip():
+    """Get users grouped by IP address (admin only)"""
+    # Get all users with their IPs
+    users = User.query.all()
+
+    ip_groups = {}
+    for user in users:
+        ips = user.get_all_ips()
+        for ip in ips:
+            if ip not in ip_groups:
+                ip_groups[ip] = []
+            ip_groups[ip].append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_suspended': user.is_suspended,
+                'created_at': user.created_at.isoformat() if user.created_at else None
+            })
+
+    # Sort by number of users per IP (most suspicious first)
+    sorted_groups = sorted(
+        [{'ip': ip, 'users': users, 'count': len(users)}
+         for ip, users in ip_groups.items()],
+        key=lambda x: x['count'],
+        reverse=True
+    )
+
+    return jsonify({'ip_groups': sorted_groups})
+
+
+@api_bp.route('/admin/users/group-by-club', methods=['GET'])
+@login_required
+@admin_required
+def admin_get_users_by_club():
+    """Get users grouped by club (admin only)"""
+    from app.models.club import ClubMembership
+
+    clubs = Club.query.all()
+    club_groups = []
+
+    for club in clubs:
+        memberships = ClubMembership.query.filter_by(club_id=club.id).all()
+        members = []
+        for membership in memberships:
+            user = membership.user
+            members.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_leader': club.leader_id == user.id,
+                'is_co_leader': club.co_leader_id == user.id,
+                'joined_at': membership.joined_at.isoformat() if membership.joined_at else None
+            })
+
+        club_groups.append({
+            'club_id': club.id,
+            'club_name': club.name,
+            'member_count': len(members),
+            'members': members
+        })
+
+    return jsonify({'club_groups': club_groups})
+
+
+@api_bp.route('/admin/users/<int:user_id>/ips', methods=['GET'])
+@login_required
+@admin_required
+def admin_get_user_ips(user_id):
+    """Get IP history for a user (admin only)"""
+    user = User.query.get_or_404(user_id)
+
+    return jsonify({
+        'user_id': user.id,
+        'username': user.username,
+        'registration_ip': user.registration_ip,
+        'last_login_ip': user.last_login_ip,
+        'all_ips': user.get_all_ips()
+    })
+
+
+@api_bp.route('/admin/login-as-user/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def admin_login_as_user(user_id):
+    """Login as another user (admin only)"""
+    from flask import session
+
+    user = User.query.get_or_404(user_id)
+    current_user = get_current_user()
+
+    if user.is_root_user():
+        return jsonify({'error': 'Cannot impersonate root user'}), 403
+
+    # Store original user ID to allow switching back
+    if 'original_user_id' not in session:
+        session['original_user_id'] = current_user.id
+
+    session['user_id'] = user.id
+
+    create_audit_log(
+        action_type='admin_impersonate',
+        description=f'Admin {current_user.username} logged in as {user.username}',
+        user=current_user,
+        target_type='user',
+        target_id=user_id,
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Now logged in as {user.username}',
+        'redirect': '/dashboard'
+    })
+
+
+@api_bp.route('/admin/reset-password/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def admin_reset_password(user_id):
+    """Reset a user's password (admin only)"""
+    import secrets
+
+    user = User.query.get_or_404(user_id)
+    current_user = get_current_user()
+
+    if user.is_root_user() and current_user.id != user.id:
+        return jsonify({'error': 'Cannot reset root user password'}), 403
+
+    # Generate a random password
+    new_password = secrets.token_urlsafe(16)
+    user.set_password(new_password)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='password_reset',
+        description=f'Admin {current_user.username} reset password for {user.username}',
+        user=current_user,
+        target_type='user',
+        target_id=user_id,
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Password reset successfully',
+        'new_password': new_password,
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email
+        }
+    })
+
+
+# ============================================================================
+# Admin Club Management Endpoints
+# ============================================================================
+
+@api_bp.route('/admin/clubs/<int:club_id>', methods=['PUT'])
+@login_required
+@admin_required
+def admin_update_club(club_id):
+    """Update club details (admin only)"""
+    club = Club.query.get_or_404(club_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+
+    if 'name' in data:
+        club.name = sanitize_string(data['name'], max_length=100)
+
+    if 'description' in data:
+        club.description = sanitize_string(data['description'], max_length=1000)
+
+    if 'location' in data:
+        club.location = sanitize_string(data['location'], max_length=200)
+
+    if 'tokens' in data:
+        club.tokens = int(data['tokens'])
+
+    if 'balance' in data:
+        club.balance = int(data['balance'])
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='club_update',
+        description=f'Admin {current_user.username} updated club {club.name}',
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        details={'updated_fields': list(data.keys())},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Club updated successfully',
+        'club': {
+            'id': club.id,
+            'name': club.name,
+            'description': club.description,
+            'location': club.location,
+            'tokens': club.tokens,
+            'balance': club.balance
+        }
+    })
+
+
+@api_bp.route('/admin/clubs/<int:club_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_club(club_id):
+    """Delete a club (admin only)"""
+    club = Club.query.get_or_404(club_id)
+    current_user = get_current_user()
+
+    club_name = club.name
+
+    # Delete club (cascade will handle related records)
+    db.session.delete(club)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='club_delete',
+        description=f'Admin {current_user.username} deleted club {club_name}',
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        details={'club_name': club_name},
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Club deleted successfully'
+    })
+
+
+@api_bp.route('/admin/clubs/<int:club_id>/sync-immune', methods=['POST'])
+@login_required
+@admin_required
+def admin_sync_club_immune(club_id):
+    """Set club sync immunity status (admin only)"""
+    club = Club.query.get_or_404(club_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+    immune = data.get('immune', False)
+
+    # Add immune field if it doesn't exist
+    if not hasattr(club, 'sync_immune'):
+        # This would require a migration to add the field
+        return jsonify({'error': 'Sync immune feature not yet implemented'}), 501
+
+    club.sync_immune = immune
+    db.session.commit()
+
+    create_audit_log(
+        action_type='club_sync_immune',
+        description=f'Admin {current_user.username} set sync immune to {immune} for club {club.name}',
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Club sync immunity {"enabled" if immune else "disabled"}'
+    })
+
+
+@api_bp.route('/admin/clubs/<int:club_id>/transfer-leadership', methods=['POST'])
+@login_required
+@admin_required
+def admin_transfer_club_leadership(club_id):
+    """Transfer club leadership to another user (admin only)"""
+    club = Club.query.get_or_404(club_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+    new_leader_id = data.get('new_leader_id')
+
+    if not new_leader_id:
+        return jsonify({'error': 'new_leader_id is required'}), 400
+
+    new_leader = User.query.get_or_404(new_leader_id)
+
+    old_leader_id = club.leader_id
+    club.leader_id = new_leader_id
+    db.session.commit()
+
+    create_audit_log(
+        action_type='club_leadership_transfer',
+        description=f'Admin {current_user.username} transferred leadership of {club.name} to {new_leader.username}',
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        details={'old_leader_id': old_leader_id, 'new_leader_id': new_leader_id},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Leadership transferred to {new_leader.username}'
+    })
+
+
+# ============================================================================
+# Admin Pizza Grants Endpoints
+# ============================================================================
+
+@api_bp.route('/admin/pizza-grants', methods=['GET'])
+@login_required
+@admin_required
+def admin_get_pizza_grants():
+    """Get all pizza grants from Airtable (admin only)"""
+    try:
+        grants = airtable_service.get_pizza_grants()
+        return jsonify({'grants': grants})
+    except Exception as e:
+        current_app.logger.error(f'Error fetching pizza grants: {str(e)}')
+        return jsonify({'error': 'Failed to fetch pizza grants', 'grants': []}), 500
+
+
+@api_bp.route('/admin/pizza-grants/review', methods=['POST'])
+@login_required
+@admin_required
+def admin_review_pizza_grant():
+    """Review a pizza grant (admin only)"""
+    current_user = get_current_user()
+    data = request.get_json()
+
+    grant_id = data.get('grant_id')
+    status = data.get('status')  # 'approved' or 'rejected'
+    notes = sanitize_string(data.get('notes', ''), max_length=1000)
+
+    if not grant_id or not status:
+        return jsonify({'error': 'grant_id and status are required'}), 400
+
+    try:
+        success = airtable_service.update_pizza_grant(grant_id, status, notes, current_user.username)
+
+        if success:
+            create_audit_log(
+                action_type='pizza_grant_review',
+                description=f'Admin {current_user.username} {status} pizza grant {grant_id}',
+                user=current_user,
+                target_type='pizza_grant',
+                target_id=grant_id,
+                details={'status': status, 'notes': notes},
+                severity='info',
+                admin_action=True,
+                category='admin'
+            )
+
+            return jsonify({'success': True, 'message': f'Grant {status}'})
+        else:
+            return jsonify({'error': 'Failed to update grant'}), 500
+    except Exception as e:
+        current_app.logger.error(f'Error reviewing pizza grant: {str(e)}')
+        return jsonify({'error': 'Failed to review grant'}), 500
+
+
+@api_bp.route('/admin/pizza-grants/<string:grant_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_pizza_grant(grant_id):
+    """Delete a pizza grant (admin only)"""
+    current_user = get_current_user()
+
+    try:
+        success = airtable_service.delete_pizza_grant(grant_id)
+
+        if success:
+            create_audit_log(
+                action_type='pizza_grant_delete',
+                description=f'Admin {current_user.username} deleted pizza grant {grant_id}',
+                user=current_user,
+                target_type='pizza_grant',
+                target_id=grant_id,
+                severity='warning',
+                admin_action=True,
+                category='admin'
+            )
+
+            return jsonify({'success': True, 'message': 'Grant deleted'})
+        else:
+            return jsonify({'error': 'Failed to delete grant'}), 500
+    except Exception as e:
+        current_app.logger.error(f'Error deleting pizza grant: {str(e)}')
+        return jsonify({'error': 'Failed to delete grant'}), 500
+
+
+# ============================================================================
+# Admin API Keys & OAuth Endpoints
+# ============================================================================
+
+@api_bp.route('/admin/apikeys', methods=['POST'])
+@login_required
+@admin_required
+def admin_create_api_key():
+    """Create a new API key (admin only)"""
+    from app.models.auth import APIKey
+
+    current_user = get_current_user()
+    data = request.get_json()
+
+    name = sanitize_string(data.get('name', ''), max_length=200)
+    description = sanitize_string(data.get('description', ''), max_length=1000)
+    scopes = data.get('scopes', [])
+    target_user_id = data.get('user_id', current_user.id)
+
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+
+    api_key = APIKey(
+        name=name,
+        description=description,
+        user_id=target_user_id
+    )
+    api_key.generate_key()
+    api_key.set_scopes(scopes)
+
+    db.session.add(api_key)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='api_key_create',
+        description=f'Admin {current_user.username} created API key "{name}"',
+        user=current_user,
+        target_type='api_key',
+        target_id=api_key.id,
+        details={'name': name, 'scopes': scopes},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'API key created',
+        'api_key': {
+            'id': api_key.id,
+            'key': api_key.key,
+            'name': api_key.name,
+            'scopes': scopes
+        }
+    })
+
+
+@api_bp.route('/admin/api-keys/<int:key_id>', methods=['PUT'])
+@login_required
+@admin_required
+def admin_update_api_key(key_id):
+    """Update an API key (admin only)"""
+    from app.models.auth import APIKey
+
+    api_key = APIKey.query.get_or_404(key_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+
+    if 'name' in data:
+        api_key.name = sanitize_string(data['name'], max_length=200)
+
+    if 'description' in data:
+        api_key.description = sanitize_string(data['description'], max_length=1000)
+
+    if 'is_active' in data:
+        api_key.is_active = bool(data['is_active'])
+
+    if 'scopes' in data:
+        api_key.set_scopes(data['scopes'])
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='api_key_update',
+        description=f'Admin {current_user.username} updated API key "{api_key.name}"',
+        user=current_user,
+        target_type='api_key',
+        target_id=key_id,
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'API key updated'
+    })
+
+
+@api_bp.route('/admin/api-keys/<int:key_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_api_key(key_id):
+    """Delete an API key (admin only)"""
+    from app.models.auth import APIKey
+
+    api_key = APIKey.query.get_or_404(key_id)
+    current_user = get_current_user()
+
+    key_name = api_key.name
+
+    db.session.delete(api_key)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='api_key_delete',
+        description=f'Admin {current_user.username} deleted API key "{key_name}"',
+        user=current_user,
+        target_type='api_key',
+        target_id=key_id,
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'API key deleted'
+    })
+
+
+@api_bp.route('/admin/oauthapps', methods=['POST'])
+@login_required
+@admin_required
+def admin_create_oauth_app():
+    """Create a new OAuth application (admin only)"""
+    from app.models.auth import OAuthApplication
+
+    current_user = get_current_user()
+    data = request.get_json()
+
+    name = sanitize_string(data.get('name', ''), max_length=200)
+    description = sanitize_string(data.get('description', ''), max_length=1000)
+    redirect_uris = data.get('redirect_uris', [])
+    scopes = data.get('scopes', [])
+    target_user_id = data.get('user_id', current_user.id)
+
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+
+    oauth_app = OAuthApplication(
+        name=name,
+        description=description,
+        user_id=target_user_id
+    )
+    oauth_app.generate_credentials()
+    oauth_app.set_redirect_uris(redirect_uris)
+    oauth_app.set_scopes(scopes)
+
+    db.session.add(oauth_app)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='oauth_app_create',
+        description=f'Admin {current_user.username} created OAuth app "{name}"',
+        user=current_user,
+        target_type='oauth_app',
+        target_id=oauth_app.id,
+        details={'name': name, 'scopes': scopes},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'OAuth application created',
+        'oauth_app': {
+            'id': oauth_app.id,
+            'client_id': oauth_app.client_id,
+            'client_secret': oauth_app.client_secret,
+            'name': oauth_app.name,
+            'redirect_uris': redirect_uris,
+            'scopes': scopes
+        }
+    })
+
+
+@api_bp.route('/admin/oauth-applications/<int:app_id>', methods=['PUT'])
+@login_required
+@admin_required
+def admin_update_oauth_app(app_id):
+    """Update an OAuth application (admin only)"""
+    from app.models.auth import OAuthApplication
+
+    oauth_app = OAuthApplication.query.get_or_404(app_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+
+    if 'name' in data:
+        oauth_app.name = sanitize_string(data['name'], max_length=200)
+
+    if 'description' in data:
+        oauth_app.description = sanitize_string(data['description'], max_length=1000)
+
+    if 'is_active' in data:
+        oauth_app.is_active = bool(data['is_active'])
+
+    if 'redirect_uris' in data:
+        oauth_app.set_redirect_uris(data['redirect_uris'])
+
+    if 'scopes' in data:
+        oauth_app.set_scopes(data['scopes'])
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='oauth_app_update',
+        description=f'Admin {current_user.username} updated OAuth app "{oauth_app.name}"',
+        user=current_user,
+        target_type='oauth_app',
+        target_id=app_id,
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'OAuth application updated'
+    })
+
+
+@api_bp.route('/admin/oauth-applications/<int:app_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_oauth_app(app_id):
+    """Delete an OAuth application (admin only)"""
+    from app.models.auth import OAuthApplication
+
+    oauth_app = OAuthApplication.query.get_or_404(app_id)
+    current_user = get_current_user()
+
+    app_name = oauth_app.name
+
+    db.session.delete(oauth_app)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='oauth_app_delete',
+        description=f'Admin {current_user.username} deleted OAuth app "{app_name}"',
+        user=current_user,
+        target_type='oauth_app',
+        target_id=app_id,
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'OAuth application deleted'
+    })
+
+
+# ============================================================================
+# Admin RBAC Endpoints
+# ============================================================================
+
+@api_bp.route('/admin/rbac/users/<int:user_id>/roles', methods=['POST'])
+@login_required
+@admin_required
+def admin_assign_role_to_user(user_id):
+    """Assign a role to a user (admin only)"""
+    from app.models.user import Role
+
+    user = User.query.get_or_404(user_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+    role_name = data.get('role_name')
+
+    if not role_name:
+        return jsonify({'error': 'role_name is required'}), 400
+
+    role = Role.query.filter_by(name=role_name).first()
+    if not role:
+        return jsonify({'error': 'Role not found'}), 404
+
+    if user.has_role(role_name):
+        return jsonify({'error': 'User already has this role'}), 400
+
+    user.assign_role(role, current_user)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='role_assign',
+        description=f'Admin {current_user.username} assigned role "{role_name}" to {user.username}',
+        user=current_user,
+        target_type='user',
+        target_id=user_id,
+        details={'role': role_name},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Role "{role_name}" assigned to user'
+    })
+
+
+@api_bp.route('/admin/rbac/users/<int:user_id>/roles/<string:role_name>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_remove_role_from_user(user_id, role_name):
+    """Remove a role from a user (admin only)"""
+    user = User.query.get_or_404(user_id)
+    current_user = get_current_user()
+
+    if user.is_root_user() and role_name == 'super-admin':
+        return jsonify({'error': 'Cannot remove super-admin from root user'}), 403
+
+    if not user.has_role(role_name):
+        return jsonify({'error': 'User does not have this role'}), 400
+
+    user.remove_role(role_name)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='role_remove',
+        description=f'Admin {current_user.username} removed role "{role_name}" from {user.username}',
+        user=current_user,
+        target_type='user',
+        target_id=user_id,
+        details={'role': role_name},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'Role "{role_name}" removed from user'
+    })
+
+
+@api_bp.route('/admin/rbac/initialize', methods=['POST'])
+@login_required
+@admin_required
+def admin_initialize_rbac():
+    """Initialize the RBAC system (admin only)"""
+    from app.models.user import initialize_rbac_system
+
+    current_user = get_current_user()
+
+    try:
+        initialize_rbac_system()
+
+        create_audit_log(
+            action_type='rbac_initialize',
+            description=f'Admin {current_user.username} initialized RBAC system',
+            user=current_user,
+            severity='warning',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'RBAC system initialized successfully'
+        })
+    except Exception as e:
+        current_app.logger.error(f'Error initializing RBAC: {str(e)}')
+        return jsonify({'error': 'Failed to initialize RBAC system'}), 500
+
+
+@api_bp.route('/admin/rbac/roles', methods=['POST'])
+@login_required
+@admin_required
+def admin_create_role():
+    """Create a new role (admin only)"""
+    from app.models.user import Role, Permission
+
+    current_user = get_current_user()
+    data = request.get_json()
+
+    name = sanitize_string(data.get('name', ''), max_length=50)
+    display_name = sanitize_string(data.get('display_name', ''), max_length=100)
+    description = sanitize_string(data.get('description', ''), max_length=500)
+    permission_names = data.get('permissions', [])
+
+    if not name or not display_name:
+        return jsonify({'error': 'name and display_name are required'}), 400
+
+    # Check if role already exists
+    existing_role = Role.query.filter_by(name=name).first()
+    if existing_role:
+        return jsonify({'error': 'Role already exists'}), 400
+
+    role = Role(
+        name=name,
+        display_name=display_name,
+        description=description,
+        is_system_role=False
+    )
+    db.session.add(role)
+    db.session.flush()
+
+    # Assign permissions
+    for perm_name in permission_names:
+        permission = Permission.query.filter_by(name=perm_name).first()
+        if permission:
+            from app.models.user import RolePermission
+            role_perm = RolePermission(role_id=role.id, permission_id=permission.id)
+            db.session.add(role_perm)
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='role_create',
+        description=f'Admin {current_user.username} created role "{name}"',
+        user=current_user,
+        target_type='role',
+        target_id=role.id,
+        details={'name': name, 'permissions': permission_names},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Role created successfully',
+        'role': role.to_dict()
+    })
+
+
+@api_bp.route('/admin/rbac/roles/<int:role_id>', methods=['PUT'])
+@login_required
+@admin_required
+def admin_update_role(role_id):
+    """Update a role (admin only)"""
+    from app.models.user import Role, Permission, RolePermission
+
+    role = Role.query.get_or_404(role_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+
+    if 'display_name' in data:
+        role.display_name = sanitize_string(data['display_name'], max_length=100)
+
+    if 'description' in data:
+        role.description = sanitize_string(data['description'], max_length=500)
+
+    if 'permissions' in data:
+        # Remove all existing permissions
+        RolePermission.query.filter_by(role_id=role.id).delete()
+
+        # Add new permissions
+        for perm_name in data['permissions']:
+            permission = Permission.query.filter_by(name=perm_name).first()
+            if permission:
+                role_perm = RolePermission(role_id=role.id, permission_id=permission.id)
+                db.session.add(role_perm)
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='role_update',
+        description=f'Admin {current_user.username} updated role "{role.name}"',
+        user=current_user,
+        target_type='role',
+        target_id=role_id,
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Role updated successfully',
+        'role': role.to_dict()
+    })
+
+
+@api_bp.route('/admin/rbac/roles/<int:role_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_role(role_id):
+    """Delete a role (admin only)"""
+    from app.models.user import Role, UserRole
+
+    role = Role.query.get_or_404(role_id)
+    current_user = get_current_user()
+
+    # Check if role is in use
+    users_with_role = UserRole.query.filter_by(role_id=role_id).count()
+    force = request.args.get('force') == 'true'
+
+    if users_with_role > 0 and not force:
+        return jsonify({
+            'error': f'Role is assigned to {users_with_role} users. Use force=true to delete anyway.',
+            'users_count': users_with_role
+        }), 400
+
+    role_name = role.name
+
+    # Delete role (cascade will handle permissions)
+    db.session.delete(role)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='role_delete',
+        description=f'Admin {current_user.username} deleted role "{role_name}"',
+        user=current_user,
+        target_type='role',
+        target_id=role_id,
+        details={'role_name': role_name, 'force': force},
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Role deleted successfully'
+    })
+
+
+# ============================================================================
+# Admin Banner Settings Endpoint
+# ============================================================================
+
+@api_bp.route('/admin/banner-settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_banner_settings():
+    """Get or update banner settings (admin only)"""
+    if request.method == 'GET':
+        banner_enabled = SystemSettings.get_setting('banner_enabled', 'false') == 'true'
+        banner_message = SystemSettings.get_setting('banner_message', '')
+        banner_type = SystemSettings.get_setting('banner_type', 'info')  # info, warning, error
+
+        return jsonify({
+            'enabled': banner_enabled,
+            'message': banner_message,
+            'type': banner_type
+        })
+
+    elif request.method == 'POST':
+        current_user = get_current_user()
+        data = request.get_json()
+
+        if 'enabled' in data:
+            SystemSettings.set_setting('banner_enabled', str(data['enabled']).lower(), current_user.id)
+
+        if 'message' in data:
+            message = sanitize_string(data['message'], max_length=500)
+            SystemSettings.set_setting('banner_message', message, current_user.id)
+
+        if 'type' in data:
+            banner_type = data['type']
+            if banner_type in ['info', 'warning', 'error']:
+                SystemSettings.set_setting('banner_type', banner_type, current_user.id)
+
+        create_audit_log(
+            action_type='banner_settings_update',
+            description=f'Admin {current_user.username} updated banner settings',
+            user=current_user,
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Banner settings updated'
+        })
+
+
+# ============================================================================
+# Admin Order Management Endpoints
+# ============================================================================
+
+@api_bp.route('/admin/orders', methods=['GET'])
+@login_required
+@admin_required
+@limiter.limit("100 per minute")
+def admin_get_orders():
+    """Get all orders (admin only)"""
+    from app.models.shop import Order
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    per_page = min(per_page, 100)
+
+    status_filter = request.args.get('status')
+    search = request.args.get('search')
+
+    query = Order.query
+
+    # Apply filters
+    if status_filter:
+        query = query.filter(Order.status == status_filter)
+
+    if search:
+        search_term = f'%{search}%'
+        query = query.join(User, Order.user_id == User.id).join(Club, Order.club_id == Club.id).filter(
+            db.or_(
+                User.username.ilike(search_term),
+                Club.name.ilike(search_term),
+                Order.shipping_name.ilike(search_term)
+            )
+        )
+
+    orders_pagination = query.order_by(Order.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    orders_data = [order.to_dict() for order in orders_pagination.items]
+
+    return jsonify({
+        'orders': orders_data,
+        'total': orders_pagination.total,
+        'page': page,
+        'per_page': per_page,
+        'pages': orders_pagination.pages
+    })
+
+
+@api_bp.route('/admin/orders/<int:order_id>/status', methods=['PATCH'])
+@login_required
+@admin_required
+def admin_update_order_status(order_id):
+    """Update order status (admin only)"""
+    from app.models.shop import Order
+    from datetime import datetime
+
+    order = Order.query.get_or_404(order_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+    new_status = data.get('status')
+    admin_notes = data.get('admin_notes', '')
+    tracking_number = data.get('tracking_number')
+
+    if not new_status:
+        return jsonify({'error': 'status is required'}), 400
+
+    valid_statuses = ['pending', 'approved', 'rejected', 'completed', 'refunded']
+    if new_status not in valid_statuses:
+        return jsonify({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
+
+    old_status = order.status
+    order.status = new_status
+
+    if admin_notes:
+        order.admin_notes = sanitize_string(admin_notes, max_length=2000)
+
+    if tracking_number:
+        order.tracking_number = sanitize_string(tracking_number, max_length=200)
+
+    # Update timestamps based on status
+    if new_status == 'approved' and not order.approved_at:
+        order.approved_at = datetime.utcnow()
+    elif new_status == 'completed' and not order.completed_at:
+        order.completed_at = datetime.utcnow()
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='order_status_update',
+        description=f'Admin {current_user.username} changed order #{order_id} status from {old_status} to {new_status}',
+        user=current_user,
+        target_type='order',
+        target_id=order_id,
+        details={'old_status': old_status, 'new_status': new_status},
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Order status updated',
+        'order': order.to_dict()
+    })
+
+
+@api_bp.route('/admin/orders/<int:order_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_order(order_id):
+    """Delete an order (admin only)"""
+    from app.models.shop import Order
+
+    order = Order.query.get_or_404(order_id)
+    current_user = get_current_user()
+
+    order_info = f'Order #{order.id} from {order.club.name if order.club else "Unknown"}'
+
+    db.session.delete(order)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='order_delete',
+        description=f'Admin {current_user.username} deleted {order_info}',
+        user=current_user,
+        target_type='order',
+        target_id=order_id,
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Order deleted successfully'
+    })
+
+
+@api_bp.route('/admin/orders/<int:order_id>/refund', methods=['POST'])
+@login_required
+@admin_required
+def admin_refund_order(order_id):
+    """Refund an order (admin only)"""
+    from app.models.shop import Order
+    from datetime import datetime
+
+    order = Order.query.get_or_404(order_id)
+    current_user = get_current_user()
+
+    if order.status == 'refunded':
+        return jsonify({'error': 'Order already refunded'}), 400
+
+    # Refund tokens to club
+    if order.club:
+        club = order.club
+        club.tokens += order.total_price
+
+        # Create transaction record
+        success, error_msg = create_club_transaction(
+            club_id=club.id,
+            transaction_type='credit',
+            amount=order.total_price,
+            description=f'Refund for order #{order.id}',
+            user_id=current_user.id,
+            reference_type='order_refund',
+            reference_id=order.id,
+            created_by=current_user.id
+        )
+
+        if not success:
+            return jsonify({'error': f'Failed to process refund: {error_msg}'}), 500
+
+    # Update order status
+    order.status = 'refunded'
+    db.session.commit()
+
+    create_audit_log(
+        action_type='order_refund',
+        description=f'Admin {current_user.username} refunded order #{order_id}',
+        user=current_user,
+        target_type='order',
+        target_id=order_id,
+        details={'refund_amount': order.total_price},
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Order refunded successfully',
+        'refund_amount': order.total_price
+    })
+
+
+# ============================================================================
+# Admin Shop Items Endpoints
+# ============================================================================
+
+@api_bp.route('/admin/shop-items', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_shop_items():
+    """Get or create shop items (admin only)"""
+    from app.models.shop import ShopItem
+
+    if request.method == 'GET':
+        items = ShopItem.query.order_by(ShopItem.created_at.desc()).all()
+
+        # Group by category for easier frontend handling
+        items_by_category = {}
+        for item in items:
+            category = item.category or 'Other'
+            if category not in items_by_category:
+                items_by_category[category] = []
+            items_by_category[category].append(item.to_dict())
+
+        return jsonify({
+            'items': items_by_category,
+            'all_items': [item.to_dict() for item in items]
+        })
+
+    elif request.method == 'POST':
+        current_user = get_current_user()
+        data = request.get_json()
+
+        name = sanitize_string(data.get('name', ''), max_length=200)
+        description = sanitize_string(data.get('description', ''), max_length=2000)
+        price = int(data.get('price', 0))
+        image_url = sanitize_string(data.get('image_url', ''), max_length=500)
+        category = sanitize_string(data.get('category', ''), max_length=100)
+        stock = int(data.get('stock', 0))
+        is_active = bool(data.get('is_active', True))
+
+        if not name or price < 0:
+            return jsonify({'error': 'Name is required and price must be positive'}), 400
+
+        shop_item = ShopItem(
+            name=name,
+            description=description,
+            price=price,
+            image_url=image_url,
+            category=category,
+            stock=stock,
+            is_active=is_active
+        )
+        db.session.add(shop_item)
+        db.session.commit()
+
+        create_audit_log(
+            action_type='shop_item_create',
+            description=f'Admin {current_user.username} created shop item "{name}"',
+            user=current_user,
+            target_type='shop_item',
+            target_id=shop_item.id,
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Shop item created',
+            'item': shop_item.to_dict()
+        })
+
+
+@api_bp.route('/admin/shop-items/<int:item_id>', methods=['PUT', 'DELETE'])
+@login_required
+@admin_required
+def admin_shop_item(item_id):
+    """Update or delete a shop item (admin only)"""
+    from app.models.shop import ShopItem
+
+    shop_item = ShopItem.query.get_or_404(item_id)
+    current_user = get_current_user()
+
+    if request.method == 'PUT':
+        data = request.get_json()
+
+        if 'name' in data:
+            shop_item.name = sanitize_string(data['name'], max_length=200)
+        if 'description' in data:
+            shop_item.description = sanitize_string(data['description'], max_length=2000)
+        if 'price' in data:
+            shop_item.price = int(data['price'])
+        if 'image_url' in data:
+            shop_item.image_url = sanitize_string(data['image_url'], max_length=500)
+        if 'category' in data:
+            shop_item.category = sanitize_string(data['category'], max_length=100)
+        if 'stock' in data:
+            shop_item.stock = int(data['stock'])
+        if 'is_active' in data:
+            shop_item.is_active = bool(data['is_active'])
+
+        db.session.commit()
+
+        create_audit_log(
+            action_type='shop_item_update',
+            description=f'Admin {current_user.username} updated shop item "{shop_item.name}"',
+            user=current_user,
+            target_type='shop_item',
+            target_id=shop_item.id,
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Shop item updated',
+            'item': shop_item.to_dict()
+        })
+
+    elif request.method == 'DELETE':
+        item_name = shop_item.name
+
+        db.session.delete(shop_item)
+        db.session.commit()
+
+        create_audit_log(
+            action_type='shop_item_delete',
+            description=f'Admin {current_user.username} deleted shop item "{item_name}"',
+            user=current_user,
+            target_type='shop_item',
+            target_id=item_id,
+            severity='warning',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Shop item deleted'
+        })
+
+
+# ============================================================================
+# Admin Leaderboard Endpoints
+# ============================================================================
+
+@api_bp.route('/admin/leaderboard/exclusions', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_leaderboard_exclusions():
+    """Get or manage leaderboard exclusions (admin only)"""
+    from app.models.economy import LeaderboardExclusion
+
+    if request.method == 'GET':
+        exclusions = LeaderboardExclusion.query.all()
+        exclusions_data = []
+        for exclusion in exclusions:
+            club = Club.query.get(exclusion.club_id) if exclusion.club_id else None
+            exclusions_data.append({
+                'id': exclusion.id,
+                'club_id': exclusion.club_id,
+                'club_name': club.name if club else 'Unknown',
+                'reason': exclusion.reason,
+                'created_at': exclusion.created_at.isoformat() if exclusion.created_at else None
+            })
+
+        return jsonify({'exclusions': exclusions_data})
+
+    elif request.method == 'POST':
+        current_user = get_current_user()
+        data = request.get_json()
+
+        club_id = data.get('club_id')
+        reason = sanitize_string(data.get('reason', ''), max_length=500)
+
+        if not club_id:
+            return jsonify({'error': 'club_id is required'}), 400
+
+        # Check if club exists
+        club = Club.query.get(club_id)
+        if not club:
+            return jsonify({'error': 'Club not found'}), 404
+
+        # Check if already excluded
+        existing = LeaderboardExclusion.query.filter_by(club_id=club_id).first()
+        if existing:
+            return jsonify({'error': 'Club already excluded from leaderboard'}), 400
+
+        # Create exclusion
+        exclusion = LeaderboardExclusion(club_id=club_id, reason=reason)
+        db.session.add(exclusion)
+        db.session.commit()
+
+        create_audit_log(
+            action_type='leaderboard_exclusion_add',
+            description=f'Admin {current_user.username} excluded club {club.name} from leaderboard',
+            user=current_user,
+            target_type='club',
+            target_id=club_id,
+            details={'reason': reason},
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Club excluded from leaderboard'
+        })
+
+
+@api_bp.route('/admin/leaderboard/exclusions/<int:exclusion_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_leaderboard_exclusion(exclusion_id):
+    """Remove a leaderboard exclusion (admin only)"""
+    from app.models.economy import LeaderboardExclusion
+
+    current_user = get_current_user()
+    exclusion = LeaderboardExclusion.query.get_or_404(exclusion_id)
+
+    club = Club.query.get(exclusion.club_id) if exclusion.club_id else None
+    club_name = club.name if club else 'Unknown'
+
+    db.session.delete(exclusion)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='leaderboard_exclusion_remove',
+        description=f'Admin {current_user.username} removed leaderboard exclusion for club {club_name}',
+        user=current_user,
+        target_type='club',
+        target_id=exclusion.club_id,
+        severity='info',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Leaderboard exclusion removed'
+    })
+
+
+# ============================================================================
+# User API Endpoints
+# ============================================================================
+
+@api_bp.route('/user/me', methods=['GET'])
+@login_required
+def get_user_me():
+    """Get current authenticated user information"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'is_admin': user.is_admin,
+        'is_suspended': user.is_suspended,
+        'created_at': user.created_at.isoformat() if user.created_at else None
+    })
+
+
+@api_bp.route('/user/update', methods=['POST'])
+@login_required
+@limiter.limit("20 per hour")
+def update_user():
+    """Update current user's profile"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json()
+
+    # Update allowed fields
+    if 'first_name' in data:
+        user.first_name = sanitize_string(data['first_name'], max_length=50)
+
+    if 'last_name' in data:
+        user.last_name = sanitize_string(data['last_name'], max_length=50)
+
+    if 'hackatime_api_key' in data:
+        user.hackatime_api_key = sanitize_string(data['hackatime_api_key'], max_length=500)
+
+    if 'avatar_url' in data:
+        user.avatar_url = sanitize_string(data['avatar_url'], max_length=500)
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='user_profile_update',
+        description=f'User {user.username} updated their profile',
+        user=user,
+        target_type='user',
+        target_id=user.id,
+        category='user'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Profile updated successfully'
+    })
+
+
+@api_bp.route('/user/unlink-slack', methods=['POST'])
+@login_required
+def unlink_slack():
+    """Unlink Slack account from user"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Clear Slack-related fields
+    user.slack_user_id = None
+    db.session.commit()
+
+    create_audit_log(
+        action_type='slack_unlink',
+        description=f'User {user.username} unlinked their Slack account',
+        user=user,
+        target_type='user',
+        target_id=user.id,
+        category='user'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Slack account unlinked successfully'
+    })
+
+
+# ============================================================================
+# Identity/OAuth API Endpoints
+# ============================================================================
+
+@api_bp.route('/identity/status', methods=['GET'])
+@login_required
+def identity_status():
+    """Get Hack Club identity status for current user"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Check if user has Hack Club identity linked
+    has_identity = bool(user.slack_user_id)  # Simplified check
+
+    return jsonify({
+        'linked': has_identity,
+        'slack_user_id': user.slack_user_id if has_identity else None
+    })
+
+
+@api_bp.route('/identity/authorize', methods=['POST'])
+@login_required
+def identity_authorize():
+    """Start Hack Club identity authorization flow"""
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # TODO: Implement actual Hack Club identity OAuth flow
+    return jsonify({
+        'error': 'Identity authorization not yet implemented',
+        'message': 'This feature is coming soon'
+    }), 501
+
+
+# ============================================================================
+# Status API Endpoints
+# ============================================================================
+
+@api_bp.route('/status/banner', methods=['GET'])
+def status_banner():
+    """Get public banner settings"""
+    banner_enabled = SystemSettings.get_setting('banner_enabled', 'false') == 'true'
+    banner_message = SystemSettings.get_setting('banner_message', '')
+    banner_type = SystemSettings.get_setting('banner_type', 'info')
+
+    return jsonify({
+        'enabled': banner_enabled,
+        'message': banner_message,
+        'type': banner_type
+    })
+
+
+@api_bp.route('/status/summary', methods=['GET'])
+def status_summary():
+    """Get system status summary"""
+    # Get basic stats
+    total_users = User.query.count()
+    total_clubs = Club.query.count()
+
+    # Check system health
+    maintenance_mode = SystemSettings.is_maintenance_mode()
+
+    return jsonify({
+        'status': 'operational' if not maintenance_mode else 'maintenance',
+        'maintenance_mode': maintenance_mode,
+        'stats': {
+            'total_users': total_users,
+            'total_clubs': total_clubs
+        }
+    })
+
+
+@api_bp.route('/admin/status/incidents', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_status_incidents():
+    """Manage status incidents (admin only)"""
+    from app.models.system import StatusIncident, StatusUpdate
+    from datetime import datetime
+
+    if request.method == 'GET':
+        status_filter = request.args.get('status')  # investigating, identified, monitoring, resolved
+        limit = request.args.get('limit', 50, type=int)
+        limit = min(limit, 100)
+
+        query = StatusIncident.query
+
+        if status_filter:
+            query = query.filter(StatusIncident.status == status_filter)
+
+        incidents = query.order_by(StatusIncident.created_at.desc()).limit(limit).all()
+        incidents_data = [incident.to_dict() for incident in incidents]
+
+        return jsonify({
+            'incidents': incidents_data,
+            'total': len(incidents_data)
+        })
+
+    elif request.method == 'POST':
+        current_user = get_current_user()
+        data = request.get_json()
+
+        title = sanitize_string(data.get('title', ''), max_length=255)
+        description = sanitize_string(data.get('description', ''), max_length=5000)
+        status = data.get('status', 'investigating')
+        impact = data.get('impact', 'minor')
+        affected_services = data.get('affected_services', [])
+
+        if not title or not description:
+            return jsonify({'error': 'Title and description are required'}), 400
+
+        valid_statuses = ['investigating', 'identified', 'monitoring', 'resolved']
+        if status not in valid_statuses:
+            return jsonify({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
+
+        valid_impacts = ['minor', 'major', 'critical']
+        if impact not in valid_impacts:
+            return jsonify({'error': f'Invalid impact. Must be one of: {", ".join(valid_impacts)}'}), 400
+
+        incident = StatusIncident(
+            title=title,
+            description=description,
+            status=status,
+            impact=impact,
+            created_by=current_user.id
+        )
+        incident.set_affected_services(affected_services)
+
+        db.session.add(incident)
+        db.session.commit()
+
+        create_audit_log(
+            action_type='status_incident_create',
+            description=f'Admin {current_user.username} created status incident "{title}"',
+            user=current_user,
+            target_type='status_incident',
+            target_id=incident.id,
+            severity='warning',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Status incident created',
+            'incident': incident.to_dict()
+        })
+
+
+@api_bp.route('/admin/status/incidents/<int:incident_id>', methods=['PUT', 'DELETE'])
+@login_required
+@admin_required
+def admin_status_incident(incident_id):
+    """Update or delete a status incident (admin only)"""
+    from app.models.system import StatusIncident
+    from datetime import datetime
+
+    incident = StatusIncident.query.get_or_404(incident_id)
+    current_user = get_current_user()
+
+    if request.method == 'PUT':
+        data = request.get_json()
+
+        if 'title' in data:
+            incident.title = sanitize_string(data['title'], max_length=255)
+        if 'description' in data:
+            incident.description = sanitize_string(data['description'], max_length=5000)
+        if 'status' in data:
+            new_status = data['status']
+            valid_statuses = ['investigating', 'identified', 'monitoring', 'resolved']
+            if new_status not in valid_statuses:
+                return jsonify({'error': f'Invalid status'}), 400
+            incident.status = new_status
+
+            # Mark as resolved if status is resolved
+            if new_status == 'resolved' and not incident.resolved_at:
+                incident.resolved_at = datetime.utcnow()
+
+        if 'impact' in data:
+            impact = data['impact']
+            valid_impacts = ['minor', 'major', 'critical']
+            if impact not in valid_impacts:
+                return jsonify({'error': f'Invalid impact'}), 400
+            incident.impact = impact
+
+        if 'affected_services' in data:
+            incident.set_affected_services(data['affected_services'])
+
+        db.session.commit()
+
+        create_audit_log(
+            action_type='status_incident_update',
+            description=f'Admin {current_user.username} updated status incident "{incident.title}"',
+            user=current_user,
+            target_type='status_incident',
+            target_id=incident.id,
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Status incident updated',
+            'incident': incident.to_dict()
+        })
+
+    elif request.method == 'DELETE':
+        incident_title = incident.title
+
+        db.session.delete(incident)
+        db.session.commit()
+
+        create_audit_log(
+            action_type='status_incident_delete',
+            description=f'Admin {current_user.username} deleted status incident "{incident_title}"',
+            user=current_user,
+            target_type='status_incident',
+            target_id=incident_id,
+            severity='warning',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Status incident deleted'
+        })
+
+
+@api_bp.route('/admin/status/incidents/<int:incident_id>/updates', methods=['POST'])
+@login_required
+@admin_required
+def admin_create_status_update(incident_id):
+    """Add an update to a status incident (admin only)"""
+    from app.models.system import StatusIncident, StatusUpdate
+
+    incident = StatusIncident.query.get_or_404(incident_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+    message = sanitize_string(data.get('message', ''), max_length=5000)
+    status = data.get('status', incident.status)
+
+    if not message:
+        return jsonify({'error': 'Message is required'}), 400
+
+    valid_statuses = ['investigating', 'identified', 'monitoring', 'resolved']
+    if status not in valid_statuses:
+        return jsonify({'error': 'Invalid status'}), 400
+
+    update = StatusUpdate(
+        incident_id=incident.id,
+        message=message,
+        status=status,
+        created_by=current_user.id
+    )
+    db.session.add(update)
+
+    # Update incident status
+    incident.status = status
+    if status == 'resolved' and not incident.resolved_at:
+        incident.resolved_at = datetime.utcnow()
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Status update added',
+        'update': update.to_dict()
+    })
+
+
+# ============================================================================
+# Project Review API Endpoints
+# ============================================================================
+
+@api_bp.route('/projects/review', methods=['GET'])
+@login_required
+def get_projects_for_review():
+    """Get projects pending review"""
+    from app.models.economy import ProjectSubmission
+
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Get user's pending projects
+    projects = ProjectSubmission.query.filter_by(
+        user_id=user.id,
+        approved_at=None
+    ).order_by(ProjectSubmission.created_at.desc()).all()
+
+    projects_data = []
+    for project in projects:
+        projects_data.append({
+            'id': project.id,
+            'name': project.name,
+            'description': project.description,
+            'url': project.url,
+            'github_url': project.github_url,
+            'created_at': project.created_at.isoformat() if project.created_at else None,
+            'status': 'pending'
+        })
+
+    return jsonify({
+        'projects': projects_data,
+        'total': len(projects_data)
+    })
+
+
+@api_bp.route('/projects/review/<int:project_id>', methods=['POST'])
+@login_required
+@admin_required
+def review_project(project_id):
+    """Review and approve/reject a project (admin only)"""
+    from app.models.economy import ProjectSubmission
+    from datetime import datetime
+
+    project = ProjectSubmission.query.get_or_404(project_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+    approved = data.get('approved', False)
+    token_amount = int(data.get('token_amount', 0))
+    admin_notes = sanitize_string(data.get('admin_notes', ''), max_length=2000)
+
+    if approved and token_amount > 0:
+        # Approve and grant tokens
+        project.approved_at = datetime.utcnow()
+        project.tokens_awarded = token_amount
+
+        # Grant tokens to club
+        if project.club:
+            project.club.tokens += token_amount
+
+            # Create transaction
+            create_club_transaction(
+                club_id=project.club_id,
+                transaction_type='credit',
+                amount=token_amount,
+                description=f'Project approved: {project.name}',
+                user_id=current_user.id,
+                reference_type='project_approval',
+                reference_id=project.id,
+                created_by=current_user.id
+            )
+
+        create_audit_log(
+            action_type='project_approval',
+            description=f'Admin {current_user.username} approved project "{project.name}"',
+            user=current_user,
+            target_type='project',
+            target_id=project_id,
+            details={'token_amount': token_amount},
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+
+        message = 'Project approved and tokens granted'
+    else:
+        # Reject
+        project.rejected_at = datetime.utcnow()
+
+        create_audit_log(
+            action_type='project_rejection',
+            description=f'Admin {current_user.username} rejected project "{project.name}"',
+            user=current_user,
+            target_type='project',
+            target_id=project_id,
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+
+        message = 'Project rejected'
+
+    if admin_notes:
+        project.admin_notes = admin_notes
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': message
+    })
+
+
+@api_bp.route('/projects/delete/<int:project_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_project(project_id):
+    """Delete a project submission (admin only)"""
+    from app.models.economy import ProjectSubmission
+
+    project = ProjectSubmission.query.get_or_404(project_id)
+    current_user = get_current_user()
+
+    project_name = project.name
+
+    db.session.delete(project)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='project_delete',
+        description=f'Admin {current_user.username} deleted project "{project_name}"',
+        user=current_user,
+        target_type='project',
+        target_id=project_id,
+        severity='warning',
+        admin_action=True,
+        category='admin'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Project deleted'
+    })
+
+
+@api_bp.route('/projects/grant-override/<int:project_id>', methods=['POST'])
+@login_required
+@admin_required
+def grant_override_project(project_id):
+    """Force grant tokens for a project (admin only)"""
+    from app.models.economy import ProjectSubmission
+
+    project = ProjectSubmission.query.get_or_404(project_id)
+    current_user = get_current_user()
+
+    data = request.get_json()
+    token_amount = int(data.get('token_amount', 0))
+
+    if token_amount <= 0:
+        return jsonify({'error': 'Token amount must be positive'}), 400
+
+    # Grant tokens to club
+    if project.club:
+        project.club.tokens += token_amount
+        project.tokens_awarded = token_amount
+
+        # Create transaction
+        create_club_transaction(
+            club_id=project.club_id,
+            transaction_type='credit',
+            amount=token_amount,
+            description=f'Token override for project: {project.name}',
+            user_id=current_user.id,
+            reference_type='project_override',
+            reference_id=project.id,
+            created_by=current_user.id
+        )
+
+        db.session.commit()
+
+        create_audit_log(
+            action_type='project_override',
+            description=f'Admin {current_user.username} granted {token_amount} tokens override for project "{project.name}"',
+            user=current_user,
+            target_type='project',
+            target_id=project_id,
+            details={'token_amount': token_amount},
+            severity='warning',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Tokens granted successfully'
+        })
+
+    return jsonify({'error': 'Project has no associated club'}), 400
+
+
+# ============================================================================
+# Public Status Incidents API Endpoints
+# ============================================================================
+
+@api_bp.route('/status/incidents', methods=['GET'])
+def get_public_status_incidents():
+    """Get public status incidents (no auth required)"""
+    from app.models.system import StatusIncident
+
+    status_filter = request.args.get('status')
+    limit = request.args.get('limit', 20, type=int)
+    limit = min(limit, 100)
+
+    query = StatusIncident.query
+
+    if status_filter:
+        query = query.filter(StatusIncident.status == status_filter)
+
+    incidents = query.order_by(StatusIncident.created_at.desc()).limit(limit).all()
+    incidents_data = [incident.to_dict() for incident in incidents]
+
+    return jsonify({
+        'incidents': incidents_data,
+        'total': len(incidents_data)
+    })
+
+
+@api_bp.route('/status/incidents/<int:incident_id>', methods=['GET'])
+def get_public_status_incident(incident_id):
+    """Get a single public status incident (no auth required)"""
+    from app.models.system import StatusIncident
+
+    incident = StatusIncident.query.get_or_404(incident_id)
+
+    return jsonify({
+        'incident': incident.to_dict()
+    })
+
+
+# ============================================================================
+# OAuth v1 API Endpoints (for external apps)
+# ============================================================================
+
+@api_bp.route('/v1/users/<int:user_id>', methods=['GET'])
+@limiter.limit("100 per minute")
+def oauth_get_user(user_id):
+    """Get user info via OAuth (requires valid OAuth token)"""
+    # TODO: Implement OAuth token validation
+    # For now, return basic public info
+    user = User.query.get_or_404(user_id)
+
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'created_at': user.created_at.isoformat() if user.created_at else None
+    })
+
+
+@api_bp.route('/v1/clubs/<int:club_id>', methods=['GET'])
+@limiter.limit("100 per minute")
+def oauth_get_club(club_id):
+    """Get club info via OAuth (requires valid OAuth token)"""
+    # TODO: Implement OAuth token validation
+    club = Club.query.get_or_404(club_id)
+
+    return jsonify({
+        'id': club.id,
+        'name': club.name,
+        'description': club.description,
+        'tokens': club.tokens,
+        'created_at': club.created_at.isoformat() if club.created_at else None
+    })
+
+
+@api_bp.route('/v1/clubs/<int:club_id>/members', methods=['GET'])
+@limiter.limit("100 per minute")
+def oauth_get_club_members(club_id):
+    """Get club members via OAuth (requires valid OAuth token)"""
+    # TODO: Implement OAuth token validation
+    club = Club.query.get_or_404(club_id)
+
+    memberships = ClubMembership.query.filter_by(club_id=club_id).all()
+
+    members_data = []
+    for m in memberships:
+        members_data.append({
+            'id': m.user.id,
+            'username': m.user.username,
+            'role': m.role,
+            'joined_at': m.joined_at.isoformat() if m.joined_at else None
+        })
+
+    return jsonify({
+        'members': members_data,
+        'total': len(members_data)
+    })
+
+
+@api_bp.route('/v1/clubs/<int:club_id>/projects', methods=['GET'])
+@limiter.limit("100 per minute")
+def oauth_get_club_projects(club_id):
+    """Get club projects via OAuth (requires valid OAuth token)"""
+    # TODO: Implement OAuth token validation
+    from app.models.economy import ProjectSubmission
+
+    club = Club.query.get_or_404(club_id)
+
+    projects = ProjectSubmission.query.filter_by(club_id=club_id).order_by(
+        ProjectSubmission.created_at.desc()
+    ).all()
+
+    projects_data = []
+    for project in projects:
+        projects_data.append({
+            'id': project.id,
+            'name': project.name,
+            'description': project.description,
+            'url': project.url,
+            'created_at': project.created_at.isoformat() if project.created_at else None,
+            'approved': project.approved_at is not None
+        })
+
+    return jsonify({
+        'projects': projects_data,
+        'total': len(projects_data)
+    })
+
+
+# ============================================================================
+# Image Upload API Endpoint
+# ============================================================================
+
+@api_bp.route('/upload-images', methods=['POST'])
+@login_required
+@limiter.limit("10 per hour")
+def upload_images():
+    """Upload images to Hack Club CDN (supports both FormData and JSON base64)"""
+    from app.utils.cdn_helpers import upload_to_hackclub_cdn, parse_base64_images
+    from werkzeug.utils import secure_filename
+    import os
+
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    image_data_list = []
+    max_size = 10 * 1024 * 1024  # 10MB per image
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+    # Check if it's JSON with base64 images
+    if request.is_json:
+        data = request.get_json()
+        images = data.get('images', [])
+
+        if not images:
+            return jsonify({'error': 'No images provided'}), 400
+
+        if len(images) > 20:
+            return jsonify({'error': 'Maximum 20 images allowed per upload'}), 400
+
+        # Parse base64 images
+        image_data_list = parse_base64_images(images, max_size=max_size)
+
+    else:
+        # Handle FormData file uploads
+        if 'images' not in request.files:
+            return jsonify({'error': 'No images provided'}), 400
+
+        files = request.files.getlist('images')
+        if not files:
+            return jsonify({'error': 'No images provided'}), 400
+
+        if len(files) > 20:
+            return jsonify({'error': 'Maximum 20 images allowed per upload'}), 400
+
+        for file in files:
+            if file.filename == '':
+                continue
+
+            # Check file extension
+            filename = secure_filename(file.filename)
+            if '.' not in filename:
+                continue
+
+            ext = '.' + filename.rsplit('.', 1)[1].lower()
+            if ext[1:] not in allowed_extensions:
+                continue
+
+            try:
+                # Read file data
+                file.seek(0)
+                image_data = file.read()
+
+                # Check file size
+                if len(image_data) > max_size:
+                    current_app.logger.warning(f'File {filename} too large')
+                    continue
+
+                image_data_list.append((image_data, ext))
+
+            except Exception as e:
+                current_app.logger.error(f'Error processing file {filename}: {str(e)}')
+                continue
+
+    if not image_data_list:
+        return jsonify({'error': 'No valid images were processed'}), 400
+
+    # Upload to Hack Club CDN
+    success, result = upload_to_hackclub_cdn(image_data_list)
+
+    if not success:
+        return jsonify({'error': result}), 500
+
+    cdn_urls = result
+
+    create_audit_log(
+        action_type='images_upload',
+        description=f'User {user.username} uploaded {len(cdn_urls)} images to CDN',
+        user=user,
+        target_type='upload',
+        details={'image_count': len(cdn_urls)},
+        category='user'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'{len(cdn_urls)} images uploaded successfully',
+        'urls': cdn_urls
+    })
+
+
+# ============================================================================
+# Analytics API Endpoints (for OAuth debug)
+# ============================================================================
+
+@api_bp.route('/v1/analytics/overview', methods=['GET'])
+@login_required
+def analytics_overview():
+    """Get analytics overview - PLACEHOLDER"""
+    # TODO: Implement analytics system
+    return jsonify({
+        'views': 0,
+        'unique_visitors': 0,
+        'message': 'Analytics not yet implemented'
     })
 
 

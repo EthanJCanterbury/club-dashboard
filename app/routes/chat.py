@@ -3,7 +3,7 @@ Chat routes blueprint for the Hack Club Dashboard.
 Handles club chat messaging and image uploads.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from datetime import datetime, timezone
 from extensions import db, limiter
 from app.decorators.auth import login_required
@@ -206,36 +206,83 @@ def chat_message_operations(club_id, message_id):
 @login_required
 @limiter.limit("10 per minute")
 def upload_chat_image(club_id):
-    """Upload an image for chat"""
+    """Upload an image for chat to Hack Club CDN"""
+    from app.utils.cdn_helpers import upload_to_hackclub_cdn, parse_base64_images
+    from werkzeug.utils import secure_filename
+
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a member
+    # Verify user is a member (or admin)
     membership = ClubMembership.query.filter_by(
         club_id=club_id,
         user_id=user.id
     ).first()
 
-    if not membership:
+    is_admin_access = request.args.get('admin') == 'true' and user.is_admin
+
+    if not membership and not is_admin_access:
         return jsonify({'error': 'Not authorized'}), 403
 
-    # Check if file was uploaded
-    if 'image' not in request.files:
-        return jsonify({'error': 'No image file provided'}), 400
+    max_size = 10 * 1024 * 1024  # 10MB for chat images
+    image_data_list = []
 
-    file = request.files['image']
+    # Check if JSON with base64 image
+    if request.is_json:
+        data = request.get_json()
+        if not data or 'image' not in data:
+            return jsonify({'error': 'No image provided'}), 400
 
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
+        base64_image = data['image']
+        if not base64_image or not isinstance(base64_image, str):
+            return jsonify({'error': 'Invalid image data'}), 400
 
-    # Validate file type
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-    if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
-        return jsonify({'error': 'Invalid file type. Allowed: PNG, JPG, GIF, WEBP'}), 400
+        # Parse single base64 image
+        image_data_list = parse_base64_images([base64_image], max_size=max_size)
 
-    # TODO: Implement actual file upload to cloud storage (S3, Cloudinary, etc.)
-    # For now, return a placeholder
-    image_url = f'https://placeholder.example.com/chat-image-{club_id}-{user.id}.jpg'
+    else:
+        # Check if file was uploaded
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+
+        file = request.files['image']
+
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+            return jsonify({'error': 'Invalid file type. Allowed: PNG, JPG, GIF, WEBP'}), 400
+
+        # Read file data
+        try:
+            file.seek(0)
+            image_data = file.read()
+
+            if len(image_data) > max_size:
+                return jsonify({'error': 'Image too large. Maximum size: 10MB'}), 400
+
+            ext = '.' + file.filename.rsplit('.', 1)[1].lower()
+            image_data_list = [(image_data, ext)]
+
+        except Exception as e:
+            current_app.logger.error(f'Error reading uploaded file: {str(e)}')
+            return jsonify({'error': 'Failed to process image'}), 500
+
+    if not image_data_list:
+        return jsonify({'error': 'No valid image provided'}), 400
+
+    # Upload to Hack Club CDN
+    success, result = upload_to_hackclub_cdn(image_data_list)
+
+    if not success:
+        return jsonify({'error': result}), 500
+
+    cdn_urls = result
+    image_url = cdn_urls[0]  # Single image for chat
+
+    current_app.logger.info(f'User {user.username} uploaded chat image to CDN: {image_url}')
 
     return jsonify({
         'success': True,

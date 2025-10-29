@@ -483,3 +483,44 @@ def export_attendance(club_id):
         as_attachment=True,
         download_name=filename
     )
+
+
+@attendance_bp.route('/api/clubs/<int:club_id>/attendance/sessions/<int:session_id>/notes', methods=['POST'])
+@login_required
+def update_session_notes(club_id, session_id):
+    """Update notes for an attendance session"""
+    from app.models.user import create_audit_log
+    from app.utils.sanitization import sanitize_string
+
+    user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    session = AttendanceSession.query.get_or_404(session_id)
+
+    # Verify session belongs to this club
+    if session.club_id != club_id:
+        return jsonify({'error': 'Session not found in this club'}), 404
+
+    # Verify user is a leader
+    if not verify_club_leadership(club, user):
+        return jsonify({'error': 'Only club leaders can update session notes'}), 403
+
+    data = request.get_json()
+    notes = sanitize_string(data.get('notes', ''), max_length=5000)
+
+    session.notes = notes
+    db.session.commit()
+
+    create_audit_log(
+        action_type='attendance_session_notes_update',
+        description=f'Updated notes for attendance session in {club.name}',
+        user=user,
+        target_type='attendance_session',
+        target_id=session_id,
+        category='club'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Session notes updated successfully',
+        'notes': notes
+    })
