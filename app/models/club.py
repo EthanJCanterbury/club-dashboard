@@ -9,12 +9,13 @@ from extensions import db
 
 
 class Club(db.Model):
+    __tablename__ = 'clubs'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     location = db.Column(db.String(255))
-    leader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    co_leader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    leader_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    co_leader_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     join_code = db.Column(db.String(8), unique=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -58,8 +59,8 @@ class Club(db.Model):
 
 class ClubMembership(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     role = db.Column(db.String(20), default='member')
     joined_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -70,7 +71,7 @@ class ClubMembership(db.Model):
 # Cosmetics models
 class ClubCosmetic(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     cosmetic_id = db.Column(db.String(100), nullable=False)  # e.g., 'rainbow_name', 'vip_role'
     cosmetic_type = db.Column(db.String(50), nullable=False)  # 'name_effect', 'role', 'badge', 'effect'
     cosmetic_name = db.Column(db.String(200), nullable=False)
@@ -85,11 +86,11 @@ class ClubCosmetic(db.Model):
 
 class MemberCosmetic(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     club_cosmetic_id = db.Column(db.Integer, db.ForeignKey('club_cosmetic.id'), nullable=False)
     assigned_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Leader who assigned it
+    assigned_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Leader who assigned it
     is_active = db.Column(db.Boolean, default=True, nullable=False)
 
     # Relationships

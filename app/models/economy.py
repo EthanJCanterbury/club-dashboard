@@ -9,8 +9,8 @@ from extensions import db
 
 class ClubTransaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # User who triggered the transaction
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # User who triggered the transaction
     transaction_type = db.Column(db.String(50), nullable=False)  # 'credit', 'debit', 'grant', 'purchase', 'refund', 'manual'
     amount = db.Column(db.Integer, nullable=False)  # Amount in tokens (positive for credits, negative for debits)
     description = db.Column(db.Text, nullable=False)
@@ -18,7 +18,7 @@ class ClubTransaction(db.Model):
     reference_id = db.Column(db.String(100), nullable=True)  # Reference to related record (project_id, order_id, etc.)
     reference_type = db.Column(db.String(50), nullable=True)  # 'project', 'shop_order', 'admin_action', etc.
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Admin who created the transaction
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Admin who created the transaction
 
     # Relationships
     club = db.relationship('Club', backref=db.backref('transactions', lazy=True, order_by='ClubTransaction.created_at.desc()'))
@@ -57,14 +57,14 @@ class ClubTransaction(db.Model):
 
 class ProjectSubmission(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('club_project.id'), nullable=True)  # Link to actual project if available
     project_name = db.Column(db.String(200), nullable=False)
     project_url = db.Column(db.String(500))
     submitted_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     approved_at = db.Column(db.DateTime)
-    approved_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
     # Relationships
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('project_submissions', lazy=True))
@@ -87,7 +87,7 @@ class WeeklyQuest(db.Model):
 class ClubQuestProgress(db.Model):
     __tablename__ = 'club_quest_progress'
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     quest_id = db.Column(db.Integer, db.ForeignKey('weekly_quests.id'), nullable=False)
     week_start = db.Column(db.Date, nullable=False)
     progress = db.Column(db.Integer, default=0)
@@ -106,9 +106,9 @@ class ClubQuestProgress(db.Model):
 
 class LeaderboardExclusion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     leaderboard_type = db.Column(db.String(50), nullable=False)  # 'total_tokens', 'monthly_tokens', etc.
-    excluded_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    excluded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     excluded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     reason = db.Column(db.Text)
 

@@ -15,7 +15,7 @@ class SystemSettings(db.Model):
     value = db.Column(db.Text, nullable=False)
     description = db.Column(db.Text)
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    updated_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    updated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
     # Relationships
     updated_by_user = db.relationship('User', backref=db.backref('system_settings_updates', lazy=True))
@@ -111,7 +111,7 @@ class StatusIncident(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     resolved_at = db.Column(db.DateTime)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     # Relationships
     creator = db.relationship('User', foreign_keys=[created_by], backref=db.backref('created_incidents', lazy=True))
@@ -198,7 +198,7 @@ class StatusUpdate(db.Model):
     message = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), nullable=False)  # investigating, identified, monitoring, resolved
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     # Relationships
     incident = db.relationship('StatusIncident', backref=db.backref('updates', lazy=True, order_by='StatusUpdate.created_at'))

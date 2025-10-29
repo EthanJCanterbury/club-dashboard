@@ -8,7 +8,7 @@ from extensions import db
 class AttendanceSession(db.Model):
     """Represents a club meeting/session where attendance is tracked"""
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     session_date = db.Column(db.Date, nullable=False)
@@ -18,7 +18,7 @@ class AttendanceSession(db.Model):
     session_type = db.Column(db.String(50), default='meeting')  # meeting, workshop, event, etc.
     max_attendance = db.Column(db.Integer)  # Optional capacity limit
     is_active = db.Column(db.Boolean, default=True)  # Session is open for attendance
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -56,12 +56,12 @@ class AttendanceRecord(db.Model):
     """Tracks individual member attendance at sessions"""
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey('attendance_session.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     status = db.Column(db.String(20), default='present')  # present, absent, late, excused
     check_in_time = db.Column(db.DateTime)
     check_out_time = db.Column(db.DateTime)
     notes = db.Column(db.Text)  # Optional notes about attendance
-    marked_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Who marked the attendance
+    marked_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # Who marked the attendance
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -103,7 +103,7 @@ class AttendanceGuest(db.Model):
     check_in_time = db.Column(db.DateTime)
     check_out_time = db.Column(db.DateTime)
     notes = db.Column(db.Text)
-    added_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    added_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships

@@ -7,8 +7,8 @@ from extensions import db
 
 class ClubPost(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)  # Stores markdown content
     content_html = db.Column(db.Text)  # Stores rendered HTML content
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -19,7 +19,7 @@ class ClubPost(db.Model):
 
 class ClubAssignment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     due_date = db.Column(db.DateTime)
@@ -32,7 +32,7 @@ class ClubAssignment(db.Model):
 
 class ClubMeeting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     meeting_date = db.Column(db.Date, nullable=False)
@@ -47,7 +47,7 @@ class ClubMeeting(db.Model):
 
 class ClubResource(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     description = db.Column(db.Text)
@@ -59,8 +59,8 @@ class ClubResource(db.Model):
 
 class ClubProject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     url = db.Column(db.String(500))
