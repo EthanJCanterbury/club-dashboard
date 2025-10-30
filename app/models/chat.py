@@ -9,8 +9,8 @@ class ClubChatMessage(db.Model):
     __tablename__ = 'club_chat_messages'
 
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     message = db.Column(db.String(1000), nullable=True)  # 1000 char limit, nullable for image-only messages
     image_url = db.Column(db.String(500), nullable=True)  # URL to image on CDN
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

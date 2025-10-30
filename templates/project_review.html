@@ -816,19 +816,20 @@
         const loadingState = document.getElementById('loadingState');
         const emptyState = document.getElementById('emptyState');
         const projectsContainer = document.getElementById('projectsContainer');
-        
+
         loadingState.style.display = 'block';
         emptyState.style.display = 'none';
         projectsContainer.innerHTML = '';
 
         try {
             const response = await fetch('/api/projects/review');
+            
             if (response.ok) {
                 const data = await response.json();
                 projects = data.projects || [];
                 applyFilters(); // Use applyFilters to maintain current filter state
             } else {
-                console.error('Failed to load projects');
+                console.error('Failed to load projects, status:', response.status);
                 showError('Failed to load projects from Airtable');
             }
         } catch (error) {
@@ -844,8 +845,8 @@
         const autoReviewFilter = document.getElementById('autoReviewFilter');
         const searchInput = document.getElementById('searchInput');
 
-        // Set default status filter to "Pending"
-        statusFilter.value = 'Pending';
+        // Set default status filter to show all projects
+        statusFilter.value = '';
 
         statusFilter.addEventListener('change', applyFilters);
         autoReviewFilter.addEventListener('change', applyFilters);
@@ -862,11 +863,11 @@
             const matchesAutoReview = !autoReviewFilter || 
                 (project.autoReviewStatus && project.autoReviewStatus.includes(autoReviewFilter));
             const matchesSearch = !searchQuery || 
-                project.firstName.toLowerCase().includes(searchQuery) ||
-                project.lastName.toLowerCase().includes(searchQuery) ||
-                project.email.toLowerCase().includes(searchQuery) ||
-                project.description.toLowerCase().includes(searchQuery) ||
-                project.clubName.toLowerCase().includes(searchQuery);
+                (project.firstName && project.firstName.toLowerCase().includes(searchQuery)) ||
+                (project.lastName && project.lastName.toLowerCase().includes(searchQuery)) ||
+                (project.email && project.email.toLowerCase().includes(searchQuery)) ||
+                (project.description && project.description.toLowerCase().includes(searchQuery)) ||
+                (project.clubName && project.clubName.toLowerCase().includes(searchQuery));
 
             return matchesStatus && matchesAutoReview && matchesSearch;
         });

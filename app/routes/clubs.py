@@ -280,29 +280,37 @@ def update_club_email(club_id):
 @clubs_bp.route('/api/club/<int:club_id>/orders', methods=['GET'])
 @login_required
 def get_club_orders(club_id):
-    """Get orders for a club"""
-    from app.models.shop import Order
+    """Get orders for a club from Airtable"""
+    from app.services.airtable import AirtableService
 
     club = Club.query.get_or_404(club_id)
     user = get_current_user()
 
-    # Verify user is a member or admin
-    membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user.id).first()
-    if not membership and not user.is_admin:
+    # Verify user is a leader or co-leader
+    is_leader = club.leader_id == user.id
+    is_co_leader = is_user_co_leader(club, user)
+
+    if not is_leader and not is_co_leader and not user.is_admin:
         return jsonify({'error': 'Not authorized'}), 403
 
-    # Get orders for this club
-    orders = Order.query.filter_by(club_id=club_id).order_by(Order.created_at.desc()).all()
+    try:
+        # Get orders from Airtable
+        airtable_service = AirtableService()
+        orders = airtable_service.get_orders_for_club(club.name)
 
-    orders_data = [order.to_dict() for order in orders]
-
-    return jsonify({
-        'success': True,
-        'club_id': club_id,
-        'club_name': club.name,
-        'orders': orders_data,
-        'total_orders': len(orders_data)
-    })
+        return jsonify({
+            'success': True,
+            'club_id': club_id,
+            'club_name': club.name,
+            'orders': orders,
+            'total_orders': len(orders)
+        })
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to fetch orders',
+            'orders': [],
+            'total_orders': 0
+        }), 200
 
 
 @clubs_bp.route('/api/club/<int:club_id>/cosmetics', methods=['GET'])
@@ -424,27 +432,91 @@ def purchase_cosmetic(club_id):
 @clubs_bp.route('/api/club/<int:club_id>/shop-items', methods=['GET'])
 @login_required
 def get_club_shop_items(club_id):
-    """Get shop items available for purchase"""
-    from app.models.shop import ShopItem
+    """Get shop items available for purchase from Airtable"""
+    import requests
+    import os
 
     club = Club.query.get_or_404(club_id)
     user = get_current_user()
 
-    # Verify user is a member
-    membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user.id).first()
-    if not membership and not user.is_admin:
-        return jsonify({'error': 'Not authorized'}), 403
+    # Verify user is a member or leader
+    is_leader = club.leader_id == user.id
+    is_co_leader = is_user_co_leader(club, user)
 
-    # Get active shop items
-    items = ShopItem.query.filter_by(is_active=True).order_by(ShopItem.price).all()
+    if not is_leader and not is_co_leader and not user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
 
-    items_data = [item.to_dict() for item in items]
+    try:
+        # Fetch shop items from Airtable
+        shop_base_id = os.environ.get('AIRTABLE_SHOP_BASE_ID', 'app7OFpfZceddfK17')
+        shop_table_name = 'Shop%20Items'
+        shop_url = f'https://api.airtable.com/v0/{shop_base_id}/{shop_table_name}'
 
-    return jsonify({
-        'success': True,
-        'items': items_data,
-        'club_tokens': club.tokens
-    })
+        airtable_token = os.environ.get('AIRTABLE_TOKEN')
+        headers = {
+            'Authorization': f'Bearer {airtable_token}',
+            'Content-Type': 'application/json'
+        }
+
+        # Get all records
+        response = requests.get(shop_url, headers=headers)
+
+        if response.status_code != 200:
+            return jsonify({'error': 'Failed to fetch shop items', 'items': []}), 200
+
+        data = response.json()
+        all_records = data.get('records', [])
+
+        # Get disabled items
+        disabled_items_url = f"{shop_url}?filterByFormula=NOT({{Enabled}})"
+        disabled_response = requests.get(disabled_items_url, headers=headers)
+
+        disabled_record_ids = set()
+        if disabled_response.status_code == 200:
+            disabled_data = disabled_response.json()
+            disabled_records = disabled_data.get('records', [])
+            disabled_record_ids = {record['id'] for record in disabled_records}
+
+        items = []
+        for record in all_records:
+            fields = record.get('fields', {})
+            record_id = record['id']
+
+            is_disabled = record_id in disabled_record_ids
+
+            # Extract image URL
+            picture_url = None
+            if 'Picture' in fields and fields['Picture']:
+                if isinstance(fields['Picture'], list) and len(fields['Picture']) > 0:
+                    picture_url = fields['Picture'][0].get('url', '')
+                elif isinstance(fields['Picture'], str):
+                    picture_url = fields['Picture']
+
+            item = {
+                'id': record_id,
+                'name': fields.get('Item', ''),
+                'url': fields.get('Item URL', ''),
+                'picture': picture_url,
+                'price': fields.get('Rough Total Price', 0),
+                'description': fields.get('Description', ''),
+                'starred': bool(fields.get('Starred', False)),
+                'enabled': not is_disabled,
+                'limited': bool(fields.get('Limited', False)),
+                'source': fields.get('Source', 'Warehouse')
+            }
+
+            # Only include enabled items with required fields
+            if item['name'] and item['price'] and item['enabled']:
+                items.append(item)
+
+        return jsonify({
+            'success': True,
+            'items': items,
+            'club_tokens': club.tokens
+        })
+
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch shop items', 'items': []}), 200
 
 
 @clubs_bp.route('/api/clubs/<int:club_id>/project-submission', methods=['POST'])
@@ -498,4 +570,360 @@ def submit_club_project(club_id):
         'success': True,
         'message': 'Project submitted for review',
         'project_id': project.id
+    })
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/members/<int:user_id>', methods=['DELETE'])
+@login_required
+def remove_club_member(club_id, user_id):
+    """Remove a member from the club or allow member to leave"""
+    from app.models.user import create_audit_log
+
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    # Allow members to remove themselves (leave club)
+    is_removing_self = (current_user.id == user_id)
+
+    if is_removing_self:
+        # Prevent leader from leaving their own club
+        if user_id == club.leader_id:
+            return jsonify({'error': 'Club leaders cannot leave their club. Transfer leadership first.'}), 400
+
+        # Prevent co-leaders from leaving (they need to be demoted first)
+        co_leader_membership = ClubMembership.query.filter_by(
+            club_id=club_id,
+            user_id=user_id,
+            role='co-leader'
+        ).first()
+        if co_leader_membership:
+            return jsonify({'error': 'Co-leaders cannot leave. Ask the leader to demote you first.'}), 400
+    else:
+        # Only leaders/co-leaders can remove OTHER members
+        is_leader = club.leader_id == current_user.id
+        is_co_leader = is_user_co_leader(club, current_user)
+
+        if not is_leader and not is_co_leader and not current_user.is_admin:
+            return jsonify({'error': 'Unauthorized: Only club leaders and co-leaders can remove members'}), 403
+
+        # Prevent removing the main leader
+        if user_id == club.leader_id:
+            return jsonify({'error': 'Cannot remove club leader'}), 400
+
+        # Prevent removing co-leader
+        if hasattr(club, 'co_leader_id') and user_id == club.co_leader_id:
+            return jsonify({'error': 'Cannot remove co-leader'}), 400
+
+    # Verify the target user is actually a member
+    membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id).first()
+    if not membership:
+        return jsonify({'error': 'User is not a member of this club'}), 404
+
+    try:
+        db.session.delete(membership)
+        db.session.commit()
+
+        if is_removing_self:
+            create_audit_log(
+                action_type='member_left',
+                description=f'User {current_user.username} left club {club.name}',
+                user=current_user,
+                target_type='club',
+                target_id=club_id,
+                category='club'
+            )
+            return jsonify({'success': True, 'message': 'You have left the club successfully'})
+        else:
+            target_user = membership.user
+            create_audit_log(
+                action_type='member_removed',
+                description=f'User {current_user.username} removed member {target_user.username} from club {club.name}',
+                user=current_user,
+                target_type='club',
+                target_id=club_id,
+                category='club'
+            )
+            return jsonify({'success': True, 'message': 'Member removed successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to remove member'}), 500
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/co-leader', methods=['POST', 'DELETE'])
+@login_required
+def manage_co_leader(club_id):
+    """Make a user co-leader or remove co-leader status"""
+    from app.models.user import create_audit_log
+    from app.services.airtable import AirtableService
+
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    # Only the actual leader can manage co-leaders
+    if club.leader_id != current_user.id and not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized: Only club leaders can manage co-leaders'}), 403
+
+    data = request.get_json(silent=True) or {}
+    airtable_service = AirtableService()
+
+    # Check if this is an email verification step
+    if 'step' in data and data['step'] == 'verify_email':
+        verification_code = data.get('verification_code', '').strip()
+
+        if not verification_code:
+            return jsonify({'error': 'Verification code is required'}), 400
+
+        # Verify the email code
+        is_code_valid = airtable_service.verify_email_code(club.leader.email, verification_code)
+
+        if is_code_valid:
+            return jsonify({
+                'success': True,
+                'message': 'Email verification successful! You can now manage co-leaders.',
+                'email_verified': True
+            })
+        else:
+            return jsonify({'error': 'Invalid or expired verification code. Please check your email or request a new code.'}), 400
+
+    # Check if this is a request to send verification code
+    if 'step' in data and data['step'] == 'send_verification':
+        verification_code = airtable_service.send_email_verification(club.leader.email)
+
+        if verification_code:
+            return jsonify({
+                'success': True,
+                'message': 'Verification code sent to your email. Please check your inbox.',
+                'verification_sent': True
+            })
+        else:
+            return jsonify({'error': 'Failed to send verification code. Please try again.'}), 500
+
+    if request.method == 'DELETE':
+        # Require email verification for removing co-leader
+        email_verified = data.get('email_verified', False)
+        if not email_verified:
+            return jsonify({
+                'error': 'Email verification required for this action',
+                'requires_verification': True,
+                'verification_email': club.leader.email
+            }), 403
+
+        # Remove co-leader
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+
+        # Find the co-leader membership record
+        membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id, role='co-leader').first()
+        if not membership:
+            return jsonify({'error': 'User is not a co-leader of this club'}), 400
+
+        try:
+            # Update membership role back to member
+            membership.role = 'member'
+            db.session.commit()
+
+            create_audit_log(
+                action_type='co_leader_removed',
+                description=f'User {membership.user.username} removed as co-leader from club {club.name}',
+                user=current_user,
+                target_type='club',
+                target_id=club_id,
+                category='club'
+            )
+
+            return jsonify({'success': True, 'message': 'Co-leader removed successfully'})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': f'Failed to remove co-leader: {str(e)}'}), 500
+
+    else:
+        # POST method - Make user co-leader
+        user_id = data.get('user_id')
+
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+
+        # Require email verification for adding co-leader
+        email_verified = data.get('email_verified', False)
+        if not email_verified:
+            return jsonify({
+                'error': 'Email verification required for this action',
+                'requires_verification': True,
+                'verification_email': club.leader.email
+            }), 403
+
+        # Check if user is a member of the club
+        membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id).first()
+        if not membership and user_id != club.leader_id:
+            return jsonify({'error': 'User is not a member of this club'}), 404
+
+        # Check if user is already the leader
+        if user_id == club.leader_id:
+            return jsonify({'error': 'User is already the club leader'}), 400
+
+        # Check if user is already a co-leader
+        existing_co_leader_membership = ClubMembership.query.filter_by(
+            club_id=club_id, user_id=user_id, role='co-leader'
+        ).first()
+        if existing_co_leader_membership:
+            return jsonify({'error': 'User is already a co-leader'}), 400
+
+        # Make user co-leader
+        try:
+            # Update membership role if user is a member
+            if membership:
+                membership.role = 'co-leader'
+            else:
+                # Create a new membership record with co-leader role
+                new_membership = ClubMembership(
+                    user_id=user_id,
+                    club_id=club_id,
+                    role='co-leader'
+                )
+                db.session.add(new_membership)
+
+            db.session.commit()
+
+            from app.models.user import User
+            promoted_user = User.query.get(user_id)
+
+            create_audit_log(
+                action_type='co_leader_added',
+                description=f'User {promoted_user.username} promoted to co-leader in club {club.name}',
+                user=current_user,
+                target_type='club',
+                target_id=club_id,
+                category='club'
+            )
+
+            return jsonify({'success': True, 'message': 'User promoted to co-leader successfully'})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': f'Failed to promote user: {str(e)}'}), 500
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/remove-co-leader', methods=['POST'])
+@login_required
+def remove_co_leader_legacy(club_id):
+    """Remove co-leader (legacy route for backwards compatibility)"""
+    from app.models.user import create_audit_log
+    from app.services.airtable import AirtableService
+
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    # Only the actual leader can remove co-leaders
+    if club.leader_id != current_user.id and not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized: Only club leaders can remove co-leaders'}), 403
+
+    data = request.get_json(silent=True) or {}
+    airtable_service = AirtableService()
+
+    # Check if this is an email verification step
+    if 'step' in data and data['step'] == 'verify_email':
+        verification_code = data.get('verification_code', '').strip()
+
+        if not verification_code:
+            return jsonify({'error': 'Verification code is required'}), 400
+
+        # Verify the email code
+        is_code_valid = airtable_service.verify_email_code(club.leader.email, verification_code)
+
+        if is_code_valid:
+            return jsonify({
+                'success': True,
+                'message': 'Email verification successful! You can now remove co-leaders.',
+                'email_verified': True
+            })
+        else:
+            return jsonify({'error': 'Invalid or expired verification code. Please check your email or request a new code.'}), 400
+
+    # Check if this is a request to send verification code
+    if 'step' in data and data['step'] == 'send_verification':
+        verification_code = airtable_service.send_email_verification(club.leader.email)
+
+        if verification_code:
+            return jsonify({
+                'success': True,
+                'message': 'Verification code sent to your email. Please check your inbox.',
+                'verification_sent': True
+            })
+        else:
+            return jsonify({'error': 'Failed to send verification code. Please try again.'}), 500
+
+    user_id = data.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'User ID is required'}), 400
+
+    # Require email verification for removing co-leader
+    email_verified = data.get('email_verified', False)
+    if not email_verified:
+        return jsonify({
+            'error': 'Email verification required for this action',
+            'requires_verification': True,
+            'verification_email': club.leader.email
+        }), 403
+
+    # Find the co-leader membership record
+    membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id, role='co-leader').first()
+    if not membership:
+        return jsonify({'error': 'User is not a co-leader of this club'}), 400
+
+    try:
+        # Update membership role back to member
+        membership.role = 'member'
+        db.session.commit()
+
+        create_audit_log(
+            action_type='co_leader_removed',
+            description=f'User {membership.user.username} removed as co-leader from club {club.name}',
+            user=current_user,
+            target_type='club',
+            target_id=club_id,
+            category='club'
+        )
+
+        return jsonify({'success': True, 'message': 'Co-leader removed successfully'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to remove co-leader: {str(e)}'}), 500
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/join-code', methods=['POST'])
+@login_required
+def generate_club_join_code(club_id):
+    """Generate a new join code for the club"""
+    from app.models.user import create_audit_log
+
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_co_leader = is_user_co_leader(club, current_user)
+
+    if not is_leader and not is_co_leader and not current_user.is_admin:
+        return jsonify({'error': 'Only leaders and co-leaders can generate join codes'}), 403
+
+    # Generate new join code
+    import secrets
+    club.join_code = secrets.token_urlsafe(8)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='join_code_generated',
+        description=f'New join code generated for club {club.name}',
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        category='club'
+    )
+
+    return jsonify({
+        'success': True,
+        'join_code': club.join_code,
+        'message': 'Join code generated successfully'
     })

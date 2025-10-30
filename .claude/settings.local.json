@@ -1,18 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3:*)",
-      "Bash(psql:*)",
-      "Bash(mkdir:*)",
-      "Bash(touch:*)",
-      "Bash(cat:*)",
+      "Bash(pkill:*)",
       "Bash(find:*)",
-      "Read(///**)",
-      "Bash(for file in /home/runner/workspace/templates/*.html)",
-      "Bash(done)",
-      "Bash(grep:*)",
-      "Bash(for file in gallery leaderboard status account project_review oauth_debug)",
-      "Bash(do echo \"=== $file.html ===\" grep -o \"fetch([''''\"\"][^''''\"\"]*\" /home/runner/workspace/templates/$file.html)"
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

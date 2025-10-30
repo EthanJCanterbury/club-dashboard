@@ -231,3 +231,69 @@ def account():
     """User account settings"""
     user = get_current_user()
     return render_template('account.html', user=user)
+
+
+@main_bp.route('/contact')
+def contact():
+    """Contact page"""
+    return render_template('contact.html')
+
+
+@main_bp.route('/help')
+def help():
+    """Help and FAQ page"""
+    return render_template('help.html')
+
+
+@main_bp.route('/privacy')
+def privacy():
+    """Privacy policy page"""
+    return render_template('privacy.html')
+
+
+@main_bp.route('/terms')
+def terms():
+    """Terms of service page"""
+    return render_template('terms.html')
+
+
+@main_bp.route('/mobile-unavailable')
+def mobile_unavailable():
+    """Mobile unavailable notice page"""
+    return render_template('mobile_unavailable.html')
+
+
+@main_bp.route('/raccoon-mascot')
+def raccoon_mascot():
+    """Easter egg raccoon mascot page"""
+    return render_template('raccoon_mascot.html')
+
+
+@main_bp.route('/pizza-order')
+@login_required
+def pizza_order():
+    """Pizza ordering page"""
+    user = get_current_user()
+    # Get user's clubs
+    from app.models.club import ClubMembership
+    memberships = ClubMembership.query.filter_by(user_id=user.id).all()
+    led_clubs = Club.query.filter_by(leader_id=user.id).all()
+
+    return render_template('pizza_order.html',
+                         memberships=memberships,
+                         led_clubs=led_clubs)
+
+
+@main_bp.route('/project-review')
+@login_required
+def project_review():
+    """Project review page (non-admin)"""
+    user = get_current_user()
+
+    # Get user's submitted projects
+    from app.models.economy import ProjectSubmission
+    projects = ProjectSubmission.query.filter_by(user_id=user.id).order_by(
+        ProjectSubmission.submitted_at.desc()
+    ).all()
+
+    return render_template('project_review.html', projects=projects)

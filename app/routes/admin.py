@@ -33,7 +33,11 @@ def dashboard():
     total_clubs = Club.query.count()
     total_posts = ClubPost.query.count()
     total_assignments = ClubAssignment.query.count()
-    pending_projects = ProjectSubmission.query.filter_by(approved_at=None).count()
+    
+    # Get pending projects from Airtable
+    airtable_service = AirtableService()
+    all_projects = airtable_service.get_ysws_project_submissions()
+    pending_projects = len([p for p in all_projects if p.get('status', '').lower() in ['pending', '']])
 
     # Get total club balance
     total_club_balance = db.session.query(db.func.sum(Club.balance)).scalar() or 0
@@ -250,33 +254,31 @@ def club_detail(club_id):
 @login_required
 @reviewer_required
 def review_projects():
-    """Review pending project submissions"""
-    pending_projects = ProjectSubmission.query.filter_by(
-        approved_at=None
-    ).order_by(ProjectSubmission.submitted_at.desc()).all()
-
-    return render_template('admin_review_projects.html', projects=pending_projects)
+    """Review pending project submissions from Airtable"""
+    current_user = get_current_user()
+    return render_template('project_review.html', current_user=current_user)
 
 
-@admin_bp.route('/projects/<int:project_id>/approve', methods=['POST'])
+@admin_bp.route('/projects/<string:project_id>/approve', methods=['POST'])
 @login_required
 @reviewer_required
 def approve_project(project_id):
-    """Approve a project submission"""
-    project = ProjectSubmission.query.get_or_404(project_id)
-
-    if project.approved_at:
-        flash('Project already approved.', 'warning')
-        return redirect(url_for('admin.review_projects'))
-
-    project.approved_at = datetime.now(timezone.utc)
-    project.approved_by = get_current_user().id
-
-    # TODO: Award tokens to club for approved project
-
-    db.session.commit()
-
-    flash(f'Project "{project.project_name}" approved!', 'success')
+    """Approve a project submission in Airtable"""
+    from app.services.airtable import AirtableService
+    
+    airtable_service = AirtableService()
+    
+    # Update project status in Airtable
+    success = airtable_service.update_ysws_project_submission(project_id, {
+        'Status': 'Approved',
+        'Decision Reason': f'Approved by {get_current_user().username}'
+    })
+    
+    if success:
+        flash('Project approved!', 'success')
+    else:
+        flash('Failed to approve project.', 'error')
+    
     return redirect(url_for('admin.review_projects'))
 
 
@@ -284,9 +286,11 @@ def approve_project(project_id):
 @login_required
 @admin_required
 def review_orders():
-    """Review pending shop orders"""
-    # TODO: Implement order review system
-    return render_template('admin_order_review.html', orders=[])
+    """Review pending shop orders from Airtable"""
+    airtable_service = AirtableService()
+    orders = airtable_service.get_all_orders()
+    
+    return render_template('admin_order_review.html', orders=orders)
 
 
 @admin_bp.route('/settings', methods=['GET', 'POST'])
@@ -322,6 +326,10 @@ def settings():
 @admin_required
 def stats():
     """System statistics"""
+    # Get projects from Airtable
+    airtable_service = AirtableService()
+    all_projects = airtable_service.get_ysws_project_submissions()
+    
     # Get various statistics
     stats_data = {
         'total_users': User.query.count(),
@@ -331,10 +339,8 @@ def stats():
         'total_tokens_distributed': db.session.query(
             db.func.sum(ClubTransaction.amount)
         ).filter(ClubTransaction.amount > 0).scalar() or 0,
-        'pending_projects': ProjectSubmission.query.filter_by(approved_at=None).count(),
-        'approved_projects': ProjectSubmission.query.filter(
-            ProjectSubmission.approved_at.isnot(None)
-        ).count(),
+        'pending_projects': len([p for p in all_projects if p.get('status', '').lower() in ['pending', '']]),
+        'approved_projects': len([p for p in all_projects if p.get('status', '').lower() == 'approved']),
     }
 
     return render_template('admin_stats.html', stats=stats_data)
@@ -347,7 +353,8 @@ def pizza_grants():
     """Pizza grant management"""
     # Get grants from Airtable
     try:
-        grants = AirtableService.get_pizza_grants()
+        airtable_service = AirtableService()
+        grants = airtable_service.get_pizza_grants()
     except Exception as e:
         flash(f'Error loading grants: {str(e)}', 'error')
         grants = []
@@ -382,3 +389,12 @@ def api_banner_settings():
     from app.routes.api import admin_banner_settings
     # Forward the request to the main API endpoint
     return admin_banner_settings()
+
+
+@admin_bp.route('/projects/review/debug')
+@login_required
+@reviewer_required
+def review_projects_debug():
+    """Debug page for project review"""
+    current_user = get_current_user()
+    return render_template('test_projects_debug.html', current_user=current_user)

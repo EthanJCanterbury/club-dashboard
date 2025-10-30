@@ -4,9 +4,12 @@ Handles public API endpoints, admin API, and mobile app endpoints.
 """
 
 import html
+import logging
 from flask import Blueprint, jsonify, request, current_app
 from extensions import db, limiter
-from app.decorators.auth import api_key_required, oauth_required, admin_required, login_required
+from app.decorators.auth import api_key_required, oauth_required, admin_required, login_required, reviewer_required
+
+logger = logging.getLogger(__name__)
 from app.utils.auth_helpers import get_current_user, is_authenticated
 from app.utils.club_helpers import is_user_co_leader
 from app.utils.sanitization import sanitize_string
@@ -1721,112 +1724,116 @@ def admin_banner_settings():
 @admin_required
 @limiter.limit("100 per minute")
 def admin_get_orders():
-    """Get all orders (admin only)"""
-    from app.models.shop import Order
+    """Get all orders from Airtable (admin only)"""
+    from app.services.airtable import AirtableService
 
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 50, type=int)
-    per_page = min(per_page, 100)
-
-    status_filter = request.args.get('status')
-    search = request.args.get('search')
-
-    query = Order.query
-
-    # Apply filters
-    if status_filter:
-        query = query.filter(Order.status == status_filter)
-
-    if search:
-        search_term = f'%{search}%'
-        query = query.join(User, Order.user_id == User.id).join(Club, Order.club_id == Club.id).filter(
-            db.or_(
-                User.username.ilike(search_term),
-                Club.name.ilike(search_term),
-                Order.shipping_name.ilike(search_term)
-            )
-        )
-
-    orders_pagination = query.order_by(Order.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-
-    orders_data = [order.to_dict() for order in orders_pagination.items]
-
-    return jsonify({
-        'orders': orders_data,
-        'total': orders_pagination.total,
-        'page': page,
-        'per_page': per_page,
-        'pages': orders_pagination.pages
-    })
+    airtable_service = AirtableService()
+    
+    try:
+        all_orders = airtable_service.get_all_orders()
+        
+        # Apply filters if provided
+        status_filter = request.args.get('status')
+        search = request.args.get('search')
+        
+        filtered_orders = all_orders
+        
+        if status_filter:
+            filtered_orders = [o for o in filtered_orders if o.get('shipment_status', '').lower() == status_filter.lower()]
+        
+        if search:
+            search_lower = search.lower()
+            filtered_orders = [
+                o for o in filtered_orders
+                if search_lower in o.get('club_name', '').lower() or
+                   search_lower in o.get('leader_email', '').lower() or
+                   search_lower in o.get('leader_first_name', '').lower() or
+                   search_lower in o.get('leader_last_name', '').lower()
+            ]
+        
+        return jsonify({
+            'orders': filtered_orders,
+            'total': len(filtered_orders)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e), 'orders': []}), 500
 
 
-@api_bp.route('/admin/orders/<int:order_id>/status', methods=['PATCH'])
+@api_bp.route('/admin/orders/<string:order_id>/status', methods=['PATCH'])
 @login_required
 @admin_required
 def admin_update_order_status(order_id):
-    """Update order status (admin only)"""
-    from app.models.shop import Order
-    from datetime import datetime
+    """Update order status in Airtable (admin only)"""
+    from app.services.airtable import AirtableService
 
-    order = Order.query.get_or_404(order_id)
+    airtable_service = AirtableService()
     current_user = get_current_user()
 
     data = request.get_json()
     new_status = data.get('status')
-    admin_notes = data.get('admin_notes', '')
-    tracking_number = data.get('tracking_number')
+    reviewer_reason = data.get('reviewer_reason', '')
 
     if not new_status:
         return jsonify({'error': 'status is required'}), 400
 
-    valid_statuses = ['pending', 'approved', 'rejected', 'completed', 'refunded']
+    valid_statuses = ['Pending', 'Approved', 'Rejected', 'Shipped', 'Delivered']
     if new_status not in valid_statuses:
         return jsonify({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
 
-    old_status = order.status
-    order.status = new_status
+    # Update order in Airtable
+    success = airtable_service.update_order_status(order_id, new_status, reviewer_reason)
 
-    if admin_notes:
-        order.admin_notes = sanitize_string(admin_notes, max_length=2000)
+    if success:
+        create_audit_log(
+            action_type='order_status_update',
+            description=f'Admin {current_user.username} changed order {order_id} status to {new_status}',
+            user=current_user,
+            target_type='order',
+            target_id=order_id,
+            details={'new_status': new_status},
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
 
-    if tracking_number:
-        order.tracking_number = sanitize_string(tracking_number, max_length=200)
-
-    # Update timestamps based on status
-    if new_status == 'approved' and not order.approved_at:
-        order.approved_at = datetime.utcnow()
-    elif new_status == 'completed' and not order.completed_at:
-        order.completed_at = datetime.utcnow()
-
-    db.session.commit()
-
-    create_audit_log(
-        action_type='order_status_update',
-        description=f'Admin {current_user.username} changed order #{order_id} status from {old_status} to {new_status}',
-        user=current_user,
-        target_type='order',
-        target_id=order_id,
-        details={'old_status': old_status, 'new_status': new_status},
-        severity='info',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'Order status updated',
-        'order': order.to_dict()
-    })
+        return jsonify({
+            'success': True,
+            'message': 'Order status updated'
+        })
+    else:
+        return jsonify({'error': 'Failed to update order status'}), 500
 
 
-@api_bp.route('/admin/orders/<int:order_id>', methods=['DELETE'])
+@api_bp.route('/admin/orders/<string:order_id>', methods=['DELETE'])
 @login_required
 @admin_required
 def admin_delete_order(order_id):
-    """Delete an order (admin only)"""
-    from app.models.shop import Order
+    """Delete an order from Airtable (admin only)"""
+    from app.services.airtable import AirtableService
+
+    airtable_service = AirtableService()
+    current_user = get_current_user()
+
+    success = airtable_service.delete_order(order_id)
+
+    if success:
+        create_audit_log(
+            action_type='order_delete',
+            description=f'Admin {current_user.username} deleted order {order_id}',
+            user=current_user,
+            target_type='order',
+            target_id=order_id,
+            severity='warning',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Order deleted'
+        })
+    else:
+        return jsonify({'error': 'Failed to delete order'}), 500
 
     order = Order.query.get_or_404(order_id)
     current_user = get_current_user()
@@ -1853,61 +1860,40 @@ def admin_delete_order(order_id):
     })
 
 
-@api_bp.route('/admin/orders/<int:order_id>/refund', methods=['POST'])
+@api_bp.route('/admin/orders/<string:order_id>/refund', methods=['POST'])
 @login_required
 @admin_required
 def admin_refund_order(order_id):
-    """Refund an order (admin only)"""
-    from app.models.shop import Order
-    from datetime import datetime
+    """Reject/refund an order in Airtable (admin only)"""
+    from app.services.airtable import AirtableService
 
-    order = Order.query.get_or_404(order_id)
+    airtable_service = AirtableService()
     current_user = get_current_user()
 
-    if order.status == 'refunded':
-        return jsonify({'error': 'Order already refunded'}), 400
+    data = request.get_json() or {}
+    reason = data.get('reason', 'Order refunded/rejected by admin')
 
-    # Refund tokens to club
-    if order.club:
-        club = order.club
-        club.tokens += order.total_price
+    # Update order status to Rejected in Airtable
+    success = airtable_service.update_order_status(order_id, 'Rejected', reason)
 
-        # Create transaction record
-        success, error_msg = create_club_transaction(
-            club_id=club.id,
-            transaction_type='credit',
-            amount=order.total_price,
-            description=f'Refund for order #{order.id}',
-            user_id=current_user.id,
-            reference_type='order_refund',
-            reference_id=order.id,
-            created_by=current_user.id
+    if success:
+        create_audit_log(
+            action_type='order_refund',
+            description=f'Admin {current_user.username} refunded/rejected order {order_id}',
+            user=current_user,
+            target_type='order',
+            target_id=order_id,
+            severity='warning',
+            admin_action=True,
+            category='admin'
         )
 
-        if not success:
-            return jsonify({'error': f'Failed to process refund: {error_msg}'}), 500
-
-    # Update order status
-    order.status = 'refunded'
-    db.session.commit()
-
-    create_audit_log(
-        action_type='order_refund',
-        description=f'Admin {current_user.username} refunded order #{order_id}',
-        user=current_user,
-        target_type='order',
-        target_id=order_id,
-        details={'refund_amount': order.total_price},
-        severity='warning',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'Order refunded successfully',
-        'refund_amount': order.total_price
-    })
+        return jsonify({
+            'success': True,
+            'message': 'Order refunded/rejected successfully'
+        })
+    else:
+        return jsonify({'error': 'Failed to refund order'}), 500
 
 
 # ============================================================================
@@ -2525,32 +2511,41 @@ def admin_create_status_update(incident_id):
 # Project Review API Endpoints
 # ============================================================================
 
-@api_bp.route('/projects/review', methods=['GET'])
+@api_bp.route('/user/projects/pending', methods=['GET'])
 @login_required
 def get_projects_for_review():
-    """Get projects pending review"""
-    from app.models.economy import ProjectSubmission
+    """Get projects pending review from Airtable"""
+    from app.services.airtable import AirtableService
 
     user = get_current_user()
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # Get user's pending projects
-    projects = ProjectSubmission.query.filter_by(
-        user_id=user.id,
-        approved_at=None
-    ).order_by(ProjectSubmission.created_at.desc()).all()
+    # Get all projects from Airtable
+    airtable_service = AirtableService()
+    all_projects = airtable_service.get_ysws_project_submissions()
 
+    # Filter for user's pending projects by email
+    user_projects = [
+        p for p in all_projects
+        if p.get('email', '').lower() == user.email.lower() and
+        p.get('status', '').lower() in ['pending', '']
+    ]
+
+    # Sort by created time (newest first)
+    user_projects.sort(key=lambda x: x.get('createdTime', ''), reverse=True)
+
+    # Transform to expected format
     projects_data = []
-    for project in projects:
+    for project in user_projects:
         projects_data.append({
-            'id': project.id,
-            'name': project.name,
-            'description': project.description,
-            'url': project.url,
-            'github_url': project.github_url,
-            'created_at': project.created_at.isoformat() if project.created_at else None,
-            'status': 'pending'
+            'id': project.get('id'),
+            'name': f"{project.get('firstName', '')} {project.get('lastName', '')}".strip(),
+            'description': project.get('description', ''),
+            'url': project.get('playableUrl', ''),
+            'github_url': project.get('codeUrl', ''),
+            'created_at': project.get('createdTime', ''),
+            'status': project.get('status', 'pending').lower()
         })
 
     return jsonify({
@@ -2559,77 +2554,150 @@ def get_projects_for_review():
     })
 
 
-@api_bp.route('/projects/review/<int:project_id>', methods=['POST'])
+@api_bp.route('/projects/review', methods=['GET'])
+@login_required
+@reviewer_required
+@limiter.limit("100 per hour")
+def api_get_project_submissions():
+    """Get all YSWS project submissions for review"""
+    from app.services.airtable import AirtableService
+    
+    try:
+        airtable_service = AirtableService()
+        submissions = airtable_service.get_ysws_project_submissions()
+        
+        return jsonify({
+            'success': True,
+            'projects': submissions
+        })
+    except Exception as e:
+        logger.error(f"Error fetching project submissions: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch project submissions'
+        }), 500
+
+
+@api_bp.route('/projects/review/<string:project_id>', methods=['PUT'])
+@login_required
+@reviewer_required
+@limiter.limit("50 per hour")
+def api_update_project_review(project_id):
+    """Update the review status of a YSWS project submission"""
+    from app.services.airtable import AirtableService
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Validate required fields
+        new_status = data.get('status')
+        decision_reason = data.get('decisionReason')
+        
+        if not new_status or not decision_reason:
+            return jsonify({'error': 'Status and decision reason are required'}), 400
+
+        # Validate status
+        valid_statuses = ['Pending', 'Approved', 'Rejected', 'Flagged']
+        if new_status not in valid_statuses:
+            return jsonify({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
+
+        # Update in Airtable
+        airtable_service = AirtableService()
+        current_user = get_current_user()
+        
+        # Prepare update fields
+        update_fields = {
+            'Status': new_status,
+            'Decision Reason': decision_reason
+        }
+        
+        success = airtable_service.update_ysws_project_submission(project_id, update_fields)
+        
+        if not success:
+            return jsonify({'error': 'Failed to update project status in Airtable'}), 500
+        
+        # Log audit
+        create_audit_log(
+            action_type='project_review',
+            description=f"{('Admin' if current_user.is_admin else 'Reviewer')} {current_user.username} reviewed project submission: {new_status}",
+            user=current_user,
+            target_type='project',
+            target_id=project_id,
+            details={'status': new_status, 'reason': decision_reason},
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Project {new_status.lower()} successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating project review: {str(e)}")
+        return jsonify({'error': 'Failed to update project review'}), 500
+
+
+@api_bp.route('/projects/review/<string:project_id>', methods=['POST'])
 @login_required
 @admin_required
 def review_project(project_id):
-    """Review and approve/reject a project (admin only)"""
-    from app.models.economy import ProjectSubmission
+    """Review and approve/reject a project in Airtable (admin only)"""
+    from app.services.airtable import AirtableService
     from datetime import datetime
 
-    project = ProjectSubmission.query.get_or_404(project_id)
+    airtable_service = AirtableService()
     current_user = get_current_user()
 
     data = request.get_json()
     approved = data.get('approved', False)
-    token_amount = int(data.get('token_amount', 0))
     admin_notes = sanitize_string(data.get('admin_notes', ''), max_length=2000)
 
-    if approved and token_amount > 0:
-        # Approve and grant tokens
-        project.approved_at = datetime.utcnow()
-        project.tokens_awarded = token_amount
+    if approved:
+        # Approve in Airtable
+        success = airtable_service.update_ysws_project_submission(project_id, {
+            'Status': 'Approved',
+            'Decision Reason': admin_notes or f'Approved by {current_user.username}'
+        })
 
-        # Grant tokens to club
-        if project.club:
-            project.club.tokens += token_amount
-
-            # Create transaction
-            create_club_transaction(
-                club_id=project.club_id,
-                transaction_type='credit',
-                amount=token_amount,
-                description=f'Project approved: {project.name}',
-                user_id=current_user.id,
-                reference_type='project_approval',
-                reference_id=project.id,
-                created_by=current_user.id
+        if success:
+            create_audit_log(
+                action_type='project_approval',
+                description=f'Admin {current_user.username} approved project {project_id}',
+                user=current_user,
+                target_type='project',
+                target_id=project_id,
+                severity='info',
+                admin_action=True,
+                category='admin'
             )
-
-        create_audit_log(
-            action_type='project_approval',
-            description=f'Admin {current_user.username} approved project "{project.name}"',
-            user=current_user,
-            target_type='project',
-            target_id=project_id,
-            details={'token_amount': token_amount},
-            severity='info',
-            admin_action=True,
-            category='admin'
-        )
-
-        message = 'Project approved and tokens granted'
+            message = 'Project approved'
+        else:
+            return jsonify({'error': 'Failed to approve project'}), 500
     else:
-        # Reject
-        project.rejected_at = datetime.utcnow()
+        # Reject in Airtable
+        success = airtable_service.update_ysws_project_submission(project_id, {
+            'Status': 'Rejected',
+            'Decision Reason': admin_notes or f'Rejected by {current_user.username}'
+        })
 
-        create_audit_log(
-            action_type='project_rejection',
-            description=f'Admin {current_user.username} rejected project "{project.name}"',
-            user=current_user,
-            target_type='project',
-            target_id=project_id,
-            severity='info',
-            admin_action=True,
-            category='admin'
-        )
-
-        message = 'Project rejected'
-
-    if admin_notes:
-        project.admin_notes = admin_notes
-
-    db.session.commit()
+        if success:
+            create_audit_log(
+                action_type='project_rejection',
+                description=f'Admin {current_user.username} rejected project {project_id}',
+                user=current_user,
+                target_type='project',
+                target_id=project_id,
+                severity='info',
+                admin_action=True,
+                category='admin'
+            )
+            message = 'Project rejected'
+        else:
+            return jsonify({'error': 'Failed to reject project'}), 500
 
     return jsonify({
         'success': True,
@@ -2637,80 +2705,25 @@ def review_project(project_id):
     })
 
 
-@api_bp.route('/projects/delete/<int:project_id>', methods=['DELETE'])
+@api_bp.route('/projects/delete/<string:project_id>', methods=['DELETE'])
 @login_required
 @admin_required
 def delete_project(project_id):
-    """Delete a project submission (admin only)"""
-    from app.models.economy import ProjectSubmission
+    """Delete a project submission from Airtable (admin only)"""
+    from app.services.airtable import AirtableService
 
-    project = ProjectSubmission.query.get_or_404(project_id)
+    airtable_service = AirtableService()
     current_user = get_current_user()
 
-    project_name = project.name
+    success = airtable_service.delete_ysws_project_submission(project_id)
 
-    db.session.delete(project)
-    db.session.commit()
-
-    create_audit_log(
-        action_type='project_delete',
-        description=f'Admin {current_user.username} deleted project "{project_name}"',
-        user=current_user,
-        target_type='project',
-        target_id=project_id,
-        severity='warning',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'Project deleted'
-    })
-
-
-@api_bp.route('/projects/grant-override/<int:project_id>', methods=['POST'])
-@login_required
-@admin_required
-def grant_override_project(project_id):
-    """Force grant tokens for a project (admin only)"""
-    from app.models.economy import ProjectSubmission
-
-    project = ProjectSubmission.query.get_or_404(project_id)
-    current_user = get_current_user()
-
-    data = request.get_json()
-    token_amount = int(data.get('token_amount', 0))
-
-    if token_amount <= 0:
-        return jsonify({'error': 'Token amount must be positive'}), 400
-
-    # Grant tokens to club
-    if project.club:
-        project.club.tokens += token_amount
-        project.tokens_awarded = token_amount
-
-        # Create transaction
-        create_club_transaction(
-            club_id=project.club_id,
-            transaction_type='credit',
-            amount=token_amount,
-            description=f'Token override for project: {project.name}',
-            user_id=current_user.id,
-            reference_type='project_override',
-            reference_id=project.id,
-            created_by=current_user.id
-        )
-
-        db.session.commit()
-
+    if success:
         create_audit_log(
-            action_type='project_override',
-            description=f'Admin {current_user.username} granted {token_amount} tokens override for project "{project.name}"',
+            action_type='project_delete',
+            description=f'Admin {current_user.username} deleted project {project_id}',
             user=current_user,
             target_type='project',
             target_id=project_id,
-            details={'token_amount': token_amount},
             severity='warning',
             admin_action=True,
             category='admin'
@@ -2718,10 +2731,54 @@ def grant_override_project(project_id):
 
         return jsonify({
             'success': True,
-            'message': 'Tokens granted successfully'
+            'message': 'Project deleted'
         })
+    else:
+        return jsonify({'error': 'Failed to delete project'}), 500
 
-    return jsonify({'error': 'Project has no associated club'}), 400
+
+@api_bp.route('/projects/grant-override/<string:project_id>', methods=['PUT', 'POST'])
+@login_required
+@admin_required
+def grant_override_project(project_id):
+    """Override grant amount for a project in Airtable (admin only)"""
+    from app.services.airtable import AirtableService
+
+    airtable_service = AirtableService()
+    current_user = get_current_user()
+
+    data = request.get_json()
+    grant_amount = float(data.get('grantAmount') or data.get('grant_amount', 0))
+    override_reason = sanitize_string(data.get('overrideReason') or data.get('override_reason', ''), max_length=2000)
+
+    if grant_amount < 0:
+        return jsonify({'error': 'Grant amount cannot be negative'}), 400
+
+    # Update grant amount in Airtable
+    success = airtable_service.update_ysws_project_submission(project_id, {
+        'Grant Amount Override': grant_amount,
+        'Grant Override Reason': override_reason or f'Override by {current_user.username}'
+    })
+
+    if success:
+        create_audit_log(
+            action_type='project_override',
+            description=f'Admin {current_user.username} set grant override to ${grant_amount} for project {project_id}',
+            user=current_user,
+            target_type='project',
+            target_id=project_id,
+            details={'grant_amount': grant_amount},
+            severity='info',
+            admin_action=True,
+            category='admin'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Grant amount override set successfully'
+        })
+    else:
+        return jsonify({'error': 'Failed to update grant override'}), 500
 
 
 # ============================================================================
@@ -3627,3 +3684,16 @@ def delete_gallery_post(post_id):
         db.session.rollback()
         current_app.logger.error(f"Error deleting gallery post {post_id}: {str(e)}")
         return jsonify({'error': 'Failed to delete gallery post'}), 500
+
+
+@api_bp.route('/projects/review/test', methods=['GET'])
+def api_test_projects():
+    """Test endpoint - no auth required"""
+    return jsonify({
+        'success': True,
+        'message': 'Test successful',
+        'projects': [
+            {'id': '1', 'firstName': 'Test', 'lastName': 'User', 'status': 'Approved'},
+            {'id': '2', 'firstName': 'Another', 'lastName': 'Test', 'status': 'Rejected'}
+        ]
+    })

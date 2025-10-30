@@ -252,3 +252,58 @@ def oauth_debug_callback():
                          code=code,
                          state=state,
                          error=error)
+
+
+@oauth_bp.route('/consent')
+@login_required
+def oauth_consent():
+    """OAuth consent page"""
+    user = get_current_user()
+
+    # Get OAuth parameters from session or query string
+    oauth_params = session.get('oauth_params', {})
+    client_id = oauth_params.get('client_id') or request.args.get('client_id')
+
+    if not client_id:
+        return jsonify({'error': 'Missing client_id'}), 400
+
+    # Get OAuth application
+    app = OAuthApplication.query.filter_by(client_id=client_id).first()
+    if not app:
+        return jsonify({'error': 'Unknown client'}), 404
+
+    # Check if mobile
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad'])
+
+    if is_mobile:
+        return render_template('oauth_consent_mobile.html',
+                             app=app,
+                             oauth_params=oauth_params)
+
+    return render_template('oauth_consent.html',
+                         app=app,
+                         oauth_params=oauth_params)
+
+
+@oauth_bp.route('/consent-mobile')
+@login_required
+def oauth_consent_mobile():
+    """OAuth consent page (mobile version)"""
+    user = get_current_user()
+
+    # Get OAuth parameters from session or query string
+    oauth_params = session.get('oauth_params', {})
+    client_id = oauth_params.get('client_id') or request.args.get('client_id')
+
+    if not client_id:
+        return jsonify({'error': 'Missing client_id'}), 400
+
+    # Get OAuth application
+    app = OAuthApplication.query.filter_by(client_id=client_id).first()
+    if not app:
+        return jsonify({'error': 'Unknown client'}), 404
+
+    return render_template('oauth_consent_mobile.html',
+                         app=app,
+                         oauth_params=oauth_params)

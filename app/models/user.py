@@ -29,7 +29,6 @@ def get_real_ip():
 
 
 class User(db.Model):
-    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
@@ -226,9 +225,9 @@ class UserRole(db.Model):
     __tablename__ = 'user_role'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False, index=True)
-    assigned_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     assigned_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
@@ -244,7 +243,7 @@ class AuditLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)  # Nullable for system actions
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)  # Nullable for system actions
     action_type = db.Column(db.String(50), nullable=False, index=True)  # signup, login, create_post, suspend_user, etc.
     action_category = db.Column(db.String(30), nullable=False, index=True)  # auth, user, club, admin, security
     target_type = db.Column(db.String(30), nullable=True)  # user, club, post, etc.

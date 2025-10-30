@@ -13,7 +13,7 @@ class APIKey(db.Model):
     key = db.Column(db.String(64), unique=True, nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_used_at = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True)
@@ -44,7 +44,7 @@ class OAuthApplication(db.Model):
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     redirect_uris = db.Column(db.Text)  # JSON array of allowed redirect URIs
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = db.Column(db.Boolean, default=True)
     scopes = db.Column(db.Text)  # JSON array of allowed scopes
@@ -94,7 +94,7 @@ class OAuthToken(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     access_token = db.Column(db.String(128), unique=True, nullable=False, index=True)
     refresh_token = db.Column(db.String(128), unique=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     application_id = db.Column(db.Integer, db.ForeignKey('o_auth_application.id'), nullable=False)
     scopes = db.Column(db.Text)  # JSON array of granted scopes
     expires_at = db.Column(db.DateTime, nullable=False)
@@ -124,7 +124,7 @@ class OAuthAuthorizationCode(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(128), unique=True, nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     application_id = db.Column(db.Integer, db.ForeignKey('o_auth_application.id'), nullable=False)
     redirect_uri = db.Column(db.String(500), nullable=False)
     scopes = db.Column(db.Text)  # JSON array of requested scopes

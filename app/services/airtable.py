@@ -10,6 +10,9 @@ import secrets
 import string
 from datetime import datetime, timezone
 
+# Set up module logger
+logger = logging.getLogger(__name__)
+
 # This will be properly initialized when imported by the app
 app = None
 db = None
@@ -102,16 +105,16 @@ class AirtableService:
 
     def verify_club_leader(self, email, club_name):
         if not self.api_token:
-            app.logger.error("Airtable API token not configured")
+            logger.error("Airtable API token not configured")
             return False
 
         if not self.clubs_base_id or not self.clubs_table_name:
-            app.logger.error("Airtable clubs base ID or table name not configured")
+            logger.error("Airtable clubs base ID or table name not configured")
             return False
 
         # Validate email format to prevent injection
         if not email or '@' not in email or len(email) < 3:
-            app.logger.error("Invalid email format for verification")
+            logger.error("Invalid email format for verification")
             return False
 
         # Escape email for safe use in formula - prevent wildcard matching
@@ -119,7 +122,7 @@ class AirtableService:
 
         # Validate email contains proper domain
         if email.count('@') != 1:
-            app.logger.error("Invalid email format - multiple @ symbols")
+            logger.error("Invalid email format - multiple @ symbols")
             return False
 
         try:
@@ -128,37 +131,37 @@ class AirtableService:
                 'filterByFormula': f'{{Current Leaders\' Emails}} = "{escaped_email}"'
             }
 
-            app.logger.info(f"Verifying club leader: email={email}, club={club_name}")
-            app.logger.debug(f"Airtable URL: {self.clubs_base_url}")
-            app.logger.debug(f"Email filter formula: {email_filter_params['filterByFormula']}")
+            logger.info(f"Verifying club leader: email={email}, club={club_name}")
+            logger.debug(f"Airtable URL: {self.clubs_base_url}")
+            logger.debug(f"Email filter formula: {email_filter_params['filterByFormula']}")
 
             # Validate the URL to prevent SSRF
             parsed_url = urllib.parse.urlparse(self.clubs_base_url)
             if parsed_url.hostname not in ['api.airtable.com']:
-                app.logger.error(f"Invalid Airtable URL hostname: {parsed_url.hostname}")
+                logger.error(f"Invalid Airtable URL hostname: {parsed_url.hostname}")
                 return False
 
             response = self._safe_request('GET', self.clubs_base_url, headers=self.headers, params=email_filter_params)
 
-            app.logger.info(f"Airtable response status: {response.status_code}")
-            app.logger.debug(f"Airtable response headers: {dict(response.headers)}")
-            app.logger.debug(f"Airtable response content length: {len(response.content) if response.content else 0}")
+            logger.info(f"Airtable response status: {response.status_code}")
+            logger.debug(f"Airtable response headers: {dict(response.headers)}")
+            logger.debug(f"Airtable response content length: {len(response.content) if response.content else 0}")
 
             if response.status_code == 200:
                 try:
                     data = response.json()
-                    app.logger.debug(f"Airtable response data keys: {list(data.keys()) if data else 'None'}")
+                    logger.debug(f"Airtable response data keys: {list(data.keys()) if data else 'None'}")
                     records = data.get('records', [])
-                    app.logger.info(f"Found {len(records)} records with email {email}")
+                    logger.info(f"Found {len(records)} records with email {email}")
                     if records:
-                        app.logger.debug(f"First record fields: {list(records[0].get('fields', {}).keys()) if records else 'None'}")
+                        logger.debug(f"First record fields: {list(records[0].get('fields', {}).keys()) if records else 'None'}")
                 except ValueError as json_error:
-                    app.logger.error(f"Failed to parse Airtable JSON response: {json_error}")
-                    app.logger.error(f"Raw response content: {response.text[:500]}...")
+                    logger.error(f"Failed to parse Airtable JSON response: {json_error}")
+                    logger.error(f"Raw response content: {response.text[:500]}...")
                     return False
 
                 if len(records) == 0:
-                    app.logger.info("No records found with that email address")
+                    logger.info("No records found with that email address")
                     return False
 
                 # Check if any of the records match the club name (case-insensitive partial match)
@@ -166,13 +169,13 @@ class AirtableService:
 
                 # Log all available club names for debugging
                 club_names = [record.get('fields', {}).get('Club Name', '') for record in records]
-                app.logger.info(f"Available club names for {email}: {club_names}")
-                app.logger.debug(f"Full record data for debugging: {[record.get('fields', {}) for record in records]}")
+                logger.info(f"Available club names for {email}: {club_names}")
+                logger.debug(f"Full record data for debugging: {[record.get('fields', {}) for record in records]}")
 
                 for record in records:
                     fields = record.get('fields', {})
                     venue = fields.get('Club Name', '').lower().strip()
-                    app.logger.debug(f"Checking club name: '{venue}' against requested club name: '{club_name_lower}'")
+                    logger.debug(f"Checking club name: '{venue}' against requested club name: '{club_name_lower}'")
 
                     # Try multiple matching strategies with more flexible matching
                     if (club_name_lower in venue or
@@ -183,29 +186,29 @@ class AirtableService:
                         any(word.strip() in club_name_lower for word in venue.split() if len(word.strip()) > 2) or
                         # Check for common school/high school variations
                         self._check_school_variations(club_name_lower, venue)):
-                        app.logger.info(f"Found matching club: {fields.get('Club Name', '')}")
+                        logger.info(f"Found matching club: {fields.get('Club Name', '')}")
                         return True
 
-                app.logger.info(f"No club name match found for '{club_name}' in available clubs: {club_names}")
+                logger.info(f"No club name match found for '{club_name}' in available clubs: {club_names}")
                 return False
 
             elif response.status_code == 403:
-                app.logger.error(f"Airtable 403 Forbidden - check API token permissions. Response: {response.text}")
+                logger.error(f"Airtable 403 Forbidden - check API token permissions. Response: {response.text}")
                 return False
             elif response.status_code == 404:
-                app.logger.error(f"Airtable 404 Not Found - check base ID and table name. Response: {response.text}")
+                logger.error(f"Airtable 404 Not Found - check base ID and table name. Response: {response.text}")
                 return False
             else:
-                app.logger.error(f"Airtable API error {response.status_code}: {response.text}")
+                logger.error(f"Airtable API error {response.status_code}: {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"Exception during Airtable verification: {str(e)}")
+            logger.error(f"Exception during Airtable verification: {str(e)}")
             return False
 
     def log_pizza_grant(self, submission_data):
         if not self.api_token:
-            app.logger.error("Airtable API token not configured")
+            logger.error("Airtable API token not configured")
             return None
 
         try:
@@ -226,12 +229,12 @@ class AirtableService:
 
                 if not is_in_person:
                     grant_amount = 0
-                    app.logger.info(f"Grant denied: Not an in-person meeting")
+                    logger.info(f"Grant denied: Not an in-person meeting")
                 elif club_member_count < 3:
                     grant_amount = 0
-                    app.logger.info(f"Grant denied: Club has {club_member_count} members, need 3+")
+                    logger.info(f"Grant denied: Club has {club_member_count} members, need 3+")
                 else:
-                    app.logger.info(f"Grant approved: ${grant_amount} for {hours} hours (in-person meeting, {club_member_count} members)")
+                    logger.info(f"Grant approved: ${grant_amount} for {hours} hours (in-person meeting, {club_member_count} members)")
 
             # Use YSWS Project Submission table fields - updated field names to match actual table
             project_table_name = urllib.parse.quote('YSWS Project Submission')
@@ -270,8 +273,8 @@ class AirtableService:
             }
 
             # Debug log submission data
-            app.logger.debug(f"Club name in submission_data: '{submission_data.get('club_name', 'NOT_FOUND')}'")
-            app.logger.debug(f"Leader email in submission_data: '{submission_data.get('leader_email', 'NOT_FOUND')}'")
+            logger.debug(f"Club name in submission_data: '{submission_data.get('club_name', 'NOT_FOUND')}'")
+            logger.debug(f"Leader email in submission_data: '{submission_data.get('leader_email', 'NOT_FOUND')}'")
 
             # Remove empty fields to avoid validation issues
             fields_before_filter = fields.copy()
@@ -280,27 +283,27 @@ class AirtableService:
             # Log which fields were filtered out
             filtered_out = set(fields_before_filter.keys()) - set(fields.keys())
             if filtered_out:
-                app.logger.debug(f"Fields filtered out due to empty values: {filtered_out}")
+                logger.debug(f"Fields filtered out due to empty values: {filtered_out}")
 
             payload = {'records': [{'fields': fields}]}
 
-            app.logger.info(f"Submitting to Airtable: {project_url}")
-            app.logger.debug(f"Airtable payload fields: {list(fields.keys())}")
-            app.logger.info(f"Screenshot field value: {fields.get('Screenshot', 'NOT_FOUND')}")
-            app.logger.debug(f"Full payload: {payload}")
+            logger.info(f"Submitting to Airtable: {project_url}")
+            logger.debug(f"Airtable payload fields: {list(fields.keys())}")
+            logger.info(f"Screenshot field value: {fields.get('Screenshot', 'NOT_FOUND')}")
+            logger.debug(f"Full payload: {payload}")
 
             response = requests.post(project_url, headers=self.headers, json=payload)
 
-            app.logger.info(f"Airtable response status: {response.status_code}")
+            logger.info(f"Airtable response status: {response.status_code}")
             if response.status_code not in [200, 201]:
-                app.logger.error(f"Airtable submission failed: {response.text}")
+                logger.error(f"Airtable submission failed: {response.text}")
                 return None
 
-            app.logger.info("Successfully submitted to Airtable")
+            logger.info("Successfully submitted to Airtable")
             return response.json()
 
         except Exception as e:
-            app.logger.error(f"Exception in log_pizza_grant: {str(e)}")
+            logger.error(f"Exception in log_pizza_grant: {str(e)}")
             return None
 
     def submit_pizza_grant(self, grant_data):
@@ -326,15 +329,15 @@ class AirtableService:
 
         try:
             response = requests.post(grants_url, headers=self.headers, json=payload)
-            app.logger.debug(f"Airtable response status: {response.status_code}")
-            app.logger.debug(f"Airtable response body: {response.text}")
+            logger.debug(f"Airtable response status: {response.status_code}")
+            logger.debug(f"Airtable response body: {response.text}")
             if response.status_code in [200, 201]:
                 return response.json()
             else:
-                app.logger.error(f"Airtable error: {response.text}")
+                logger.error(f"Airtable error: {response.text}")
                 return None
         except Exception as e:
-            app.logger.error(f"Exception submitting to Airtable: {str(e)}")
+            logger.error(f"Exception submitting to Airtable: {str(e)}")
             return None
 
     def submit_purchase_request(self, purchase_data):
@@ -363,15 +366,15 @@ class AirtableService:
 
         try:
             response = requests.post(fulfillment_url, headers=self.headers, json=payload)
-            app.logger.debug(f"Airtable Grant Fulfillment response status: {response.status_code}")
-            app.logger.debug(f"Airtable Grant Fulfillment response body: {response.text}")
+            logger.debug(f"Airtable Grant Fulfillment response status: {response.status_code}")
+            logger.debug(f"Airtable Grant Fulfillment response body: {response.text}")
             if response.status_code in [200, 201]:
                 return response.json()
             else:
-                app.logger.error(f"Airtable Grant Fulfillment error: {response.text}")
+                logger.error(f"Airtable Grant Fulfillment error: {response.text}")
                 return None
         except Exception as e:
-            app.logger.error(f"Exception submitting to Airtable Grant Fulfillment: {str(e)}")
+            logger.error(f"Exception submitting to Airtable Grant Fulfillment: {str(e)}")
             return None
 
     def get_pizza_grant_submissions(self):
@@ -416,10 +419,10 @@ class AirtableService:
 
                 return submissions
             else:
-                app.logger.error(f"Failed to fetch submissions: {response.status_code} - {response.text}")
+                logger.error(f"Failed to fetch submissions: {response.status_code} - {response.text}")
                 return []
         except Exception as e:
-            app.logger.error(f"Error fetching pizza grant submissions: {str(e)}")
+            logger.error(f"Error fetching pizza grant submissions: {str(e)}")
             return []
 
     def get_submission_by_id(self, submission_id):
@@ -444,7 +447,7 @@ class AirtableService:
                 }
             return None
         except Exception as e:
-            app.logger.error(f"Error fetching submission {submission_id}: {str(e)}")
+            logger.error(f"Error fetching submission {submission_id}: {str(e)}")
             return None
 
     def update_submission_status(self, submission_id, action):
@@ -465,7 +468,7 @@ class AirtableService:
             if get_response.status_code == 200:
                 current_record = get_response.json()
                 fields = current_record.get('fields', {})
-                app.logger.info(f"Current record fields: {list(fields.keys())}")
+                logger.info(f"Current record fields: {list(fields.keys())}")
 
             # Try different status field names one by one
             possible_status_fields = ['Status', 'Grant Status', 'Review Status', 'Approval Status']
@@ -480,16 +483,16 @@ class AirtableService:
                 response = requests.patch(url, headers=self.headers, json=update_data)
 
                 if response.status_code == 200:
-                    app.logger.info(f"Submission {submission_id} status updated to {status} using field '{field_name}'")
+                    logger.info(f"Submission {submission_id} status updated to {status} using field '{field_name}'")
                     return True
                 else:
-                    app.logger.debug(f"Failed to update with field '{field_name}': {response.status_code} - {response.text}")
+                    logger.debug(f"Failed to update with field '{field_name}': {response.status_code} - {response.text}")
 
             # If no field worked, log the error and return False
-            app.logger.error(f"Failed to update submission status with any field name. Last response: {response.status_code} - {response.text}")
+            logger.error(f"Failed to update submission status with any field name. Last response: {response.status_code} - {response.text}")
             return False
         except Exception as e:
-            app.logger.error(f"Error updating submission status: {str(e)}")
+            logger.error(f"Error updating submission status: {str(e)}")
             return False
 
     def delete_submission(self, submission_id):
@@ -505,18 +508,18 @@ class AirtableService:
             response = requests.delete(url, headers=self.headers)
             return response.status_code == 200
         except Exception as e:
-            app.logger.error(f"Error deleting submission: {str(e)}")
+            logger.error(f"Error deleting submission: {str(e)}")
             return False
 
     def get_all_clubs_from_airtable(self):
         """Fetch all clubs from Airtable"""
         if not self.api_token:
-            app.logger.error("Cannot fetch clubs from Airtable: API token not configured")
+            logger.error("Cannot fetch clubs from Airtable: API token not configured")
             return []
 
         try:
-            app.logger.info("Starting to fetch all clubs from Airtable")
-            app.logger.debug(f"Using Airtable URL: {self.clubs_base_url}")
+            logger.info("Starting to fetch all clubs from Airtable")
+            logger.debug(f"Using Airtable URL: {self.clubs_base_url}")
             all_records = []
             offset = None
             page_count = 0
@@ -527,36 +530,36 @@ class AirtableService:
                 if offset:
                     params['offset'] = offset
 
-                app.logger.debug(f"Fetching page {page_count} with offset: {offset}")
+                logger.debug(f"Fetching page {page_count} with offset: {offset}")
                 response = requests.get(self.clubs_base_url, headers=self.headers, params=params)
-                app.logger.debug(f"Page {page_count} response status: {response.status_code}")
+                logger.debug(f"Page {page_count} response status: {response.status_code}")
 
                 if response.status_code != 200:
-                    app.logger.error(f"Airtable API error on page {page_count}: {response.status_code} - {response.text}")
-                    app.logger.error(f"Request headers: {self.headers}")
-                    app.logger.error(f"Request params: {params}")
+                    logger.error(f"Airtable API error on page {page_count}: {response.status_code} - {response.text}")
+                    logger.error(f"Request headers: {self.headers}")
+                    logger.error(f"Request params: {params}")
                     break
 
                 try:
                     data = response.json()
                     page_records = data.get('records', [])
                     all_records.extend(page_records)
-                    app.logger.debug(f"Page {page_count}: Retrieved {len(page_records)} records, total so far: {len(all_records)}")
+                    logger.debug(f"Page {page_count}: Retrieved {len(page_records)} records, total so far: {len(all_records)}")
 
                     offset = data.get('offset')
                     if not offset:
-                        app.logger.info(f"Completed fetching all clubs from Airtable. Total records: {len(all_records)}")
+                        logger.info(f"Completed fetching all clubs from Airtable. Total records: {len(all_records)}")
                         break
                 except ValueError as json_error:
-                    app.logger.error(f"Failed to parse Airtable JSON response on page {page_count}: {json_error}")
-                    app.logger.error(f"Raw response content: {response.text[:500]}...")
+                    logger.error(f"Failed to parse Airtable JSON response on page {page_count}: {json_error}")
+                    logger.error(f"Raw response content: {response.text[:500]}...")
                     break
 
             clubs = []
-            app.logger.debug(f"Processing {len(all_records)} Airtable records into club data")
+            logger.debug(f"Processing {len(all_records)} Airtable records into club data")
             for i, record in enumerate(all_records):
                 fields = record.get('fields', {})
-                app.logger.debug(f"Processing record {i+1}/{len(all_records)}: ID={record.get('id')}, Fields keys: {list(fields.keys())}")
+                logger.debug(f"Processing record {i+1}/{len(all_records)}: ID={record.get('id')}, Fields keys: {list(fields.keys())}")
 
                 # Extract club information from Airtable fields
                 club_data = {
@@ -585,29 +588,29 @@ class AirtableService:
                 # Only include clubs with valid names and leader emails
                 if club_data['name'] and club_data['leader_email']:
                     clubs.append(club_data)
-                    app.logger.debug(f"Added valid club: {club_data['name']} ({club_data['leader_email']})")
+                    logger.debug(f"Added valid club: {club_data['name']} ({club_data['leader_email']})")
                 else:
-                    app.logger.debug(f"Skipped invalid club record - Name: '{club_data['name']}', Email: '{club_data['leader_email']}'")
+                    logger.debug(f"Skipped invalid club record - Name: '{club_data['name']}', Email: '{club_data['leader_email']}'")
 
-            app.logger.info(f"Successfully processed {len(clubs)} valid clubs from {len(all_records)} Airtable records")
+            logger.info(f"Successfully processed {len(clubs)} valid clubs from {len(all_records)} Airtable records")
             return clubs
 
         except Exception as e:
-            app.logger.error(f"Error fetching clubs from Airtable: {str(e)}")
+            logger.error(f"Error fetching clubs from Airtable: {str(e)}")
             return []
 
     def sync_club_with_airtable(self, club_id, airtable_data):
         """Sync a specific club with Airtable data"""
         try:
-            app.logger.info(f"Starting sync for club ID {club_id} with Airtable data")
-            app.logger.debug(f"Airtable data keys: {list(airtable_data.keys()) if airtable_data else 'None'}")
+            logger.info(f"Starting sync for club ID {club_id} with Airtable data")
+            logger.debug(f"Airtable data keys: {list(airtable_data.keys()) if airtable_data else 'None'}")
 
             club = Club.query.get(club_id)
             if not club:
-                app.logger.error(f"Club with ID {club_id} not found in database")
+                logger.error(f"Club with ID {club_id} not found in database")
                 return False
 
-            app.logger.debug(f"Found club: {club.name} (current location: {club.location})")
+            logger.debug(f"Found club: {club.name} (current location: {club.location})")
 
             # Update club fields with Airtable data
             if 'name' in airtable_data and airtable_data['name']:
@@ -643,32 +646,32 @@ class AirtableService:
             })
 
             club.updated_at = datetime.now(timezone.utc)
-            app.logger.debug(f"Updated club fields for {club.name}")
+            logger.debug(f"Updated club fields for {club.name}")
 
             db.session.commit()
-            app.logger.info(f"Successfully synced club {club_id} ({club.name}) with Airtable data")
+            logger.info(f"Successfully synced club {club_id} ({club.name}) with Airtable data")
             return True
 
         except Exception as e:
-            app.logger.error(f"Error syncing club {club_id} with Airtable: {str(e)}")
-            app.logger.error(f"Exception type: {type(e).__name__}")
-            app.logger.error(f"Exception details: {str(e)}")
+            logger.error(f"Error syncing club {club_id} with Airtable: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Exception details: {str(e)}")
             db.session.rollback()
             return False
 
     def create_club_from_airtable(self, airtable_data):
         """Create a new club from Airtable data"""
         try:
-            app.logger.info(f"Creating new club from Airtable data")
-            app.logger.debug(f"Airtable data: {airtable_data}")
+            logger.info(f"Creating new club from Airtable data")
+            logger.debug(f"Airtable data: {airtable_data}")
 
             # Find or create leader by email
             leader_email = airtable_data.get('leader_email')
             if not leader_email:
-                app.logger.error("Cannot create club: no leader email provided in Airtable data")
+                logger.error("Cannot create club: no leader email provided in Airtable data")
                 return None
 
-            app.logger.debug(f"Looking for leader with email: {leader_email}")
+            logger.debug(f"Looking for leader with email: {leader_email}")
 
             leader = User.query.filter_by(email=leader_email).first()
             if not leader:
@@ -697,7 +700,7 @@ class AirtableService:
             # Check for duplicate club names
             existing_club = Club.query.filter_by(name=filtered_name).first()
             if existing_club:
-                app.logger.warning(f"Skipping club creation from Airtable - duplicate name: {filtered_name}")
+                logger.warning(f"Skipping club creation from Airtable - duplicate name: {filtered_name}")
                 return None
 
             default_desc = f"Official {filtered_name} Hack Club"
@@ -732,13 +735,13 @@ class AirtableService:
             db.session.add(club)
             db.session.commit()
 
-            app.logger.info(f"Successfully created club '{club.name}' from Airtable data (ID: {club.id})")
+            logger.info(f"Successfully created club '{club.name}' from Airtable data (ID: {club.id})")
             return club
 
         except Exception as e:
-            app.logger.error(f"Error creating club from Airtable data: {str(e)}")
-            app.logger.error(f"Exception type: {type(e).__name__}")
-            app.logger.error(f"Airtable data that caused error: {airtable_data}")
+            logger.error(f"Error creating club from Airtable data: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Airtable data that caused error: {airtable_data}")
             db.session.rollback()
             return None
 
@@ -756,17 +759,17 @@ class AirtableService:
             if response.status_code == 200:
                 return True
             else:
-                app.logger.error(f"Airtable update error: {response.status_code} - {response.text}")
+                logger.error(f"Airtable update error: {response.status_code} - {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"Error updating Airtable record: {str(e)}")
+            logger.error(f"Error updating Airtable record: {str(e)}")
             return False
 
     def send_email_verification(self, email):
         """Send email verification code to Airtable for automation with retry logic"""
         if not self.api_token:
-            app.logger.error("Airtable API token not configured for email verification")
+            logger.error("Airtable API token not configured for email verification")
             return None
 
         # Generate 5-digit verification code
@@ -830,24 +833,24 @@ class AirtableService:
                     response = self._safe_request('POST', self.email_verification_url, headers=self.headers, json=payload, timeout=90)
 
                 if response.status_code in [200, 201]:
-                    app.logger.info(f"Email verification code sent for {email}")
+                    logger.info(f"Email verification code sent for {email}")
                     return verification_code
                 else:
-                    app.logger.error(f"Failed to send email verification: {response.status_code} - {response.text}")
+                    logger.error(f"Failed to send email verification: {response.status_code} - {response.text}")
                     return None
 
             except requests.exceptions.ReadTimeout as e:
                 retry_count += 1
-                app.logger.warning(f"Email verification timeout, attempt {retry_count}/{max_retries}: {str(e)}")
+                logger.warning(f"Email verification timeout, attempt {retry_count}/{max_retries}: {str(e)}")
                 if retry_count >= max_retries:
-                    app.logger.error(f"Email verification failed after {max_retries} attempts due to timeout")
+                    logger.error(f"Email verification failed after {max_retries} attempts due to timeout")
                     return None
                 # Wait before retrying
                 import time
                 time.sleep(2 ** retry_count)  # Exponential backoff
 
             except Exception as e:
-                app.logger.error(f"Exception sending email verification: {str(e)}")
+                logger.error(f"Exception sending email verification: {str(e)}")
                 return None
 
         return None
@@ -855,7 +858,7 @@ class AirtableService:
     def verify_email_code(self, email, code):
         """Verify the email verification code"""
         if not self.api_token:
-            app.logger.error("Airtable API token not configured for email verification")
+            logger.error("Airtable API token not configured for email verification")
             return False
 
         try:
@@ -884,26 +887,26 @@ class AirtableService:
                     update_response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload, timeout=90)
 
                     if update_response.status_code == 200:
-                        app.logger.info(f"Email verification successful for {email}")
+                        logger.info(f"Email verification successful for {email}")
                         return True
                     else:
-                        app.logger.error(f"Failed to update verification status: {update_response.status_code}")
+                        logger.error(f"Failed to update verification status: {update_response.status_code}")
                         return False
                 else:
-                    app.logger.warning(f"No pending verification found for {email} with code {code}")
+                    logger.warning(f"No pending verification found for {email} with code {code}")
                     return False
             else:
-                app.logger.error(f"Error checking verification code: {response.status_code} - {response.text}")
+                logger.error(f"Error checking verification code: {response.status_code} - {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"Exception verifying email code: {str(e)}")
+            logger.error(f"Exception verifying email code: {str(e)}")
             return False
 
     def check_email_code(self, email, code):
         """Check if email verification code is valid without marking as verified"""
         if not self.api_token:
-            app.logger.error("Airtable API token not configured for email verification")
+            logger.error("Airtable API token not configured for email verification")
             return False
 
         try:
@@ -919,17 +922,17 @@ class AirtableService:
                 records = data.get('records', [])
 
                 if records:
-                    app.logger.info(f"Email verification code check successful for {email}")
+                    logger.info(f"Email verification code check successful for {email}")
                     return True
                 else:
-                    app.logger.warning(f"No pending verification found for {email} with code {code}")
+                    logger.warning(f"No pending verification found for {email} with code {code}")
                     return False
             else:
-                app.logger.error(f"Error checking verification code: {response.status_code} - {response.text}")
+                logger.error(f"Error checking verification code: {response.status_code} - {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"Exception checking email code: {str(e)}")
+            logger.error(f"Exception checking email code: {str(e)}")
             return False
 
     def sync_all_clubs_with_airtable(self):
@@ -970,7 +973,7 @@ class AirtableService:
             }
 
         except Exception as e:
-            app.logger.error(f"Error syncing all clubs with Airtable: {str(e)}")
+            logger.error(f"Error syncing all clubs with Airtable: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)
@@ -979,7 +982,7 @@ class AirtableService:
     def submit_project_data(self, submission_data):
         """Submit project submission data to Airtable"""
         if not self.api_token:
-            app.logger.error("AIRTABLE: API token not configured")
+            logger.error("AIRTABLE: API token not configured")
             return None
 
         try:
@@ -987,7 +990,7 @@ class AirtableService:
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
 
-            app.logger.info(f"AIRTABLE: Submitting to URL: {project_url}")
+            logger.info(f"AIRTABLE: Submitting to URL: {project_url}")
 
             fields = {
                 'Address (Line 1)': submission_data.get('address_1', ''),
@@ -1016,31 +1019,31 @@ class AirtableService:
             # Remove empty fields to avoid validation issues
             fields = {k: v for k, v in fields.items() if v not in [None, '', []]}
 
-            app.logger.info(f"AIRTABLE: Submitting fields: {list(fields.keys())}")
-            app.logger.info(f"AIRTABLE: Project name: {fields.get('Hackatime Project', 'NOT_FOUND')}")
-            app.logger.info(f"AIRTABLE: Hours: {fields.get('Hours', 'NOT_FOUND')}")
+            logger.info(f"AIRTABLE: Submitting fields: {list(fields.keys())}")
+            logger.info(f"AIRTABLE: Project name: {fields.get('Hackatime Project', 'NOT_FOUND')}")
+            logger.info(f"AIRTABLE: Hours: {fields.get('Hours', 'NOT_FOUND')}")
 
             payload = {'records': [{'fields': fields}]}
 
             response = self._safe_request('POST', project_url, headers=self.headers, json=payload)
 
-            app.logger.info(f"AIRTABLE: Response status: {response.status_code}")
+            logger.info(f"AIRTABLE: Response status: {response.status_code}")
             if response.status_code not in [200, 201]:
-                app.logger.error(f"AIRTABLE: Submission failed: {response.text}")
+                logger.error(f"AIRTABLE: Submission failed: {response.text}")
                 return None
 
             result = response.json()
-            app.logger.info(f"AIRTABLE: Successfully submitted project! Record ID: {result.get('records', [{}])[0].get('id', 'UNKNOWN')}")
+            logger.info(f"AIRTABLE: Successfully submitted project! Record ID: {result.get('records', [{}])[0].get('id', 'UNKNOWN')}")
             return result
 
         except Exception as e:
-            app.logger.error(f"AIRTABLE: Exception in submit_project_data: {str(e)}")
+            logger.error(f"AIRTABLE: Exception in submit_project_data: {str(e)}")
             return None
 
     def get_ysws_project_submissions(self):
         """Get all YSWS project submissions from Airtable"""
         if not self.api_token:
-            app.logger.error("AIRTABLE: API token not configured")
+            logger.error("AIRTABLE: API token not configured")
             return []
 
         try:
@@ -1058,7 +1061,7 @@ class AirtableService:
                 response = self._safe_request('GET', project_url, headers=self.headers, params=params)
 
                 if response.status_code != 200:
-                    app.logger.error(f"AIRTABLE: Failed to fetch project submissions: {response.text}")
+                    logger.error(f"AIRTABLE: Failed to fetch project submissions: {response.text}")
                     break
 
                 data = response.json()
@@ -1113,17 +1116,17 @@ class AirtableService:
 
                 submissions.append(submission)
 
-            app.logger.info(f"AIRTABLE: Fetched {len(submissions)} project submissions")
+            logger.info(f"AIRTABLE: Fetched {len(submissions)} project submissions")
             return submissions
 
         except Exception as e:
-            app.logger.error(f"AIRTABLE: Exception in get_ysws_project_submissions: {str(e)}")
+            logger.error(f"AIRTABLE: Exception in get_ysws_project_submissions: {str(e)}")
             return []
 
     def update_ysws_project_submission(self, record_id, fields):
         """Update a YSWS project submission in Airtable"""
         if not self.api_token or not record_id:
-            app.logger.error("AIRTABLE: API token not configured or no record ID provided")
+            logger.error("AIRTABLE: API token not configured or no record ID provided")
             return False
 
         try:
@@ -1142,20 +1145,20 @@ class AirtableService:
             response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
 
             if response.status_code == 200:
-                app.logger.info(f"AIRTABLE: Successfully updated project submission {record_id}")
+                logger.info(f"AIRTABLE: Successfully updated project submission {record_id}")
                 return True
             else:
-                app.logger.error(f"AIRTABLE: Failed to update project submission: {response.text}")
+                logger.error(f"AIRTABLE: Failed to update project submission: {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"AIRTABLE: Exception in update_ysws_project_submission: {str(e)}")
+            logger.error(f"AIRTABLE: Exception in update_ysws_project_submission: {str(e)}")
             return False
 
     def delete_ysws_project_submission(self, record_id):
         """Delete a YSWS project submission from Airtable"""
         if not self.api_token or not record_id:
-            app.logger.error("AIRTABLE: API token not configured or no record ID provided")
+            logger.error("AIRTABLE: API token not configured or no record ID provided")
             return False
 
         try:
@@ -1165,14 +1168,14 @@ class AirtableService:
             response = self._safe_request('DELETE', delete_url, headers=self.headers)
 
             if response.status_code == 200:
-                app.logger.info(f"AIRTABLE: Successfully deleted project submission {record_id}")
+                logger.info(f"AIRTABLE: Successfully deleted project submission {record_id}")
                 return True
             else:
-                app.logger.error(f"AIRTABLE: Failed to delete project submission: {response.text}")
+                logger.error(f"AIRTABLE: Failed to delete project submission: {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"AIRTABLE: Exception in delete_ysws_project_submission: {str(e)}")
+            logger.error(f"AIRTABLE: Exception in delete_ysws_project_submission: {str(e)}")
             return False
 
     def submit_order(self, order_data):
@@ -1209,15 +1212,15 @@ class AirtableService:
 
         try:
             response = requests.post(orders_url, headers=self.headers, json=payload)
-            app.logger.debug(f"Airtable Orders response status: {response.status_code}")
-            app.logger.debug(f"Airtable Orders response body: {response.text}")
+            logger.debug(f"Airtable Orders response status: {response.status_code}")
+            logger.debug(f"Airtable Orders response body: {response.text}")
             if response.status_code in [200, 201]:
                 return response.json()
             else:
-                app.logger.error(f"Airtable Orders error: {response.text}")
+                logger.error(f"Airtable Orders error: {response.text}")
                 return None
         except Exception as e:
-            app.logger.error(f"Exception submitting to Airtable Orders: {str(e)}")
+            logger.error(f"Exception submitting to Airtable Orders: {str(e)}")
             return None
 
     def get_orders_for_club(self, club_name):
@@ -1267,10 +1270,10 @@ class AirtableService:
 
                 return orders
             else:
-                app.logger.error(f"Failed to fetch orders: {response.status_code} - {response.text}")
+                logger.error(f"Failed to fetch orders: {response.status_code} - {response.text}")
                 return []
         except Exception as e:
-            app.logger.error(f"Error fetching orders for club {club_name}: {str(e)}")
+            logger.error(f"Error fetching orders for club {club_name}: {str(e)}")
             return []
 
     def get_all_orders(self):
@@ -1325,12 +1328,12 @@ class AirtableService:
                     if not offset:
                         break
                 else:
-                    app.logger.error(f"Failed to fetch all orders: {response.status_code} - {response.text}")
+                    logger.error(f"Failed to fetch all orders: {response.status_code} - {response.text}")
                     break
 
             return all_orders
         except Exception as e:
-            app.logger.error(f"Error fetching all orders: {str(e)}")
+            logger.error(f"Error fetching all orders: {str(e)}")
             return []
 
     def update_order_status(self, order_id, status, reviewer_reason):
@@ -1351,15 +1354,15 @@ class AirtableService:
 
         try:
             response = requests.patch(update_url, headers=self.headers, json=payload)
-            app.logger.debug(f"Airtable order update response status: {response.status_code}")
-            app.logger.debug(f"Airtable order update response body: {response.text}")
+            logger.debug(f"Airtable order update response status: {response.status_code}")
+            logger.debug(f"Airtable order update response body: {response.text}")
             if response.status_code == 200:
-                return response.json()
+                return True
             else:
-                app.logger.error(f"Airtable order update error: {response.text}")
+                logger.error(f"Airtable order update error: {response.text}")
                 return False
         except Exception as e:
-            app.logger.error(f"Exception updating order status: {str(e)}")
+            logger.error(f"Exception updating order status: {str(e)}")
             return False
 
     def delete_order(self, order_id):
@@ -1373,21 +1376,21 @@ class AirtableService:
 
         try:
             response = requests.delete(delete_url, headers=self.headers)
-            app.logger.debug(f"Airtable order delete response status: {response.status_code}")
-            app.logger.debug(f"Airtable order delete response body: {response.text}")
+            logger.debug(f"Airtable order delete response status: {response.status_code}")
+            logger.debug(f"Airtable order delete response body: {response.text}")
             if response.status_code == 200:
-                return response.json()
+                return True
             else:
-                app.logger.error(f"Airtable order delete error: {response.text}")
+                logger.error(f"Airtable order delete error: {response.text}")
                 return False
         except Exception as e:
-            app.logger.error(f"Exception deleting order: {str(e)}")
+            logger.error(f"Exception deleting order: {str(e)}")
             return False
 
     def log_gallery_post(self, post_title, description, photos, club_name, author_username):
         """Log gallery post to Airtable Gallery table"""
         if not self.api_token:
-            app.logger.error("AIRTABLE: API token not configured for gallery logging")
+            logger.error("AIRTABLE: API token not configured for gallery logging")
             return False
 
         try:
@@ -1407,29 +1410,29 @@ class AirtableService:
 
             payload = {'fields': fields}
 
-            app.logger.info(f"AIRTABLE: Logging gallery post to {gallery_url}")
-            app.logger.debug(f"AIRTABLE: Gallery post payload: {payload}")
+            logger.info(f"AIRTABLE: Logging gallery post to {gallery_url}")
+            logger.debug(f"AIRTABLE: Gallery post payload: {payload}")
 
             response = self._safe_request('POST', gallery_url, headers=self.headers, json=payload)
 
-            app.logger.info(f"AIRTABLE: Gallery post response status: {response.status_code}")
+            logger.info(f"AIRTABLE: Gallery post response status: {response.status_code}")
 
             if response.status_code == 200:
                 result = response.json()
-                app.logger.info(f"AIRTABLE: Successfully logged gallery post! Record ID: {result.get('id', 'UNKNOWN')}")
+                logger.info(f"AIRTABLE: Successfully logged gallery post! Record ID: {result.get('id', 'UNKNOWN')}")
                 return True
             else:
-                app.logger.error(f"AIRTABLE: Gallery post logging failed: {response.text}")
+                logger.error(f"AIRTABLE: Gallery post logging failed: {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"AIRTABLE: Exception in log_gallery_post: {str(e)}")
+            logger.error(f"AIRTABLE: Exception in log_gallery_post: {str(e)}")
             return False
 
     def get_pizza_grants(self):
         """Get all pizza grants from Grants table"""
         if not self.api_token:
-            app.logger.error("AIRTABLE: API token not configured")
+            logger.error("AIRTABLE: API token not configured")
             return []
 
         try:
@@ -1447,7 +1450,7 @@ class AirtableService:
                 response = self._safe_request('GET', grants_url, headers=self.headers, params=params)
 
                 if response.status_code != 200:
-                    app.logger.error(f"AIRTABLE: Failed to fetch pizza grants: {response.text}")
+                    logger.error(f"AIRTABLE: Failed to fetch pizza grants: {response.text}")
                     break
 
                 data = response.json()
@@ -1474,17 +1477,17 @@ class AirtableService:
                     'created_time': record.get('createdTime', '')
                 })
 
-            app.logger.info(f"AIRTABLE: Fetched {len(grants)} pizza grants")
+            logger.info(f"AIRTABLE: Fetched {len(grants)} pizza grants")
             return grants
 
         except Exception as e:
-            app.logger.error(f"AIRTABLE: Exception in get_pizza_grants: {str(e)}")
+            logger.error(f"AIRTABLE: Exception in get_pizza_grants: {str(e)}")
             return []
 
     def update_pizza_grant(self, grant_id, status, notes, reviewer_username):
         """Update a pizza grant status"""
         if not self.api_token or not grant_id:
-            app.logger.error("AIRTABLE: API token not configured or no grant ID provided")
+            logger.error("AIRTABLE: API token not configured or no grant ID provided")
             return False
 
         try:
@@ -1504,20 +1507,20 @@ class AirtableService:
             response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
 
             if response.status_code == 200:
-                app.logger.info(f"AIRTABLE: Successfully updated pizza grant {grant_id}")
+                logger.info(f"AIRTABLE: Successfully updated pizza grant {grant_id}")
                 return True
             else:
-                app.logger.error(f"AIRTABLE: Failed to update pizza grant: {response.text}")
+                logger.error(f"AIRTABLE: Failed to update pizza grant: {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"AIRTABLE: Exception in update_pizza_grant: {str(e)}")
+            logger.error(f"AIRTABLE: Exception in update_pizza_grant: {str(e)}")
             return False
 
     def delete_pizza_grant(self, grant_id):
         """Delete a pizza grant from Grants table"""
         if not self.api_token or not grant_id:
-            app.logger.error("AIRTABLE: API token not configured or no grant ID provided")
+            logger.error("AIRTABLE: API token not configured or no grant ID provided")
             return False
 
         try:
@@ -1527,14 +1530,14 @@ class AirtableService:
             response = self._safe_request('DELETE', delete_url, headers=self.headers)
 
             if response.status_code == 200:
-                app.logger.info(f"AIRTABLE: Successfully deleted pizza grant {grant_id}")
+                logger.info(f"AIRTABLE: Successfully deleted pizza grant {grant_id}")
                 return True
             else:
-                app.logger.error(f"AIRTABLE: Failed to delete pizza grant: {response.text}")
+                logger.error(f"AIRTABLE: Failed to delete pizza grant: {response.text}")
                 return False
 
         except Exception as e:
-            app.logger.error(f"AIRTABLE: Exception in delete_pizza_grant: {str(e)}")
+            logger.error(f"AIRTABLE: Exception in delete_pizza_grant: {str(e)}")
             return False
 
 

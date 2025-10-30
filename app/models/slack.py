@@ -9,7 +9,7 @@ class ClubSlackSettings(db.Model):
     __tablename__ = 'club_slack_settings'
 
     id = db.Column(db.Integer, primary_key=True)
-    club_id = db.Column(db.Integer, db.ForeignKey('clubs.id'), nullable=False)
+    club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
     channel_id = db.Column(db.String(255))
     channel_name = db.Column(db.String(255))
     is_public = db.Column(db.Boolean, default=True)
