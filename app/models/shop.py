@@ -22,7 +22,6 @@ class ShopItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
     orders = db.relationship('Order', backref='shop_item', lazy='dynamic', cascade='all, delete-orphan')
 
     def to_dict(self):
@@ -50,12 +49,10 @@ class Order(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     shop_item_id = db.Column(db.Integer, db.ForeignKey('shop_items.id'))
 
-    # Order details
     status = db.Column(db.String(50), default='pending')  # pending, approved, rejected, completed, refunded
     quantity = db.Column(db.Integer, default=1)
     total_price = db.Column(db.Integer, nullable=False)
 
-    # Shipping information
     shipping_name = db.Column(db.String(200))
     shipping_address = db.Column(db.Text)
     shipping_city = db.Column(db.String(100))
@@ -63,18 +60,15 @@ class Order(db.Model):
     shipping_zip = db.Column(db.String(20))
     shipping_country = db.Column(db.String(100))
 
-    # Order tracking
     notes = db.Column(db.Text)
     admin_notes = db.Column(db.Text)
     tracking_number = db.Column(db.String(200))
 
-    # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     approved_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
 
-    # Relationships (backrefs defined in club.py and user.py)
 
     def to_dict(self):
         """Convert to dictionary"""

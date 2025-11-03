@@ -50,7 +50,6 @@ class OAuthApplication(db.Model):
     scopes = db.Column(db.Text)  # JSON array of allowed scopes
     requires_identity_verification = db.Column(db.Boolean, default=False)
 
-    # Relationships
     tokens = db.relationship(
         'OAuthToken',
         primaryjoin='OAuthApplication.id == OAuthToken.application_id',

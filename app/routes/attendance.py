@@ -27,12 +27,10 @@ def attendance_sessions(club_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a leader
     if not verify_club_leadership(club, user):
         return jsonify({'error': 'Only club leaders can manage attendance sessions'}), 403
 
     if request.method == 'GET':
-        # Get all sessions for the club
         sessions = AttendanceSession.query.filter_by(
             club_id=club_id
         ).order_by(AttendanceSession.session_date.desc()).all()
@@ -67,7 +65,6 @@ def attendance_sessions(club_id):
         if not title:
             return jsonify({'error': 'Session title is required'}), 400
 
-        # Parse session date
         if session_date_str:
             try:
                 session_date = datetime.fromisoformat(session_date_str.replace('Z', '+00:00'))
@@ -76,7 +73,6 @@ def attendance_sessions(club_id):
         else:
             session_date = datetime.now(timezone.utc)
 
-        # Create session
         session = AttendanceSession(
             club_id=club_id,
             title=title,
@@ -111,7 +107,6 @@ def attendance_session_operations(club_id, session_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a leader
     if not verify_club_leadership(club, user):
         return jsonify({'error': 'Only club leaders can manage attendance sessions'}), 403
 
@@ -121,7 +116,6 @@ def attendance_session_operations(club_id, session_id):
     ).first_or_404()
 
     if request.method == 'GET':
-        # Get session details with attendance records
         records = AttendanceRecord.query.filter_by(session_id=session_id).all()
         guests = AttendanceGuest.query.filter_by(session_id=session_id).all()
 
@@ -192,7 +186,6 @@ def attendance_session_operations(club_id, session_id):
         })
 
     elif request.method == 'DELETE':
-        # Delete session (and all associated records)
         db.session.delete(session)
         db.session.commit()
 
@@ -210,7 +203,6 @@ def mark_attendance(club_id, session_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a member or leader
     membership = ClubMembership.query.filter_by(
         club_id=club_id,
         user_id=user.id
@@ -227,12 +219,10 @@ def mark_attendance(club_id, session_id):
     data = request.get_json()
     user_id_to_mark = data.get('user_id', user.id)
 
-    # Only leaders can mark attendance for others
     is_leader = (user.id == session.club.leader_id or user.id == session.club.co_leader_id)
     if user_id_to_mark != user.id and not is_leader and not user.is_admin:
         return jsonify({'error': 'Only leaders can mark attendance for others'}), 403
 
-    # Check if already marked
     existing_record = AttendanceRecord.query.filter_by(
         session_id=session_id,
         user_id=user_id_to_mark
@@ -241,7 +231,6 @@ def mark_attendance(club_id, session_id):
     if existing_record:
         return jsonify({'error': 'Attendance already marked'}), 400
 
-    # Create attendance record
     record = AttendanceRecord(
         session_id=session_id,
         user_id=user_id_to_mark,
@@ -273,7 +262,6 @@ def add_guest(club_id, session_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a leader
     if not verify_club_leadership(club, user):
         return jsonify({'error': 'Only club leaders can add guests'}), 403
 
@@ -289,7 +277,6 @@ def add_guest(club_id, session_id):
     if not guest_name:
         return jsonify({'error': 'Guest name is required'}), 400
 
-    # Create guest record
     guest = AttendanceGuest(
         session_id=session_id,
         name=guest_name,
@@ -319,13 +306,11 @@ def delete_attendance_record(club_id, record_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a leader
     if not verify_club_leadership(club, user):
         return jsonify({'error': 'Only club leaders can delete attendance records'}), 403
 
     record = AttendanceRecord.query.get_or_404(record_id)
 
-    # Verify record belongs to a session in this club
     if record.session.club_id != club_id:
         return jsonify({'error': 'Record not found in this club'}), 404
 
@@ -345,13 +330,11 @@ def delete_guest(club_id, guest_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a leader
     if not verify_club_leadership(club, user):
         return jsonify({'error': 'Only club leaders can delete guests'}), 403
 
     guest = AttendanceGuest.query.get_or_404(guest_id)
 
-    # Verify guest belongs to a session in this club
     if guest.session.club_id != club_id:
         return jsonify({'error': 'Guest not found in this club'}), 404
 
@@ -371,14 +354,11 @@ def attendance_reports(club_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a leader
     if not verify_club_leadership(club, user):
         return jsonify({'error': 'Only club leaders can view reports'}), 403
 
-    # Get all sessions
     sessions = AttendanceSession.query.filter_by(club_id=club_id).all()
 
-    # Calculate attendance statistics
     total_sessions = len(sessions)
     total_attendees = 0
     member_attendance = {}
@@ -395,7 +375,6 @@ def attendance_reports(club_id):
                 }
             member_attendance[record.user_id]['sessions_attended'] += 1
 
-    # Format member attendance
     members_data = []
     for user_id, data in member_attendance.items():
         user_obj = data['user']
@@ -408,7 +387,6 @@ def attendance_reports(club_id):
             'attendance_rate': (data['sessions_attended'] / total_sessions * 100) if total_sessions > 0 else 0
         })
 
-    # Sort by attendance
     members_data.sort(key=lambda x: x['sessions_attended'], reverse=True)
 
     return jsonify({
@@ -426,36 +404,28 @@ def export_attendance(club_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a leader
     if not verify_club_leadership(club, user):
         return jsonify({'error': 'Only club leaders can export attendance'}), 403
 
-    # Get all sessions with records
     sessions = AttendanceSession.query.filter_by(club_id=club_id).order_by(
         AttendanceSession.session_date.desc()
     ).all()
 
-    # Helper function to sanitize CSV cells (prevent formula injection)
     def sanitize_csv_cell(value):
         """Prevent CSV formula injection by escaping dangerous characters"""
         if not value:
             return ''
         value_str = str(value)
-        # If the cell starts with =, +, -, @, or tab/carriage return, prefix with single quote
         if value_str and value_str[0] in ('=', '+', '-', '@', '\t', '\r'):
             return "'" + value_str
         return value_str
 
-    # Create CSV
     output = StringIO()
     writer = csv.writer(output)
 
-    # Write header
     writer.writerow(['Session Date', 'Session Title', 'Attendee Name', 'Attendee Email', 'Type', 'Checked In At'])
 
-    # Write data
     for session in sessions:
-        # Member records
         records = AttendanceRecord.query.filter_by(session_id=session.id).all()
         for record in records:
             writer.writerow([
@@ -467,7 +437,6 @@ def export_attendance(club_id):
                 record.checked_in_at.strftime('%Y-%m-%d %H:%M:%S') if record.checked_in_at else ''
             ])
 
-        # Guest records
         guests = AttendanceGuest.query.filter_by(session_id=session.id).all()
         for guest in guests:
             writer.writerow([
@@ -479,7 +448,6 @@ def export_attendance(club_id):
                 guest.checked_in_at.strftime('%Y-%m-%d %H:%M:%S') if guest.checked_in_at else ''
             ])
 
-    # Prepare file for download
     output.seek(0)
     csv_data = output.getvalue().encode('utf-8')
     output_bytes = BytesIO(csv_data)
@@ -505,11 +473,9 @@ def update_session_notes(club_id, session_id):
     club = Club.query.get_or_404(club_id)
     session = AttendanceSession.query.get_or_404(session_id)
 
-    # Verify session belongs to this club
     if session.club_id != club_id:
         return jsonify({'error': 'Session not found in this club'}), 404
 
-    # Verify user is a leader
     if not verify_club_leadership(club, user):
         return jsonify({'error': 'Only club leaders can update session notes'}), 403
 

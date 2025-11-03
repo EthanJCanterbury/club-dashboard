@@ -9,7 +9,6 @@ from app import create_app
 app = create_app()
 
 if __name__ == '__main__':
-    # Initialize database tables
     from extensions import db
 
     try:
@@ -19,9 +18,7 @@ if __name__ == '__main__':
     except Exception as e:
         app.logger.error(f"Database setup error: {e}")
 
-    # Get port from environment variable or use default
     port = int(os.getenv('PORT', 5000))
     app.logger.info(f"Starting Hack Club Dashboard on port {port}")
 
-    # Run the application
     app.run(host='0.0.0.0', port=port, debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true')

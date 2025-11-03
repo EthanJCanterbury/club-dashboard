@@ -21,7 +21,6 @@ def upload_to_hackclub_cdn(image_data_list):
         tuple: (success: bool, result: list of CDN URLs or error message)
     """
     try:
-        # Get CDN token from environment
         cdn_token = os.getenv('HACKCLUB_CDN_TOKEN')
         if not cdn_token:
             current_app.logger.error("HACKCLUB_CDN_TOKEN not configured")
@@ -30,7 +29,6 @@ def upload_to_hackclub_cdn(image_data_list):
         if not image_data_list:
             return False, "No images provided"
 
-        # Create temp directory
         temp_upload_dir = os.path.join(current_app.root_path, '..', 'static', 'temp')
         os.makedirs(temp_upload_dir, exist_ok=True)
 
@@ -38,7 +36,6 @@ def upload_to_hackclub_cdn(image_data_list):
         temp_urls = []
 
         try:
-            # Save all images to temporary files
             for image_data, file_ext in image_data_list:
                 temp_filename = f"upload_{uuid.uuid4()}{file_ext}"
                 temp_file_path = os.path.join(temp_upload_dir, temp_filename)
@@ -48,13 +45,11 @@ def upload_to_hackclub_cdn(image_data_list):
 
                 temp_files.append(temp_file_path)
 
-                # Create public URL for CDN to access
                 temp_url = f"{request.url_root}static/temp/{temp_filename}"
                 temp_urls.append(temp_url)
 
             current_app.logger.info(f'Uploading {len(temp_urls)} images to Hack Club CDN')
 
-            # Upload to Hack Club CDN
             cdn_response = requests.post(
                 'https://cdn.hackclub.com/api/v3/new',
                 headers={
@@ -80,7 +75,6 @@ def upload_to_hackclub_cdn(image_data_list):
                 return False, "Failed to process upload response"
 
         finally:
-            # Clean up temporary files
             for temp_file in temp_files:
                 try:
                     if os.path.exists(temp_file):
@@ -120,27 +114,22 @@ def parse_base64_images(base64_images_list, max_size=10 * 1024 * 1024):
 
     for idx, base64_image in enumerate(base64_images_list):
         try:
-            # Parse base64 data URL
             if not base64_image.startswith('data:image/'):
                 current_app.logger.warning(f'Invalid image format for image {idx}')
                 continue
 
-            # Extract MIME type and base64 data
             header, data_part = base64_image.split(',', 1)
             mime_type = header.split(':')[1].split(';')[0]
 
-            # Validate MIME type
             if mime_type not in allowed_mime_types:
                 current_app.logger.warning(f'Invalid MIME type: {mime_type}')
                 continue
 
-            # Decode base64 and check file size
             image_data = base64.b64decode(data_part)
             if len(image_data) > max_size:
                 current_app.logger.warning(f'Image {idx} too large: {len(image_data)} bytes')
                 continue
 
-            # Get file extension
             file_ext = ext_map.get(mime_type, '.jpg')
 
             parsed_images.append((image_data, file_ext))

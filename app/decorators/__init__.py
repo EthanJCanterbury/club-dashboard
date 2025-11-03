@@ -17,7 +17,6 @@ from app.decorators.auth import (
 from app.decorators.economy import economy_required
 
 __all__ = [
-    # Authentication decorators
     'login_required',
     'permission_required',
     'role_required',
@@ -25,6 +24,5 @@ __all__ = [
     'reviewer_required',
     'api_key_required',
     'oauth_required',
-    # Economy decorators
     'economy_required',
 ]

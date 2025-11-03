@@ -17,7 +17,6 @@ status_bp = Blueprint('status', __name__)
 @status_bp.route('/api/status/banner')
 def status_banner():
     """API endpoint for status banner (returns active incidents for display)"""
-    # Get active critical/major incidents (status not 'resolved')
     incidents = StatusIncident.query.filter(
         StatusIncident.status != 'resolved',
         StatusIncident.impact.in_(['major', 'critical'])
@@ -39,17 +38,14 @@ def status_banner():
 @status_bp.route('/status')
 def status_page():
     """Public status page"""
-    # Get recent incidents (not resolved)
     incidents = StatusIncident.query.filter(
         StatusIncident.status != 'resolved'
     ).order_by(StatusIncident.created_at.desc()).limit(10).all()
 
-    # Get recent resolved incidents
     resolved_incidents = StatusIncident.query.filter(
         StatusIncident.status == 'resolved'
     ).order_by(StatusIncident.resolved_at.desc()).limit(5).all()
 
-    # Check overall system status
     if any(inc.impact in ['critical', 'major'] for inc in incidents):
         overall_status = 'degraded'
         status_color = 'danger'
@@ -95,7 +91,6 @@ def api_status():
             } for update in updates]
         })
 
-    # Determine overall status
     if any(inc['impact'] in ['critical', 'major'] for inc in incidents_data):
         overall_status = 'degraded'
     elif any(inc['impact'] == 'minor' for inc in incidents_data):

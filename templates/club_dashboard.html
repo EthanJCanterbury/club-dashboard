@@ -308,7 +308,7 @@ endblock %} {% block extra_head %}
                         <i class="fas fa-sync-alt"></i> New Code
                     </button>
                     {% else %}
-                    <!-- Leave Club button for regular members -->
+
                     <button
                         class="btn"
                         style="background-color: #dc3545; color: white; padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"
@@ -700,7 +700,7 @@ endblock %} {% block extra_head %}
 
                     <div class="dashboard-cards">
                         {% if effective_can_manage %}
-                        <!-- Leader/Co-leader Dashboard Cards -->
+
                         <div class="dashboard-card">
                             <div class="dashboard-card-header">
                                 <div class="card-icon members">
@@ -778,7 +778,7 @@ endblock %} {% block extra_head %}
                         </div>
 
                         {% else %}
-                        <!-- Member Dashboard Cards -->
+
                         <div class="dashboard-card">
                             <div class="dashboard-card-header">
                                 <div class="card-icon assignments">
@@ -1016,7 +1016,7 @@ console.log('Hello, world!');
                         {% endif %}
                     </div>
 
-                    <!-- Session Calendar -->
+
                     <div class="attendance-calendar-container">
                         <div class="calendar-header">
                             <button
@@ -1034,11 +1034,11 @@ console.log('Hello, world!');
                             </button>
                         </div>
                         <div class="calendar-grid" id="attendance-calendar">
-                            <!-- Calendar will be populated by JavaScript -->
+
                         </div>
                     </div>
 
-                    <!-- Session List -->
+
                     <div class="sessions-container">
                         <div class="sessions-header">
                             <h3>Upcoming Sessions</h3>
@@ -1061,11 +1061,11 @@ console.log('Hello, world!');
                             </div>
                         </div>
                         <div class="sessions-list" id="sessions-list">
-                            <!-- Sessions will be populated by JavaScript -->
+
                         </div>
                     </div>
 
-                    <!-- Simplified Sessions - Complex attendance panel removed -->
+
                 </section>
 
                 <section id="members" class="club-section fade-in">
@@ -1095,7 +1095,7 @@ console.log('Hello, world!');
                     </div>
 
                     <div class="members-list">
-                        <!-- Leader Card -->
+
                         <div class="member-card">
                             <div class="member-info">
                                 <div class="member-avatar">
@@ -1125,7 +1125,7 @@ console.log('Hello, world!');
                             </div>
                         </div>
 
-                        <!-- Co-Leader Cards -->
+
                         {% for membership in club.members %} {% if
                         membership.role == 'co-leader' %}
                         <div class="member-card">
@@ -1174,7 +1174,7 @@ console.log('Hello, world!');
                         </div>
                         {% endif %} {% endfor %}
 
-                        <!-- Member Cards -->
+
                         {% for membership in club.members %} {% if
                         membership.user.id != club.leader_id and membership.role
                         != 'co-leader' %}
@@ -1254,7 +1254,7 @@ console.log('Hello, world!');
                     </div>
                     <div class="chat-container">
                         <div class="chat-messages" id="chatMessages">
-                            <!-- Messages will be loaded here -->
+
                         </div>
                         <div class="chat-input-area">
                             <div class="input-group">
@@ -1479,7 +1479,7 @@ console.log('Hello, world!');
                         </div>
                     </div>
 
-                    <!-- Branding Resources Section -->
+
                     <div class="branding-section">
                         <div class="content-header">
                             <div>
@@ -1512,7 +1512,7 @@ console.log('Hello, world!');
                         </div>
 
                         <div class="branding-grid">
-                            <!-- Hack Club Logos -->
+
                             <div class="branding-item">
                                 <div class="branding-preview">
                                     <img
@@ -1537,7 +1537,7 @@ console.log('Hello, world!');
                                 </div>
                             </div>
 
-                            <!-- Brand Colors -->
+
                             <div class="branding-item">
                                 <div class="branding-preview">
                                     <div class="color-palette">
@@ -1604,7 +1604,7 @@ console.log('Hello, world!');
                                 </div>
                             </div>
 
-                            <!-- Digital Sticker Library -->
+
                             <div class="branding-item">
                                 <div class="branding-preview sticker-preview">
                                     <div class="sticker-sample">
@@ -1647,7 +1647,7 @@ console.log('Hello, world!');
                                 </div>
                             </div>
 
-                            <!-- Physical Posters -->
+
                             <div class="branding-item">
                                 <div class="branding-preview">
                                     <div class="poster-sample">
@@ -1704,7 +1704,7 @@ console.log('Hello, world!');
                 </section>
                 {% endif %}
 
-                <!-- Color Palette Modal -->
+
                 <div id="colorPaletteModal" class="modal">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -2268,7 +2268,7 @@ console.log('Hello, world!');
                                 </p>
                             </div>
                             {% else %}
-                            <!-- Club ID Display -->
+
                             <div class="form-group">
                                 <label class="form-label">Club ID</label>
                                 <div
@@ -2349,7 +2349,7 @@ console.log('Hello, world!');
                     </div>
 
                     {% if current_user.id == club.leader_id %}
-                    <!-- Email Update Section (Leaders Only) -->
+
                     <div class="card" style="margin-top: 2rem; {% if not is_connected_to_directory %}opacity: 0.6;{% endif %}">
                         <div class="card-header">
                             <h3 style="color: #17a2b8">
@@ -2566,7 +2566,7 @@ console.log('Hello, world!');
                         </div>
                     </div>
 
-                    <!-- Background Customization Section -->
+
                     <div class="card" style="margin-top: 2rem">
                         <div class="card-header">
                             <h3 style="color: #8b5cf6">
@@ -2584,7 +2584,7 @@ console.log('Hello, world!');
                             </p>
                         </div>
                         <div class="card-body">
-                            <!-- Current Background Display -->
+
                             <div class="form-group">
                                 <label class="form-label"
                                     >Current Background</label
@@ -2629,7 +2629,7 @@ console.log('Hello, world!');
                                 </div>
                             </div>
 
-                            <!-- Upload New Background -->
+
                             <div class="form-group">
                                 <label class="form-label"
                                     >Upload Background Image</label
@@ -2677,9 +2677,9 @@ console.log('Hello, world!');
                                 </button>
                             </div>
 
-                            <!-- Blur functionality removed -->
 
-                            <!-- Remove Background -->
+
+
                             {% if club.background_image_url %}
                             <div
                                 class="form-group"
@@ -2715,7 +2715,7 @@ console.log('Hello, world!');
     style="position: fixed; bottom: 20px; right: 20px; z-index: 9999"
 ></div>
 
-<!-- Chat Delete Confirmation Modal -->
+
 <div id="deleteChatMessageModal" class="modal" style="display: none">
     <div class="modal-content">
         <div class="modal-header error">
@@ -2736,7 +2736,7 @@ console.log('Hello, world!');
                 be undone.
             </p>
             <div class="message-preview" id="deleteMessagePreview">
-                <!-- Message preview will be shown here -->
+
             </div>
         </div>
         <div class="modal-footer">
@@ -2753,7 +2753,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Remove Background Confirmation Modal -->
+
 <div id="removeBackgroundModal" class="modal" style="display: none">
     <div class="modal-content">
         <div class="modal-header error">
@@ -2789,7 +2789,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Chat Edit Message Modal -->
+
 <div id="editChatMessageModal" class="modal" style="display: none">
     <div class="modal-content">
         <div class="modal-header primary">
@@ -2833,7 +2833,6 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- confirmModal removed - now using UniversalModal -->
 
 <div id="qrModal" class="modal qr-modal">
     <div class="modal-content">
@@ -2887,7 +2886,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Join Code Display Modal -->
+
 <div id="joinCodeModal" class="modal join-code-modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -3267,9 +3266,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Cart Modal will be dynamically created -->
 
-<!-- Sticker Library Modal -->
 <div id="stickerLibraryModal" class="modal">
     <div class="modal-content large">
         <div class="modal-header">
@@ -3284,7 +3281,7 @@ console.log('Hello, world!');
                 posters.
             </p>
             <div class="sticker-library-grid" id="stickerLibraryGrid">
-                <!-- Stickers will be loaded here -->
+
             </div>
         </div>
         <div class="modal-footer">
@@ -3298,7 +3295,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Poster Library Modal -->
+
 <div id="posterLibraryModal" class="modal">
     <div class="modal-content large">
         <div class="modal-header">
@@ -3310,7 +3307,7 @@ console.log('Hello, world!');
         <div class="modal-body">
             <p>Download official Hack Club posters for your club.</p>
             <div class="poster-library-grid" id="posterLibraryGrid">
-                <!-- Posters will be loaded here -->
+
             </div>
         </div>
         <div class="modal-footer">
@@ -4033,7 +4030,7 @@ console.log('Hello, world!');
     }
 </style>
 
-<!-- Tutorial Overlay -->
+
 <div id="tutorialOverlay" class="tutorial-overlay" style="display: none">
     <div class="tutorial-backdrop"></div>
     <div class="tutorial-bubble" id="tutorialBubble">
@@ -4086,7 +4083,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Tutorial Styles -->
+
 <style>
     .tutorial-overlay {
         position: fixed;
@@ -4987,7 +4984,7 @@ console.log('Hello, world!');
     }
 </script>
 
-<!-- Action Buttons Container -->
+
 {% if current_user.id == club.leader_id %}
 <div
     class="action-buttons-container"
@@ -5092,7 +5089,7 @@ console.log('Hello, world!');
 </script>
 {% endif %}
 
-<!-- Poster Creator Modal -->
+
 <div id="posterCreatorModal" class="poster-creator-modal">
     <div class="poster-creator-content">
         <div class="poster-creator-header">
@@ -5209,7 +5206,7 @@ console.log('Hello, world!');
                 <div class="control-section">
                     <h4><i class="fas fa-star"></i> Stickers</h4>
                     <div class="stickers-grid" id="stickersGrid">
-                        <!-- Stickers will be populated here -->
+
                     </div>
                     <div class="control-group">
                         <button
@@ -5225,7 +5222,7 @@ console.log('Hello, world!');
                 <div class="control-section">
                     <h4><i class="fas fa-icons"></i> Main Icon</h4>
                     <div class="design-element-grid" id="iconsGrid">
-                        <!-- Icons will be populated here -->
+
                     </div>
                     <div class="control-group">
                         <button
@@ -5328,7 +5325,7 @@ console.log('Hello, world!');
                     </div>
                 </div>
 
-                <!-- NEW: Advanced Text Controls -->
+
                 <div class="control-section">
                     <h4><i class="fas fa-text-height"></i> Advanced Text</h4>
                     <div class="control-group">
@@ -5356,7 +5353,7 @@ console.log('Hello, world!');
                     </div>
                 </div>
 
-                <!-- NEW: Gradients -->
+
                 <div class="control-section">
                     <h4><i class="fas fa-fill-drip"></i> Gradients</h4>
                     <div class="control-group">
@@ -5381,7 +5378,7 @@ console.log('Hello, world!');
                     </div>
                 </div>
 
-                <!-- NEW: Image Upload -->
+
                 <div class="control-section">
                     <h4><i class="fas fa-image"></i> Custom Images</h4>
                     <div class="control-group">
@@ -5399,7 +5396,7 @@ console.log('Hello, world!');
                     </div>
                 </div>
 
-                <!-- NEW: Layout Options -->
+
                 <div class="control-section">
                     <h4><i class="fas fa-th-large"></i> Layout</h4>
                     <div class="control-group">
@@ -5421,7 +5418,7 @@ console.log('Hello, world!');
                     </div>
                 </div>
 
-                <!-- NEW: Effects & Filters -->
+
                 <div class="control-section">
                     <h4><i class="fas fa-magic"></i> Effects</h4>
                     <div class="control-group">
@@ -5441,7 +5438,7 @@ console.log('Hello, world!');
                     </div>
                 </div>
 
-                <!-- NEW: Animation Preview -->
+
                 <div class="control-section">
                     <h4><i class="fas fa-play-circle"></i> Preview</h4>
                     <div class="control-group">
@@ -5456,7 +5453,7 @@ console.log('Hello, world!');
                     </div>
                 </div>
 
-                <!-- NEW: Save & Load -->
+
                 <div class="control-section">
                     <h4><i class="fas fa-save"></i> Save & Load</h4>
                     <div class="control-group">
@@ -5474,7 +5471,7 @@ console.log('Hello, world!');
 
             <div class="poster-preview">
                 <div id="posterCanvas" class="poster-canvas">
-                    <!-- Poster content will be generated here -->
+
                 </div>
             </div>
         </div>
@@ -5876,7 +5873,7 @@ console.log('Hello, world!');
                 ${posterData.contactInfo ? `<div style="color: #666; font-size: 0.8rem; margin-top: 0.25rem;">${posterData.contactInfo}</div>` : ""}
             </div>
 
-            <!-- Hack Club Logo -->
+
             <img src="{{ url_for('static', filename='assets/flag-standalone.png') }}" class="hack-club-logo" alt="Hack Club">
         </div>
     `;
@@ -8568,7 +8565,7 @@ console.log('Hello, world!');
     }
 </script>
 
-<!-- Attendance Modals -->
+
 <div id="createSessionModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -8770,7 +8767,7 @@ console.log('Hello, world!');
             </div>
 
             <div id="report-content" class="report-content">
-                <!-- Report content will be loaded here -->
+
             </div>
         </div>
     </div>
@@ -8865,7 +8862,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Simple Attendance Management Modal -->
+
 <div id="attendanceModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -8900,7 +8897,7 @@ console.log('Hello, world!');
                 </div>
 
                 <div id="simple-attendance-grid" class="simple-attendance-grid">
-                    <!-- Attendance will be populated here -->
+
                 </div>
             </div>
         </div>
@@ -8989,13 +8986,13 @@ console.log('Hello, world!');
         </div>
         <div class="modal-body">
             <div id="date-sessions-content">
-                <!-- Content will be populated by JavaScript -->
+
             </div>
         </div>
     </div>
 </div>
 
-<!-- Session Notes Modal -->
+
 <div id="sessionNotesModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -9036,7 +9033,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Attendance Note Modal -->
+
 <div id="attendanceNoteModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -9079,8 +9076,6 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<!-- Confirmation Modal -->
-<!-- confirmActionModal removed - now using UniversalModal -->
 
 <style>
     /* Enhanced Attendance Management Styles */

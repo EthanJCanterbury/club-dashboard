@@ -28,7 +28,6 @@ def economy_required(f):
         @app.route('/shop')
         @economy_required
         def shop():
-            # Only accessible when economy is enabled
             return render_template('shop.html')
 
     Notes:
@@ -39,17 +38,14 @@ def economy_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Import here to avoid circular imports
         from flask import current_app
         from app.models.system import SystemSettings
         from app.utils.auth_helpers import get_current_user
 
         try:
             if not SystemSettings.is_economy_enabled():
-                # Check if user is admin and admin override is enabled
                 current_user = get_current_user()
                 if current_user and current_user.is_admin and SystemSettings.is_admin_economy_override_enabled():
-                    # Allow admin access when override is enabled
                     return f(*args, **kwargs)
                 else:
                     if request.is_json:
@@ -58,7 +54,6 @@ def economy_required(f):
                     return redirect(url_for('dashboard'))
         except Exception as e:
             current_app.logger.error(f"Error checking economy status: {str(e)}")
-            # Allow access if we can't check the setting (fail open for availability)
 
         return f(*args, **kwargs)
     return decorated_function

@@ -25,7 +25,6 @@ def chat_messages(club_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user has access (leader, co-leader, member, or admin)
     is_leader = club.leader_id == user.id
     is_co_leader = club.co_leader_id == user.id
     membership = ClubMembership.query.filter_by(
@@ -52,7 +51,6 @@ def chat_messages(club_id):
             ClubChatMessage.created_at.desc()
         ).limit(limit).all()
 
-        # Reverse to get chronological order
         messages.reverse()
 
         messages_data = []
@@ -76,7 +74,6 @@ def chat_messages(club_id):
         })
 
     elif request.method == 'POST':
-        # Post a new message
         data = request.get_json()
         message_text = data.get('message', '').strip()
         image_url = data.get('image_url', '').strip()
@@ -84,9 +81,7 @@ def chat_messages(club_id):
         if not message_text and not image_url:
             return jsonify({'error': 'Message or image required'}), 400
 
-        # Validate message content
         if message_text:
-            # Use security validation
             is_valid, validated_message = validate_input_with_security(
                 message_text,
                 field_name='chat_message',
@@ -99,7 +94,6 @@ def chat_messages(club_id):
 
             message_text = validated_message
 
-        # Create message
         chat_message = ClubChatMessage(
             club_id=club_id,
             user_id=user.id,
@@ -133,7 +127,6 @@ def chat_message_operations(club_id, message_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user has access (leader, co-leader, member, or admin)
     is_leader = club.leader_id == user.id
     is_co_leader = club.co_leader_id == user.id
     membership = ClubMembership.query.filter_by(
@@ -145,26 +138,22 @@ def chat_message_operations(club_id, message_id):
     if not is_leader and not is_co_leader and not membership and not is_admin_access:
         return jsonify({'error': 'Not authorized'}), 403
 
-    # Get the message
     message = ClubChatMessage.query.filter_by(
         id=message_id,
         club_id=club_id
     ).first_or_404()
 
-    # Verify user owns the message or is a leader
     is_leader = (user.id == club.leader_id or user.id == club.co_leader_id)
     if message.user_id != user.id and not is_leader and not user.is_admin:
         return jsonify({'error': 'Not authorized to modify this message'}), 403
 
     if request.method == 'PUT':
-        # Edit message
         data = request.get_json()
         new_message_text = data.get('message', '').strip()
 
         if not new_message_text:
             return jsonify({'error': 'Message text required'}), 400
 
-        # Validate message content
         is_valid, validated_message = validate_input_with_security(
             new_message_text,
             field_name='chat_message',
@@ -192,7 +181,6 @@ def chat_message_operations(club_id, message_id):
         db.session.delete(message)
         db.session.commit()
 
-        # Log deletion
         log_security_event(
             'CHAT_MESSAGE_DELETED',
             f'User {user.username} deleted message {message_id} in club {club_id}',
@@ -217,7 +205,6 @@ def upload_chat_image(club_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user has access (leader, co-leader, member, or admin)
     is_leader = club.leader_id == user.id
     is_co_leader = club.co_leader_id == user.id
     membership = ClubMembership.query.filter_by(
@@ -232,7 +219,6 @@ def upload_chat_image(club_id):
     max_size = 10 * 1024 * 1024  # 10MB for chat images
     image_data_list = []
 
-    # Check if JSON with base64 image
     if request.is_json:
         data = request.get_json()
         if not data or 'image' not in data:
@@ -242,11 +228,9 @@ def upload_chat_image(club_id):
         if not base64_image or not isinstance(base64_image, str):
             return jsonify({'error': 'Invalid image data'}), 400
 
-        # Parse single base64 image
         image_data_list = parse_base64_images([base64_image], max_size=max_size)
 
     else:
-        # Check if file was uploaded
         if 'image' not in request.files:
             return jsonify({'error': 'No image file provided'}), 400
 
@@ -255,12 +239,10 @@ def upload_chat_image(club_id):
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
 
-        # Validate file type
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
         if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
             return jsonify({'error': 'Invalid file type. Allowed: PNG, JPG, GIF, WEBP'}), 400
 
-        # Read file data
         try:
             file.seek(0)
             image_data = file.read()
@@ -278,7 +260,6 @@ def upload_chat_image(club_id):
     if not image_data_list:
         return jsonify({'error': 'No valid image provided'}), 400
 
-    # Upload to Hack Club CDN
     success, result = upload_to_hackclub_cdn(image_data_list)
 
     if not success:

@@ -17,7 +17,6 @@ class SystemSettings(db.Model):
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     updated_by = db.Column(db.Integer, db.ForeignKey('user.id'))
 
-    # Relationships
     updated_by_user = db.relationship('User', backref=db.backref('system_settings_updates', lazy=True))
 
     @staticmethod
@@ -34,19 +33,16 @@ class SystemSettings(db.Model):
     def set_setting(key, value, user_id=None):
         """Set a system setting value"""
         try:
-            # Import here to avoid circular dependency
             from app.models.user import User
 
             setting = SystemSettings.query.filter_by(key=key).first()
             if setting:
                 setting.value = str(value)
                 if user_id:
-                    # Verify user exists before setting
                     user_exists = db.session.query(User.query.filter(User.id == user_id).exists()).scalar()
                     if user_exists:
                         setting.updated_by = user_id
             else:
-                # Verify user exists before creating setting
                 valid_user_id = None
                 if user_id:
                     user_exists = db.session.query(User.query.filter(User.id == user_id).exists()).scalar()
@@ -113,7 +109,6 @@ class StatusIncident(db.Model):
     resolved_at = db.Column(db.DateTime)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    # Relationships
     creator = db.relationship('User', foreign_keys=[created_by], backref=db.backref('created_incidents', lazy=True))
 
     def get_affected_services(self):
@@ -132,7 +127,6 @@ class StatusIncident(db.Model):
     def get_duration(self):
         """Get incident duration in human readable format"""
         if self.resolved_at:
-            # Both timestamps should be timezone-aware
             resolved_at = self.resolved_at
             if resolved_at.tzinfo is None:
                 resolved_at = resolved_at.replace(tzinfo=timezone.utc)
@@ -141,7 +135,6 @@ class StatusIncident(db.Model):
                 created_at = created_at.replace(tzinfo=timezone.utc)
             delta = resolved_at - created_at
         else:
-            # Handle timezone-aware vs naive datetime comparison
             created_at = self.created_at
             if created_at.tzinfo is None:
                 created_at = created_at.replace(tzinfo=timezone.utc)
@@ -200,7 +193,6 @@ class StatusUpdate(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    # Relationships
     incident = db.relationship('StatusIncident', backref=db.backref('updates', lazy=True, order_by='StatusUpdate.created_at'))
     creator = db.relationship('User', foreign_keys=[created_by], backref=db.backref('status_updates', lazy=True))
 

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- CRITICAL: Load theme BEFORE anything else to prevent flash -->
+
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
@@ -15,14 +15,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Hack Club Dashboard{% endblock %}</title>
 
-    <!-- PWA Meta Tags -->
+
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#ec3750">
     <meta name="background-color" content="#f5f7fa">
     <meta name="display" content="standalone">
     <meta name="orientation" content="portrait-primary">
 
-    <!-- iOS Specific Meta Tags -->
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -32,7 +32,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='assets/logo-rounded.png') }}">
     <link rel="apple-touch-icon" sizes="167x167" href="{{ url_for('static', filename='assets/logo-rounded.png') }}">
 
-    <!-- Standard favicon -->
+
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='assets/logo-rounded.png') }}">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -980,7 +980,7 @@
                         </div>
                     </div>
 
-                    <!-- Theme Toggle Button -->
+
                     <button id="themeToggle" class="nav-link theme-toggle" onclick="toggleTheme()" title="Toggle theme">
                         <i class="fas fa-moon theme-icon-dark"></i>
                         <i class="fas fa-sun theme-icon-light"></i>
@@ -999,7 +999,7 @@
 
                     <a href="{{ url_for('login') }}" class="nav-link">Login</a>
 
-                    <!-- Theme Toggle Button -->
+
                     <button id="themeToggle" class="nav-link theme-toggle" onclick="toggleTheme()" title="Toggle theme">
                         <i class="fas fa-moon theme-icon-dark"></i>
                         <i class="fas fa-sun theme-icon-light"></i>
@@ -1012,7 +1012,7 @@
         </div>
     </nav>
 
-    <!-- Site-wide Incident Banner -->
+
     <div id="incident-banner" style="display: none;">
         <div class="incident-banner-content">
             <div class="incident-banner-left">
@@ -1175,7 +1175,7 @@
         }
     </script>
 
-    <!-- PWA Service Worker Registration -->
+
     <script>
         // Register service worker for PWA
         if ('serviceWorker' in navigator) {
@@ -1269,7 +1269,7 @@
     </script>
 
 
-    <!-- Universal Modal System -->
+
     <div id="universalModal" class="universal-modal" style="display: none;">
         <div class="universal-modal-overlay"></div>
         <div class="universal-modal-content">
@@ -1935,10 +1935,10 @@
         });
     </script>
 
-    <!-- Dark Reader Library -->
+
     <script src="{{ url_for('static', filename='js/darkreader.min.js') }}"></script>
 
-    <!-- Dark Reader Theme System -->
+
     <script>
         // ============================================
         //  DARK READER THEME IMPLEMENTATION

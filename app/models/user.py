@@ -8,18 +8,14 @@ from flask import request
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 
-# Note: Some circular import issues will be resolved when we refactor utilities
-
 
 def get_real_ip():
     """Get the real client IP address, accounting for proxies and load balancers"""
-    # Check common proxy headers in order of preference
     if request.headers.get('CF-Connecting-IP'):
         return request.headers.get('CF-Connecting-IP')
     elif request.headers.get('X-Real-IP'):
         return request.headers.get('X-Real-IP')
     elif request.headers.get('X-Forwarded-For'):
-        # X-Forwarded-For can contain multiple IPs, get the first one (original client)
         forwarded_ips = request.headers.get('X-Forwarded-For').split(',')
         return forwarded_ips[0].strip()
     elif request.headers.get('X-Forwarded-Proto'):
@@ -44,18 +40,15 @@ class User(db.Model):
     identity_token = db.Column(db.String(500))
     identity_verified = db.Column(db.Boolean, default=False, nullable=False)
 
-    # IP address tracking for security
     registration_ip = db.Column(db.String(45))  # IPv6 addresses can be up to 45 chars
     last_login_ip = db.Column(db.String(45))
     all_ips = db.Column(db.Text)  # JSON array of all IPs used by this user
 
-    # 2FA / TOTP fields
     totp_secret = db.Column(db.String(32))  # Base32 encoded secret
     totp_enabled = db.Column(db.Boolean, default=False, nullable=False)
     totp_backup_codes = db.Column(db.Text)  # JSON array of hashed backup codes
     totp_enabled_at = db.Column(db.DateTime)
 
-    # RBAC relationships - specify foreign_keys to avoid ambiguity with assigned_by
     roles = db.relationship('Role', secondary='user_role',
                            primaryjoin='User.id==UserRole.user_id',
                            secondaryjoin='Role.id==UserRole.role_id',
@@ -77,7 +70,6 @@ class User(db.Model):
 
     def has_permission(self, permission_name):
         """Check if user has a specific permission through any of their roles"""
-        # Root user has all permissions
         if self.is_root_user():
             return True
 
@@ -106,7 +98,6 @@ class User(db.Model):
 
     def remove_role(self, role_name):
         """Remove a role from this user"""
-        # Root user cannot lose super-admin role
         if self.is_root_user() and role_name == 'super-admin':
             return False
 
@@ -148,15 +139,12 @@ class User(db.Model):
 
         current_ips = self.get_all_ips()
 
-        # Add IP if not already in list
         if ip_address not in current_ips:
             current_ips.append(ip_address)
-            # Keep only last 50 IPs to prevent unlimited growth
             if len(current_ips) > 50:
                 current_ips = current_ips[-50:]
             self.all_ips = json.dumps(current_ips)
 
-        # Update last login IP
         self.last_login_ip = ip_address
 
     def generate_totp_secret(self):
@@ -217,7 +205,6 @@ class User(db.Model):
             codes = json.loads(self.totp_backup_codes)
             for i, hashed_code in enumerate(codes):
                 if check_password_hash(hashed_code, code):
-                    # Remove the used code
                     codes.pop(i)
                     self.totp_backup_codes = json.dumps(codes)
                     return True
@@ -226,7 +213,6 @@ class User(db.Model):
             return False
 
 
-# Role-Based Access Control (RBAC) Models
 class Role(db.Model):
     """Roles that can be assigned to users"""
     __tablename__ = 'role'
@@ -239,7 +225,6 @@ class Role(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    # Relationships
     permissions = db.relationship('Permission', secondary='role_permission', backref='roles', lazy='dynamic')
 
     def to_dict(self):
@@ -327,7 +312,6 @@ class AuditLog(db.Model):
     severity = db.Column(db.String(20), default='info')  # info, warning, error, critical
     admin_action = db.Column(db.Boolean, default=False, index=True)  # Mark admin actions
 
-    # Relationships
     user = db.relationship('User', backref=db.backref('audit_logs', lazy='dynamic'))
 
     def to_dict(self):
@@ -355,7 +339,6 @@ def create_audit_log(action_type, description, user=None, target_type=None, targ
     from flask import current_app as app
 
     try:
-        # Auto-determine category if not provided
         if not category:
             if action_type in ['signup', 'login', 'logout', 'password_change']:
                 category = 'auth'
@@ -392,7 +375,6 @@ def create_audit_log(action_type, description, user=None, target_type=None, targ
         return log_entry
     except Exception as e:
         app.logger.error(f"Failed to create audit log: {str(e)}")
-        # Try to rollback if commit failed
         try:
             db.session.rollback()
         except:
@@ -403,15 +385,12 @@ def create_audit_log(action_type, description, user=None, target_type=None, targ
 def initialize_rbac_system():
     """Initialize the RBAC system with predefined roles and permissions"""
 
-    # Define all permissions
     permissions_data = [
-        # System permissions
         ('system.manage_roles', 'Manage Roles', 'Create, edit, and delete roles', 'system'),
         ('system.manage_permissions', 'Manage Permissions', 'Assign permissions to roles', 'system'),
         ('system.view_audit_logs', 'View Audit Logs', 'View system audit logs', 'system'),
         ('system.manage_settings', 'Manage System Settings', 'Modify system configuration', 'system'),
 
-        # User management permissions
         ('users.view', 'View Users', 'View user list and profiles', 'users'),
         ('users.create', 'Create Users', 'Create new user accounts', 'users'),
         ('users.edit', 'Edit Users', 'Modify user information', 'users'),
@@ -420,7 +399,6 @@ def initialize_rbac_system():
         ('users.assign_roles', 'Assign Roles', 'Assign roles to users', 'users'),
         ('users.impersonate', 'Impersonate Users', 'Login as another user', 'users'),
 
-        # Club management permissions
         ('clubs.view', 'View Clubs', 'View club list and details', 'clubs'),
         ('clubs.create', 'Create Clubs', 'Create new clubs', 'clubs'),
         ('clubs.edit', 'Edit Clubs', 'Modify club information', 'clubs'),
@@ -428,23 +406,19 @@ def initialize_rbac_system():
         ('clubs.manage_members', 'Manage Club Members', 'Add/remove club members', 'clubs'),
         ('clubs.transfer_leadership', 'Transfer Club Leadership', 'Transfer club ownership', 'clubs'),
 
-        # Content management permissions
         ('content.view', 'View Content', 'View posts and projects', 'content'),
         ('content.create', 'Create Content', 'Create posts and projects', 'content'),
         ('content.edit', 'Edit Content', 'Edit posts and projects', 'content'),
         ('content.delete', 'Delete Content', 'Delete posts and projects', 'content'),
         ('content.moderate', 'Moderate Content', 'Flag and remove inappropriate content', 'content'),
 
-        # Review permissions
         ('reviews.view', 'View Reviews', 'View project reviews', 'reviews'),
         ('reviews.submit', 'Submit Reviews', 'Review and approve projects', 'reviews'),
         ('reviews.override', 'Override Reviews', 'Override review decisions', 'reviews'),
 
-        # Order review permissions
         ('orders.view', 'View Orders', 'View order submissions in review', 'orders'),
         ('orders.approve', 'Approve Orders', 'Review and approve order status changes', 'orders'),
 
-        # Admin dashboard permissions
         ('admin.access_dashboard', 'Access Admin Dashboard', 'Access the admin dashboard', 'admin'),
         ('admin.view_stats', 'View Statistics', 'View system statistics and overview', 'admin'),
         ('admin.view_activity', 'View Activity Logs', 'View activity feed and system logs', 'admin'),
@@ -456,7 +430,6 @@ def initialize_rbac_system():
         ('admin.login_as_user', 'Login As User', 'Impersonate other users (same as users.impersonate)', 'admin'),
     ]
 
-    # Create permissions
     permission_objects = {}
     for perm_name, display_name, description, category in permissions_data:
         perm = Permission.query.filter_by(name=perm_name).first()
@@ -472,7 +445,6 @@ def initialize_rbac_system():
 
     db.session.flush()
 
-    # Define roles with their permissions (all are custom/editable now)
     roles_data = {
         'super-admin': {
             'display_name': 'Super Administrator',
@@ -531,7 +503,6 @@ def initialize_rbac_system():
         },
     }
 
-    # Create roles and assign permissions
     for role_name, role_data in roles_data.items():
         role = Role.query.filter_by(name=role_name).first()
         if not role:
@@ -544,16 +515,13 @@ def initialize_rbac_system():
             db.session.add(role)
             db.session.flush()
         else:
-            # Update existing roles to be editable
             role.is_system_role = role_data['is_system_role']
             role.display_name = role_data['display_name']
             role.description = role_data['description']
 
-        # Assign permissions to role
         for perm_name in role_data['permissions']:
             if perm_name in permission_objects:
                 perm = permission_objects[perm_name]
-                # Check if role already has this permission
                 existing = RolePermission.query.filter_by(
                     role_id=role.id,
                     permission_id=perm.id
@@ -562,7 +530,6 @@ def initialize_rbac_system():
                     role_perm = RolePermission(role_id=role.id, permission_id=perm.id)
                     db.session.add(role_perm)
 
-    # Ensure root user (ethan@hackclub.com) has super-admin role
     root_user = User.query.filter_by(email='ethan@hackclub.com').first()
     if root_user:
         super_admin_role = Role.query.filter_by(name='super-admin').first()
@@ -577,7 +544,6 @@ def migrate_existing_users_to_rbac():
     """Migrate existing users from old boolean-based permissions to new RBAC system"""
     print("Starting user migration to RBAC system...")
 
-    # Get all roles
     super_admin_role = Role.query.filter_by(name='super-admin').first()
     admin_role = Role.query.filter_by(name='admin').first()
     reviewer_role = Role.query.filter_by(name='reviewer').first()
@@ -587,19 +553,15 @@ def migrate_existing_users_to_rbac():
         print("ERROR: Roles not found. Please initialize the RBAC system first.")
         return
 
-    # Get all users
     users = User.query.all()
     migrated_count = 0
 
     for user in users:
-        # Skip if user already has roles
         if user.roles.count() > 0:
             continue
 
-        # Assign roles based on old boolean flags
         roles_assigned = []
 
-        # Root user always gets super-admin
         if user.is_root_user():
             user.assign_role(super_admin_role)
             roles_assigned.append('super-admin')
@@ -610,7 +572,6 @@ def migrate_existing_users_to_rbac():
             user.assign_role(reviewer_role)
             roles_assigned.append('reviewer')
 
-        # All users get the basic user role
         if not user.is_suspended:
             user.assign_role(user_role)
             roles_assigned.append('user')

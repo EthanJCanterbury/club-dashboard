@@ -10,10 +10,8 @@ import secrets
 import string
 from datetime import datetime, timezone
 
-# Set up module logger
 logger = logging.getLogger(__name__)
 
-# This will be properly initialized when imported by the app
 app = None
 db = None
 User = None
@@ -36,11 +34,9 @@ class AirtableService:
         self.api_token = os.environ.get('AIRTABLE_TOKEN')
         self.base_id = os.environ.get('AIRTABLE_BASE_ID', 'appSnnIu0BhjI3E1p')
         self.table_name = os.environ.get('AIRTABLE_TABLE_NAME', 'Grants')
-        # New club management base
         self.clubs_base_id = os.environ.get('AIRTABLE_CLUBS_BASE_ID', 'appSUAc40CDu6bDAp')
         self.clubs_table_id = os.environ.get('AIRTABLE_CLUBS_TABLE_ID', 'tbl5saCV1f7ZWjsn0')
         self.clubs_table_name = os.environ.get('AIRTABLE_CLUBS_TABLE_NAME', 'Clubs Dashboard')
-        # Email verification table
         self.email_verification_table_name = 'Dashboard Email Verification'
         self.headers = {
             'Authorization': f'Bearer {self.api_token}',
@@ -49,9 +45,7 @@ class AirtableService:
         encoded_table_name = urllib.parse.quote(self.table_name)
         self.base_url = f'https://api.airtable.com/v0/{self.base_id}/{encoded_table_name}'
 
-        # Club management URLs - use table ID for direct access
         self.clubs_base_url = f'https://api.airtable.com/v0/{self.clubs_base_id}/{self.clubs_table_id}'
-        # Email verification URL
         self.email_verification_url = f'https://api.airtable.com/v0/{self.clubs_base_id}/{urllib.parse.quote(self.email_verification_table_name)}'
 
     def _validate_airtable_url(self, url):
@@ -69,7 +63,6 @@ class AirtableService:
         if not self._validate_airtable_url(url):
             raise ValueError(f"Invalid Airtable URL: {url}")
 
-        # Add timeout to prevent hanging requests - longer for email operations
         kwargs.setdefault('timeout', 60)
 
         if method.upper() == 'GET':
@@ -85,18 +78,14 @@ class AirtableService:
 
     def _check_school_variations(self, club_name, venue):
         """Check for common school name variations"""
-        # Remove common words that might cause mismatches
         common_words = ['high', 'school', 'college', 'university', 'academy', 'the', 'of', 'at']
 
-        # Extract main words from both names
         club_words = [word for word in club_name.split() if word not in common_words and len(word) > 2]
         venue_words = [word for word in venue.split() if word not in common_words and len(word) > 2]
 
-        # Check if any significant words match
         for club_word in club_words:
             for venue_word in venue_words:
                 if (club_word in venue_word or venue_word in club_word or
-                    # Check for common abbreviations
                     (club_word.startswith(venue_word[:3]) and len(venue_word) > 3) or
                     (venue_word.startswith(club_word[:3]) and len(club_word) > 3)):
                     return True
@@ -112,21 +101,17 @@ class AirtableService:
             logger.error("Airtable clubs base ID or table name not configured")
             return False
 
-        # Validate email format to prevent injection
         if not email or '@' not in email or len(email) < 3:
             logger.error("Invalid email format for verification")
             return False
 
-        # Escape email for safe use in formula - prevent wildcard matching
         escaped_email = email.replace('"', '""').replace("'", "''")
 
-        # Validate email contains proper domain
         if email.count('@') != 1:
             logger.error("Invalid email format - multiple @ symbols")
             return False
 
         try:
-            # Use exact email matching instead of FIND to prevent wildcard abuse
             email_filter_params = {
                 'filterByFormula': f'{{Current Leaders\' Emails}} = "{escaped_email}"'
             }
@@ -135,7 +120,6 @@ class AirtableService:
             logger.debug(f"Airtable URL: {self.clubs_base_url}")
             logger.debug(f"Email filter formula: {email_filter_params['filterByFormula']}")
 
-            # Validate the URL to prevent SSRF
             parsed_url = urllib.parse.urlparse(self.clubs_base_url)
             if parsed_url.hostname not in ['api.airtable.com']:
                 logger.error(f"Invalid Airtable URL hostname: {parsed_url.hostname}")
@@ -164,10 +148,8 @@ class AirtableService:
                     logger.info("No records found with that email address")
                     return False
 
-                # Check if any of the records match the club name (case-insensitive partial match)
                 club_name_lower = club_name.lower().strip()
 
-                # Log all available club names for debugging
                 club_names = [record.get('fields', {}).get('Club Name', '') for record in records]
                 logger.info(f"Available club names for {email}: {club_names}")
                 logger.debug(f"Full record data for debugging: {[record.get('fields', {}) for record in records]}")
@@ -177,14 +159,10 @@ class AirtableService:
                     venue = fields.get('Club Name', '').lower().strip()
                     logger.debug(f"Checking club name: '{venue}' against requested club name: '{club_name_lower}'")
 
-                    # Try multiple matching strategies with more flexible matching
                     if (club_name_lower in venue or
                         venue.find(club_name_lower) >= 0 or
-                        # Check if club name words are in venue
                         any(word.strip() in venue for word in club_name_lower.split() if len(word.strip()) > 2) or
-                        # Check if venue words are in club name
                         any(word.strip() in club_name_lower for word in venue.split() if len(word.strip()) > 2) or
-                        # Check for common school/high school variations
                         self._check_school_variations(club_name_lower, venue)):
                         logger.info(f"Found matching club: {fields.get('Club Name', '')}")
                         return True
@@ -214,16 +192,11 @@ class AirtableService:
         try:
             hours = float(submission_data.get('project_hours', 0))
 
-            # New detailed earning structure: $5 per hour, capped at $20
-            # Must be in-person meeting and have 3+ members to redeem
             grant_amount = min(hours * 5, 20)  # $5/hour, max $20
 
-            # Round down to nearest dollar for clean amounts
             grant_amount = int(grant_amount)
 
-            # Ensure minimum requirements are met for any grant
             if grant_amount > 0:
-                # Check if club meets requirements (will be validated on submission)
                 is_in_person = submission_data.get('is_in_person_meeting', False)
                 club_member_count = submission_data.get('club_member_count', 0)
 
@@ -236,7 +209,6 @@ class AirtableService:
                 else:
                     logger.info(f"Grant approved: ${grant_amount} for {hours} hours (in-person meeting, {club_member_count} members)")
 
-            # Use YSWS Project Submission table fields - updated field names to match actual table
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
 
@@ -272,15 +244,12 @@ class AirtableService:
                 'Meeting Requirements Met': 'Yes' if (submission_data.get('is_in_person_meeting', False) and submission_data.get('club_member_count', 0) >= 3) else 'No'
             }
 
-            # Debug log submission data
             logger.debug(f"Club name in submission_data: '{submission_data.get('club_name', 'NOT_FOUND')}'")
             logger.debug(f"Leader email in submission_data: '{submission_data.get('leader_email', 'NOT_FOUND')}'")
 
-            # Remove empty fields to avoid validation issues
             fields_before_filter = fields.copy()
             fields = {k: v for k, v in fields.items() if v not in [None, '', []]}
 
-            # Log which fields were filtered out
             filtered_out = set(fields_before_filter.keys()) - set(fields.keys())
             if filtered_out:
                 logger.debug(f"Fields filtered out due to empty values: {filtered_out}")
@@ -311,7 +280,6 @@ class AirtableService:
         if not self.api_token:
             return None
 
-        # Use Grants table instead
         grants_table_name = urllib.parse.quote('Grants')
         grants_url = f'https://api.airtable.com/v0/{self.base_id}/{grants_table_name}'
 
@@ -345,7 +313,6 @@ class AirtableService:
         if not self.api_token:
             return None
 
-        # Use Grant Fulfillment table
         fulfillment_table_name = urllib.parse.quote('Grant Fulfillment')
         fulfillment_url = f'https://api.airtable.com/v0/{self.base_id}/{fulfillment_table_name}'
 
@@ -382,7 +349,6 @@ class AirtableService:
             return []
 
         try:
-            # Use YSWS Project Submission table
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
 
@@ -430,7 +396,6 @@ class AirtableService:
             return None
 
         try:
-            # Use YSWS Project Submission table
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
             url = f"{project_url}/{submission_id}"
@@ -455,22 +420,18 @@ class AirtableService:
             return False
 
         try:
-            # Use YSWS Project Submission table
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
             url = f"{project_url}/{submission_id}"
 
-            # Map action to status
             status = 'Approved' if action == 'approve' else 'Rejected'
 
-            # First, try to get the current record to see what fields exist
             get_response = requests.get(url, headers=self.headers)
             if get_response.status_code == 200:
                 current_record = get_response.json()
                 fields = current_record.get('fields', {})
                 logger.info(f"Current record fields: {list(fields.keys())}")
 
-            # Try different status field names one by one
             possible_status_fields = ['Status', 'Grant Status', 'Review Status', 'Approval Status']
 
             for field_name in possible_status_fields:
@@ -488,7 +449,6 @@ class AirtableService:
                 else:
                     logger.debug(f"Failed to update with field '{field_name}': {response.status_code} - {response.text}")
 
-            # If no field worked, log the error and return False
             logger.error(f"Failed to update submission status with any field name. Last response: {response.status_code} - {response.text}")
             return False
         except Exception as e:
@@ -500,7 +460,6 @@ class AirtableService:
             return False
 
         try:
-            # Use YSWS Project Submission table
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
             url = f"{project_url}/{submission_id}"
@@ -561,7 +520,6 @@ class AirtableService:
                 fields = record.get('fields', {})
                 logger.debug(f"Processing record {i+1}/{len(all_records)}: ID={record.get('id')}, Fields keys: {list(fields.keys())}")
 
-                # Extract club information from Airtable fields
                 club_data = {
                     'airtable_id': record['id'],
                     'name': fields.get('Club Name', '').strip(),
@@ -585,7 +543,6 @@ class AirtableService:
                     'club_applications_link': fields.get('Club Applications Link', '').strip(),
                 }
 
-                # Only include clubs with valid names and leader emails
                 if club_data['name'] and club_data['leader_email']:
                     clubs.append(club_data)
                     logger.debug(f"Added valid club: {club_data['name']} ({club_data['leader_email']})")
@@ -612,7 +569,6 @@ class AirtableService:
 
             logger.debug(f"Found club: {club.name} (current location: {club.location})")
 
-            # Update club fields with Airtable data
             if 'name' in airtable_data and airtable_data['name']:
                 filtered_name = filter_profanity_comprehensive(airtable_data['name'])
                 club.name = filtered_name
@@ -625,7 +581,6 @@ class AirtableService:
             else:
                 club.description = club.description
 
-            # Store additional Airtable metadata as JSON in a new field
             club.airtable_data = json.dumps({
                 'airtable_id': airtable_data.get('airtable_id'),
                 'status': airtable_data.get('status'),
@@ -665,7 +620,6 @@ class AirtableService:
             logger.info(f"Creating new club from Airtable data")
             logger.debug(f"Airtable data: {airtable_data}")
 
-            # Find or create leader by email
             leader_email = airtable_data.get('leader_email')
             if not leader_email:
                 logger.error("Cannot create club: no leader email provided in Airtable data")
@@ -675,9 +629,7 @@ class AirtableService:
 
             leader = User.query.filter_by(email=leader_email).first()
             if not leader:
-                # Create a placeholder leader account
                 username = leader_email.split('@')[0]
-                # Ensure username is unique
                 counter = 1
                 original_username = username
                 while User.query.filter_by(username=username).first():
@@ -694,10 +646,8 @@ class AirtableService:
                 db.session.add(leader)
                 db.session.flush()
 
-            # Create club
             filtered_name = filter_profanity_comprehensive(airtable_data.get('name'))
 
-            # Check for duplicate club names
             existing_club = Club.query.filter_by(name=filtered_name).first()
             if existing_club:
                 logger.warning(f"Skipping club creation from Airtable - duplicate name: {filtered_name}")
@@ -772,16 +722,13 @@ class AirtableService:
             logger.error("Airtable API token not configured for email verification")
             return None
 
-        # Generate 5-digit verification code
         verification_code = ''.join(secrets.choice(string.digits) for _ in range(5))
 
-        # Retry logic for network timeouts
         max_retries = 3
         retry_count = 0
 
         while retry_count < max_retries:
             try:
-                # First, check if there's an existing pending verification for this email
                 existing_params = {
                     'filterByFormula': f'AND({{Email}} = "{email}", {{Status}} = "Pending")'
                 }
@@ -792,7 +739,6 @@ class AirtableService:
                     existing_data = existing_response.json()
                     existing_records = existing_data.get('records', [])
 
-                    # Update existing pending record instead of creating new one
                     if existing_records:
                         record_id = existing_records[0]['id']
                         update_url = f"{self.email_verification_url}/{record_id}"
@@ -806,7 +752,6 @@ class AirtableService:
 
                         response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload, timeout=90)
                     else:
-                        # Create new verification record
                         payload = {
                             'records': [{
                                 'fields': {
@@ -819,7 +764,6 @@ class AirtableService:
 
                         response = self._safe_request('POST', self.email_verification_url, headers=self.headers, json=payload, timeout=90)
                 else:
-                    # Create new verification record if we can't check existing
                     payload = {
                         'records': [{
                             'fields': {
@@ -845,7 +789,6 @@ class AirtableService:
                 if retry_count >= max_retries:
                     logger.error(f"Email verification failed after {max_retries} attempts due to timeout")
                     return None
-                # Wait before retrying
                 import time
                 time.sleep(2 ** retry_count)  # Exponential backoff
 
@@ -862,7 +805,6 @@ class AirtableService:
             return False
 
         try:
-            # Find the verification record
             filter_params = {
                 'filterByFormula': f'AND({{Email}} = "{email}", {{Code}} = "{code}", {{Status}} = "Pending")'
             }
@@ -874,7 +816,6 @@ class AirtableService:
                 records = data.get('records', [])
 
                 if records:
-                    # Mark as verified
                     record_id = records[0]['id']
                     update_url = f"{self.email_verification_url}/{record_id}"
 
@@ -910,7 +851,6 @@ class AirtableService:
             return False
 
         try:
-            # Find the verification record
             filter_params = {
                 'filterByFormula': f'AND({{Email}} = "{email}", {{Code}} = "{code}", {{Status}} = "Pending")'
             }
@@ -944,11 +884,9 @@ class AirtableService:
         try:
             from datetime import datetime, timedelta
 
-            # Calculate cutoff time (5 minutes ago by default)
             cutoff_time = datetime.utcnow() - timedelta(minutes=max_age_minutes)
             cutoff_time_iso = cutoff_time.isoformat() + 'Z'
 
-            # Find recent verified records
             filter_params = {
                 'filterByFormula': f'AND({{Email}} = "{email}", {{Status}} = "Verified", IS_AFTER({{Modified}}, "{cutoff_time_iso}"))'
             }
@@ -982,7 +920,6 @@ class AirtableService:
             updated_count = 0
 
             for airtable_club in airtable_clubs:
-                # Try to find existing club by leader email
                 leader_email = airtable_club.get('leader_email')
                 if not leader_email:
                     continue
@@ -994,7 +931,6 @@ class AirtableService:
                     existing_club = Club.query.filter_by(leader_id=leader.id).first()
 
                 if existing_club:
-                    # Update existing club
                     if self.sync_club_with_airtable(existing_club.id, airtable_club):
                         updated_count += 1
                 else:
@@ -1023,7 +959,6 @@ class AirtableService:
             return None
 
         try:
-            # Use YSWS Project Submission table
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             project_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}'
 
@@ -1053,7 +988,6 @@ class AirtableService:
                 'ZIP / Postal Code': submission_data.get('zip', '')
             }
 
-            # Remove empty fields to avoid validation issues
             fields = {k: v for k, v in fields.items() if v not in [None, '', []]}
 
             logger.info(f"AIRTABLE: Submitting fields: {list(fields.keys())}")
@@ -1109,7 +1043,6 @@ class AirtableService:
                 if not offset:
                     break
 
-            # Transform records to a more usable format
             submissions = []
             for record in all_records:
                 fields = record.get('fields', {})
@@ -1145,7 +1078,6 @@ class AirtableService:
                     'createdTime': record.get('createdTime', '')
                 }
 
-                # Handle screenshot attachment if it's an array
                 if isinstance(submission['screenshot'], list) and len(submission['screenshot']) > 0:
                     submission['screenshot'] = submission['screenshot'][0].get('url', '')
                 elif not isinstance(submission['screenshot'], str):
@@ -1170,7 +1102,6 @@ class AirtableService:
             project_table_name = urllib.parse.quote('YSWS Project Submission')
             update_url = f'https://api.airtable.com/v0/{self.base_id}/{project_table_name}/{record_id}'
 
-            # Only include fields that we're allowed to update
             allowed_fields = {
                 'Status', 'Decision Reason', 'Grant Amount Override', 'Auto Review Status', 'Grant Override Reason'
             }
@@ -1220,7 +1151,6 @@ class AirtableService:
         if not self.api_token:
             return None
 
-        # Use Orders table in the shop base
         shop_base_id = 'app7OFpfZceddfK17'
         orders_table_name = urllib.parse.quote('Orders')
         orders_url = f'https://api.airtable.com/v0/{shop_base_id}/{orders_table_name}'
@@ -1270,7 +1200,6 @@ class AirtableService:
         orders_url = f'https://api.airtable.com/v0/{shop_base_id}/{orders_table_name}'
 
         try:
-            # Filter by club name
             params = {
                 'filterByFormula': f"{{Club Name}} = '{club_name}'"
             }
@@ -1435,7 +1364,6 @@ class AirtableService:
             gallery_table_name = urllib.parse.quote('Gallary')  # Table name provided by user (note the spelling)
             gallery_url = f'https://api.airtable.com/v0/{gallery_base_id}/{gallery_table_name}'
 
-            # Format photos as comma-separated string (imgurl1, imgurl2, etc)
             photos_formatted = ', '.join(photos) if photos else ''
 
             fields = {
@@ -1498,7 +1426,6 @@ class AirtableService:
                 if not offset:
                     break
 
-            # Transform records to a more usable format
             grants = []
             for record in all_records:
                 fields = record.get('fields', {})
@@ -1578,5 +1505,4 @@ class AirtableService:
             return False
 
 
-# Create singleton instance
 airtable_service = AirtableService()

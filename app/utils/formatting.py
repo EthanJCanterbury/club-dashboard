@@ -13,7 +13,6 @@ def markdown_to_html(markdown_content):
     if not markdown_content:
         return ""
 
-    # Configure markdown with safe extensions
     md = markdown.Markdown(extensions=['extra', 'codehilite', 'nl2br'],
                           extension_configs={
                               'codehilite': {
@@ -22,10 +21,8 @@ def markdown_to_html(markdown_content):
                               }
                           })
 
-    # Convert markdown to HTML
     html_content = md.convert(markdown_content)
 
-    # Define allowed HTML tags and attributes for club posts
     allowed_tags = [
         'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img',
@@ -41,7 +38,6 @@ def markdown_to_html(markdown_content):
         'td': ['align']
     }
 
-    # Clean HTML with bleach to prevent XSS
     clean_html = bleach.clean(html_content,
                              tags=allowed_tags,
                              attributes=allowed_attributes,
@@ -50,7 +46,6 @@ def markdown_to_html(markdown_content):
     return clean_html
 
 
-# Template filters - these will be registered with the Flask app
 def safe_css_color_filter(value):
     """Template filter for safe CSS color output"""
     from .sanitization import sanitize_css_color

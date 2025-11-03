@@ -842,7 +842,7 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
+
     <div class="header">
         <div class="container">
             <h1>
@@ -853,7 +853,7 @@
         </div>
     </div>
 
-    <!-- Admin Panel -->
+
     <div class="admin-panel" id="adminPanel" style="display: none;">
         <button class="admin-toggle" onclick="toggleAdminMenu()">
             <i class="fas fa-cog"></i> Admin
@@ -868,10 +868,10 @@
         </div>
     </div>
 
-    <!-- Main Content -->
+
     <div class="container">
         <div class="main-content">
-            <!-- Status Overview -->
+
             <div class="status-overview fade-in" id="statusOverview">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -879,7 +879,7 @@
                 </div>
             </div>
 
-            <!-- Incidents (moved before services) -->
+
             <div class="incidents-section fade-in">
                 <h2>
                     <i class="fas fa-exclamation-triangle"></i>
@@ -906,7 +906,7 @@
                 </div>
             </div>
 
-            <!-- Services Status (moved after incidents) -->
+
             <div class="services-section fade-in">
                 <h2>
                     <i class="fas fa-server"></i>
@@ -922,10 +922,10 @@
         </div>
     </div>
 
-    <!-- Modals -->
+
     <div id="modalOverlay" class="modal-overlay" onclick="closeModal()">
         <div class="modal-container" onclick="event.stopPropagation()">
-            <!-- Create Incident Modal -->
+
             <div id="createIncidentModal" class="modal">
                 <div class="modal-header">
                     <h3><i class="fas fa-plus"></i> Create New Incident</h3>
@@ -997,7 +997,7 @@
                 </div>
             </div>
 
-            <!-- Manage Incident Modal -->
+
             <div id="manageIncidentModal" class="modal">
                 <div class="modal-header">
                     <h3><i class="fas fa-cog"></i> Manage Incident</h3>
@@ -1021,7 +1021,7 @@
                         </button>
                     </div>
 
-                    <!-- Status Updates -->
+
                     <div id="incidentUpdates" class="incident-updates-section">
                         <h4><i class="fas fa-history"></i> Status Updates</h4>
                         <div id="updatesList"></div>
@@ -1032,7 +1032,7 @@
                 </div>
             </div>
 
-            <!-- Edit Incident Modal -->
+
             <div id="editIncidentModal" class="modal">
                 <div class="modal-header">
                     <h3><i class="fas fa-edit"></i> Edit Incident</h3>
@@ -1106,7 +1106,7 @@
                 </div>
             </div>
 
-            <!-- Add Status Update Modal -->
+
             <div id="addUpdateModal" class="modal">
                 <div class="modal-header">
                     <h3><i class="fas fa-comment"></i> Add Status Update</h3>

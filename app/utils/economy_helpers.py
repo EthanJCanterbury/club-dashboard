@@ -30,21 +30,16 @@ def create_club_transaction(club_id, transaction_type, amount, description,
         Tuple of (success: bool, result: ClubTransaction or error message)
     """
     try:
-        # Use SELECT FOR UPDATE to lock the club record and prevent race conditions
         club = Club.query.filter_by(id=club_id).with_for_update().first()
         if not club:
             return False, "Club not found"
 
-        # For debit transactions, check if sufficient balance exists
         if amount < 0 and club.tokens + amount < 0:
             return False, f"Insufficient balance. Current: {club.tokens} tokens, Required: {abs(amount)} tokens"
 
-        # Update club balance atomically
         club.tokens += amount
-        # Keep balance field in sync (convert tokens to USD)
         club.balance = club.tokens / 100.0
 
-        # Create transaction record
         transaction = ClubTransaction(
             club_id=club_id,
             user_id=user_id,
@@ -94,15 +89,12 @@ def update_quest_progress(club_id, quest_type, increment=1):
     try:
         week_start = get_current_week_start()
 
-        # Find the quest by type
         quest = WeeklyQuest.query.filter_by(quest_type=quest_type, is_active=True).first()
         if not quest:
             return False, "Quest not found"
 
-        # Set target based on quest type
         target = 1 if quest_type == 'gallery_post' else 5
 
-        # Get or create quest progress record
         progress_record = ClubQuestProgress.query.filter_by(
             club_id=club_id,
             quest_id=quest.id,
@@ -124,23 +116,18 @@ def update_quest_progress(club_id, quest_type, increment=1):
         progress_record.progress += increment
         progress_record.updated_at = datetime.utcnow()
 
-        # Check if quest is completed
         if progress_record.progress >= target and not progress_record.completed:
             progress_record.completed = True
             progress_record.completed_at = datetime.utcnow()
 
-            # Get club with lock to check piggy bank balance
             club = Club.query.filter_by(id=club_id).with_for_update().first()
             if not club:
                 current_app.logger.error(f"Club {club_id} not found when completing quest")
                 return False, "Club not found"
 
-            # Check if piggy bank has enough tokens
             if club.piggy_bank_tokens >= quest.reward_tokens:
-                # Transfer tokens from piggy bank to regular balance
                 club.piggy_bank_tokens -= quest.reward_tokens
 
-                # Award tokens to regular balance
                 success, transaction = create_club_transaction(
                     club_id=club_id,
                     transaction_type='credit',
@@ -152,7 +139,6 @@ def update_quest_progress(club_id, quest_type, increment=1):
                 )
 
                 if success:
-                    # Create piggy bank debit transaction record
                     try:
                         piggy_success, piggy_transaction = create_club_transaction(
                             club_id=club_id,
@@ -174,24 +160,19 @@ def update_quest_progress(club_id, quest_type, increment=1):
                             current_app.logger.error(
                                 f"Failed to record piggy bank debit transaction: {piggy_transaction}"
                             )
-                            # Still mark as claimed since the main transaction succeeded
                             progress_record.reward_claimed = True
                     except Exception as piggy_error:
                         current_app.logger.error(f"Error recording piggy bank transaction: {str(piggy_error)}")
-                        # Still mark as claimed since the main transaction succeeded
                         progress_record.reward_claimed = True
                 else:
-                    # Restore piggy bank tokens if main transaction failed
                     club.piggy_bank_tokens += quest.reward_tokens
                     current_app.logger.error(f"Failed to award quest tokens: {transaction}")
             else:
-                # Not enough tokens in piggy bank - don't award anything
                 current_app.logger.warning(
                     f"Club {club_id} completed quest {quest.name} but piggy bank has "
                     f"insufficient tokens ({club.piggy_bank_tokens} < {quest.reward_tokens}). "
                     f"No reward given."
                 )
-                # Still mark as completed but not rewarded
                 progress_record.reward_claimed = False
 
         db.session.commit()

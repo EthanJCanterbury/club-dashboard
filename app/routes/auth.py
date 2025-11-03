@@ -21,7 +21,6 @@ import os
 
 auth_bp = Blueprint('auth', __name__)
 
-# Constants from environment
 HACKCLUB_IDENTITY_URL = os.getenv('HACKCLUB_IDENTITY_URL', 'https://identity.hackclub.com')
 HACKCLUB_IDENTITY_CLIENT_ID = os.getenv('HACKCLUB_IDENTITY_CLIENT_ID')
 HACKCLUB_IDENTITY_CLIENT_SECRET = os.getenv('HACKCLUB_IDENTITY_CLIENT_SECRET')
@@ -51,14 +50,11 @@ def login():
             return render_template('login.html', user_registration_enabled=SystemSettings.is_user_registration_enabled())
 
         if user and user.check_password(password):
-            # Check if account is suspended
             if user.is_suspended:
                 flash('Your account has been suspended. Please contact support.', 'error')
                 return redirect(url_for('main.suspended'))
 
-            # Check if 2FA is enabled
             if user.totp_enabled:
-                # Store user ID in session for 2FA verification
                 session['2fa_user_id'] = user.id
                 session['2fa_remember_me'] = remember_me
                 return redirect(url_for('auth.verify_2fa'))
@@ -66,7 +62,6 @@ def login():
             do_login_user(user, remember=remember_me)
             flash(f'Welcome back, {user.username}!', 'success')
 
-            # Check for pending OAuth flow
             oauth_params = session.get('oauth_params')
             if oauth_params:
                 session.pop('oauth_params', None)
@@ -97,7 +92,6 @@ def signup():
         return redirect(url_for('main.dashboard'))
 
     if request.method == 'POST':
-        # Get form data
         username = sanitize_string(request.form.get('username', ''), max_length=30).strip()
         email = sanitize_string(request.form.get('email', ''), max_length=120).strip().lower()
         password = request.form.get('password', '')
@@ -119,7 +113,6 @@ def signup():
             flash(password_or_error, 'error')
             return render_template('signup.html')
 
-        # Check if username or email already exists
         if User.query.filter_by(username=username).first():
             flash('Username already taken', 'error')
             return render_template('signup.html')
@@ -139,7 +132,6 @@ def signup():
         db.session.add(user)
         db.session.commit()
 
-        # Log in the new user
         do_login_user(user)
         flash(f'Welcome to Hack Club, {user.username}!', 'success')
 
@@ -161,11 +153,9 @@ def forgot_password():
         if not email:
             return jsonify({'success': False, 'message': 'Email is required'}), 400
 
-        # Validate email format
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             return jsonify({'success': False, 'message': 'Invalid email format'}), 400
 
-        # For now, just return success
         return jsonify({'success': True, 'message': 'If an account exists with this email, you will receive reset instructions.'})
 
     return render_template('forgot_password.html')
@@ -193,7 +183,6 @@ def hackclub_identity_callback():
     from app.services.identity import HackClubIdentityService, init_service
     from app.utils.auth_helpers import get_current_user
 
-    # Verify state for CSRF protection
     stored_state = session.get('hackclub_identity_state')
     received_state = request.args.get('state')
 
@@ -203,25 +192,21 @@ def hackclub_identity_callback():
 
     session.pop('hackclub_identity_state', None)
 
-    # Check for errors
     error = request.args.get('error')
     if error:
         flash(f'Identity verification failed: {error}', 'error')
         return redirect(url_for('main.account'))
 
-    # Get authorization code
     code = request.args.get('code')
     if not code:
         flash('No authorization code received', 'error')
         return redirect(url_for('main.account'))
 
-    # Verify user is logged in
     user = get_current_user()
     if not user:
         flash('Please log in to complete identity verification', 'error')
         return redirect(url_for('auth.login'))
 
-    # Initialize identity service
     client_id = HACKCLUB_IDENTITY_CLIENT_ID
     client_secret = HACKCLUB_IDENTITY_CLIENT_SECRET
     identity_url = os.getenv('HACKCLUB_IDENTITY_URL', 'https://identity.hackclub.com')
@@ -229,19 +214,16 @@ def hackclub_identity_callback():
     init_service(current_app._get_current_object(), identity_url, client_id, client_secret)
     identity_service = HackClubIdentityService()
 
-    # Get redirect URI
     redirect_uri = request.url_root.rstrip('/') + '/auth/identity/callback'
     if request.url_root.startswith('http://'):
         redirect_uri = redirect_uri.replace('http://', 'https://', 1)
 
-    # Exchange code for access token
     token_data = identity_service.exchange_code(code, redirect_uri)
 
     if 'error' in token_data:
         flash(f'Token exchange failed: {token_data.get("error", "Unknown error")}', 'error')
         return redirect(url_for('main.account'))
 
-    # Store access token
     access_token = token_data.get('access_token')
     if not access_token:
         flash('No access token received', 'error')
@@ -249,26 +231,21 @@ def hackclub_identity_callback():
 
     user.identity_token = access_token
 
-    # Get user identity information
     identity_info = identity_service.get_user_identity(access_token)
 
     if identity_info and 'identity' in identity_info:
         verification_status = identity_info['identity'].get('verification_status', 'unverified')
         user.identity_verified = (verification_status == 'verified')
 
-        # Get Slack ID if available
         if 'slack_id' in identity_info['identity']:
             user.slack_user_id = identity_info['identity']['slack_id']
 
         db.session.commit()
 
-        # Check for pending OAuth flow
         pending_oauth = session.get('pending_oauth')
         if pending_oauth and user.identity_verified:
-            # OAuth flow was waiting for identity verification
             session.pop('pending_oauth', None)
 
-            # Generate authorization code
             from app.models.auth import OAuthAuthorizationCode
             auth_code = OAuthAuthorizationCode(
                 application_id=pending_oauth['application_id'],
@@ -281,7 +258,6 @@ def hackclub_identity_callback():
             db.session.add(auth_code)
             db.session.commit()
 
-            # Redirect back to client with code
             separator = '&' if '?' in pending_oauth['redirect_uri'] else '?'
             callback_url = f"{pending_oauth['redirect_uri']}{separator}code={auth_code.code}"
             if pending_oauth.get('state'):
@@ -289,7 +265,6 @@ def hackclub_identity_callback():
 
             return redirect(callback_url)
 
-        # Create audit log
         from app.models.user import create_audit_log
         create_audit_log(
             action_type='identity_verified',
@@ -328,14 +303,12 @@ def disconnect_identity():
     if not user.identity_verified:
         return jsonify({'success': False, 'message': 'No identity connected'}), 400
 
-    # Clear identity information
     user.identity_token = None
     user.identity_verified = False
     user.slack_user_id = None
 
     db.session.commit()
 
-    # Create audit log
     from app.models.user import create_audit_log
     create_audit_log(
         action_type='identity_disconnected',
@@ -387,26 +360,21 @@ def setup_2fa():
         action = request.form.get('action')
 
         if action == 'generate':
-            # Generate new secret
             secret = user.generate_totp_secret()
             session['totp_setup_secret'] = secret
             return jsonify({'success': True})
 
         elif action == 'verify':
-            # Verify the token and enable 2FA
             token = request.form.get('token', '').strip()
             secret = session.get('totp_setup_secret')
 
             if not secret:
                 return jsonify({'success': False, 'message': 'No setup in progress'}), 400
 
-            # Verify token
             totp = pyotp.TOTP(secret)
             if totp.verify(token, valid_window=1):
-                # Generate backup codes
                 backup_codes = user.generate_backup_codes(10)
 
-                # Enable 2FA
                 user.totp_secret = secret
                 user.totp_enabled = True
                 user.totp_enabled_at = datetime.now(timezone.utc)
@@ -414,10 +382,8 @@ def setup_2fa():
 
                 db.session.commit()
 
-                # Clear session
                 session.pop('totp_setup_secret', None)
 
-                # Create audit log
                 from app.models.user import create_audit_log
                 create_audit_log(
                     action_type='2fa_enabled',
@@ -434,13 +400,10 @@ def setup_2fa():
             else:
                 return jsonify({'success': False, 'message': 'Invalid token'}), 400
 
-    # GET request - show setup page
     if user.totp_enabled:
-        # Already enabled, redirect to settings
         flash('2FA is already enabled', 'info')
         return redirect(url_for('main.account'))
 
-    # Generate QR code if secret exists in session
     qr_code_data = None
     if 'totp_setup_secret' in session:
         secret = session['totp_setup_secret']
@@ -449,13 +412,11 @@ def setup_2fa():
             issuer_name='Hack Club Dashboard'
         )
 
-        # Generate QR code
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(uri)
         qr.make(fit=True)
         img = qr.make_image(fill_color="black", back_color="white")
 
-        # Convert to base64
         buffer = io.BytesIO()
         img.save(buffer, format='PNG')
         qr_code_data = base64.b64encode(buffer.getvalue()).decode()
@@ -474,12 +435,10 @@ def disable_2fa():
     if not user.totp_enabled:
         return jsonify({'success': False, 'message': '2FA is not enabled'}), 400
 
-    # Verify password
     password = request.form.get('password', '')
     if not user.check_password(password):
         return jsonify({'success': False, 'message': 'Invalid password'}), 400
 
-    # Disable 2FA
     user.totp_secret = None
     user.totp_enabled = False
     user.totp_backup_codes = None
@@ -487,7 +446,6 @@ def disable_2fa():
 
     db.session.commit()
 
-    # Create audit log
     from app.models.user import create_audit_log
     create_audit_log(
         action_type='2fa_disabled',
@@ -512,18 +470,15 @@ def regenerate_backup_codes():
     if not user.totp_enabled:
         return jsonify({'success': False, 'message': '2FA is not enabled'}), 400
 
-    # Verify password
     password = request.form.get('password', '')
     if not user.check_password(password):
         return jsonify({'success': False, 'message': 'Invalid password'}), 400
 
-    # Generate new backup codes
     backup_codes = user.generate_backup_codes(10)
     user.set_backup_codes(backup_codes)
 
     db.session.commit()
 
-    # Create audit log
     from app.models.user import create_audit_log
     create_audit_log(
         action_type='2fa_backup_codes_regenerated',
@@ -543,7 +498,6 @@ def regenerate_backup_codes():
 @limiter.limit("10 per minute")
 def verify_2fa():
     """Verify 2FA token during login"""
-    # Check if user is in 2FA verification state
     user_id = session.get('2fa_user_id')
     if not user_id:
         flash('No 2FA verification in progress', 'error')
@@ -561,17 +515,14 @@ def verify_2fa():
 
         verified = False
         if use_backup:
-            # Verify backup code
             verified = user.verify_backup_code(token)
             if verified:
                 db.session.commit()
                 flash(f'Backup code accepted. You have {user.get_backup_codes_count()} backup codes remaining.', 'warning')
         else:
-            # Verify TOTP token
             verified = user.verify_totp(token)
 
         if verified:
-            # Complete login
             from app.utils.auth_helpers import login_user as do_login_user
             session.pop('2fa_user_id', None)
             remember_me = session.pop('2fa_remember_me', False)
@@ -579,7 +530,6 @@ def verify_2fa():
 
             flash(f'Welcome back, {user.username}!', 'success')
 
-            # Check for pending OAuth flow
             oauth_params = session.get('oauth_params')
             if oauth_params:
                 session.pop('oauth_params', None)

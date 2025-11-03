@@ -15,32 +15,20 @@ from app.models.gallery import GalleryPost
 from app.models.system import SystemSettings, StatusIncident, StatusUpdate
 from app.models.shop import ShopItem, Order
 
-# Import helper functions
 from app.models.user import create_audit_log, initialize_rbac_system, migrate_existing_users_to_rbac
 from app.models.economy import create_club_transaction, get_current_week_start, update_quest_progress
 
 __all__ = [
-    # User models
     'User', 'Role', 'Permission', 'RolePermission', 'UserRole', 'AuditLog',
-    # Auth models
     'APIKey', 'OAuthApplication', 'OAuthToken', 'OAuthAuthorizationCode',
-    # Club models
     'Club', 'ClubMembership', 'ClubCosmetic', 'MemberCosmetic',
-    # Club content models
     'ClubPost', 'ClubAssignment', 'ClubMeeting', 'ClubResource', 'ClubProject',
-    # Chat models
     'ClubChatMessage',
-    # Attendance models
     'AttendanceSession', 'AttendanceRecord', 'AttendanceGuest',
-    # Economy models
     'ClubTransaction', 'ProjectSubmission', 'WeeklyQuest', 'ClubQuestProgress', 'LeaderboardExclusion',
-    # Gallery models
     'GalleryPost',
-    # System models
     'SystemSettings', 'StatusIncident', 'StatusUpdate',
-    # Shop models
     'ShopItem', 'Order',
-    # Helper functions
     'create_audit_log', 'initialize_rbac_system', 'migrate_existing_users_to_rbac',
     'create_club_transaction', 'get_current_week_start', 'update_quest_progress',
 ]

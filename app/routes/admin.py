@@ -33,19 +33,15 @@ def dashboard():
     total_posts = ClubPost.query.count()
     total_assignments = ClubAssignment.query.count()
 
-    # Get pending projects from Airtable
     airtable_service = AirtableService()
     all_projects = airtable_service.get_ysws_project_submissions()
     pending_projects = len([p for p in all_projects if p.get('status', '').lower() in ['pending', '']])
 
-    # Get total club balance
     total_club_balance = db.session.query(db.func.sum(Club.balance)).scalar() or 0
 
-    # Get recent activity
     recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
     recent_clubs = Club.query.order_by(Club.created_at.desc()).limit(10).all()
 
-    # Check permissions for each tab and action
     can_view_users = current_user.has_permission('users.view') or current_user.is_admin
     can_view_clubs = current_user.has_permission('clubs.view') or current_user.is_admin
     can_view_content = current_user.has_permission('content.view') or current_user.is_admin
@@ -56,7 +52,6 @@ def dashboard():
     can_view_dashboard = current_user.has_permission('admin.access_dashboard') or current_user.is_admin
     can_view_activity = current_user.has_permission('admin.view_activity') or current_user.is_admin
 
-    # Get user permissions list for granular checks in frontend
     user_permissions = current_user.get_all_permissions()
 
     return render_template('admin_dashboard.html',
@@ -119,11 +114,9 @@ def user_detail(user_id):
     """View user details"""
     user = User.query.get_or_404(user_id)
 
-    # Get user's clubs
     memberships = ClubMembership.query.filter_by(user_id=user_id).all()
     clubs = [m.club for m in memberships]
 
-    # Get user's audit logs
     audit_logs = AuditLog.query.filter_by(user_id=user_id).order_by(
         AuditLog.timestamp.desc()
     ).limit(50).all()
@@ -150,7 +143,6 @@ def suspend_user(user_id):
     user.is_suspended = True
     db.session.commit()
 
-    # Create audit log
     from app.models.user import AuditLog
     audit_log = AuditLog(
         user_id=get_current_user().id,
@@ -179,7 +171,6 @@ def unsuspend_user(user_id):
     user.is_suspended = False
     db.session.commit()
 
-    # Create audit log
     audit_log = AuditLog(
         user_id=get_current_user().id,
         action_type='user_unsuspended',
@@ -264,10 +255,8 @@ def recent_clubs():
 
     results = []
     for c in clubs:
-        # Get leader info from club.leader relationship
         leader_user = c.leader if c.leader_id else None
 
-        # Get member count
         member_count = ClubMembership.query.filter_by(club_id=c.id).count()
 
         results.append({
@@ -303,10 +292,8 @@ def search_clubs():
 
     results = []
     for c in clubs:
-        # Get leader info from club.leader relationship
         leader_user = c.leader if c.leader_id else None
 
-        # Get member count
         member_count = ClubMembership.query.filter_by(club_id=c.id).count()
 
         results.append({
@@ -359,10 +346,8 @@ def club_detail(club_id):
     """View club details"""
     club = Club.query.get_or_404(club_id)
 
-    # Get club members
     memberships = ClubMembership.query.filter_by(club_id=club_id).all()
 
-    # Get club transactions
     transactions = ClubTransaction.query.filter_by(club_id=club_id).order_by(
         ClubTransaction.created_at.desc()
     ).limit(50).all()
@@ -393,22 +378,18 @@ def create_club():
     if not leader_email:
         return jsonify({'error': 'Leader email is required'}), 400
 
-    # Check if club name already exists
     existing_club = Club.query.filter_by(name=name).first()
     if existing_club:
         return jsonify({'error': 'A club with this name already exists'}), 400
 
-    # Find the leader by email
     leader = User.query.filter_by(email=leader_email).first()
     if not leader:
         return jsonify({'error': 'No user found with that email address'}), 404
 
-    # Check if user is already a leader of another club
     existing_leadership = Club.query.filter_by(leader_id=leader.id).first()
     if existing_leadership:
         return jsonify({'error': f'This user is already the leader of {existing_leadership.name}'}), 400
 
-    # Create the club
     club = Club(
         name=name,
         description=description,
@@ -422,7 +403,6 @@ def create_club():
     db.session.add(club)
     db.session.commit()
 
-    # Create audit log
     create_audit_log(
         action_type='club_created',
         description=f'Admin {get_current_user().username} created club {club.name}',
@@ -462,7 +442,6 @@ def approve_project(project_id):
 
     airtable_service = AirtableService()
 
-    # Update project status in Airtable
     success = airtable_service.update_ysws_project_submission(project_id, {
         'Status': 'Approved',
         'Decision Reason': f'Approved by {get_current_user().username}'
@@ -519,11 +498,9 @@ def settings():
 @admin_required
 def stats():
     """System statistics"""
-    # Get projects from Airtable
     airtable_service = AirtableService()
     all_projects = airtable_service.get_ysws_project_submissions()
 
-    # Get various statistics
     stats_data = {
         'total_users': User.query.count(),
         'active_users': User.query.filter_by(is_suspended=False).count(),
@@ -544,7 +521,6 @@ def stats():
 @admin_required
 def pizza_grants():
     """Pizza grant management"""
-    # Get grants from Airtable
     try:
         airtable_service = AirtableService()
         grants = airtable_service.get_pizza_grants()
@@ -563,7 +539,6 @@ def activity():
     page = request.args.get('page', 1, type=int)
     per_page = 100
 
-    # Get recent audit logs
     logs_pagination = AuditLog.query.order_by(
         AuditLog.timestamp.desc()
     ).paginate(page=page, per_page=per_page, error_out=False)
@@ -578,9 +553,7 @@ def activity():
 @admin_required
 def api_banner_settings():
     """Get or update banner settings (admin only) - Alias for /api/admin/banner-settings"""
-    # Import here to avoid circular imports
     from app.routes.api import admin_banner_settings
-    # Forward the request to the main API endpoint
     return admin_banner_settings()
 
 

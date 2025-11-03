@@ -26,7 +26,6 @@ def get_current_user():
     try:
         user = db.session.get(User, int(user_id))
         if not user:
-            # Clear invalid session
             session.clear()
             return None
         return user
@@ -34,7 +33,6 @@ def get_current_user():
         current_app.logger.error(f"Error getting current user: {e}")
         try:
             db.session.rollback()
-            # Create a new session for retry
             db.session.close()
             user = db.session.get(User, int(user_id))
             if not user:
@@ -67,7 +65,6 @@ def login_user(user, remember=False, db=None, app=None, create_audit_log=None, g
         session.permanent = True
     user.last_login = datetime.now(timezone.utc)
 
-    # Get real IP address
     if get_real_ip_func:
         real_ip = get_real_ip_func()
     else:
@@ -82,7 +79,6 @@ def login_user(user, remember=False, db=None, app=None, create_audit_log=None, g
         if True:
             current_app.logger.info(f"User login: {user.username} (ID: {user.id}) from IP: {real_ip}")
 
-        # Create audit log for login
         if create_audit_log:
             create_audit_log(
                 action_type='login',

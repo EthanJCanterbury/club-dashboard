@@ -32,7 +32,6 @@ def api_documentation():
     """API documentation page"""
     from flask import render_template
     return render_template('api_docs.html')
-# Public API Endpoints (require API key or OAuth)
 @api_bp.route('/user', methods=['GET'])
 @oauth_required(scopes=['user:read'])
 def get_user():
@@ -88,11 +87,9 @@ def get_user_assignments():
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # Get all clubs user is a member of
     memberships = ClubMembership.query.filter_by(user_id=user.id).all()
     club_ids = [m.club_id for m in memberships]
 
-    # Get assignments from those clubs
     assignments = ClubAssignment.query.filter(
         ClubAssignment.club_id.in_(club_ids)
     ).order_by(ClubAssignment.due_date.desc()).all()
@@ -123,11 +120,9 @@ def get_user_meetings():
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # Get all clubs user is a member of
     memberships = ClubMembership.query.filter_by(user_id=user.id).all()
     club_ids = [m.club_id for m in memberships]
 
-    # Get meetings from those clubs
     meetings = ClubMeeting.query.filter(
         ClubMeeting.club_id.in_(club_ids)
     ).order_by(ClubMeeting.meeting_date.desc()).all()
@@ -159,11 +154,9 @@ def get_user_projects():
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # Get all clubs user is a member of
     memberships = ClubMembership.query.filter_by(user_id=user.id).all()
     club_ids = [m.club_id for m in memberships]
 
-    # Get projects from those clubs
     projects = ClubProject.query.filter(
         ClubProject.club_id.in_(club_ids)
     ).order_by(ClubProject.created_at.desc()).all()
@@ -184,7 +177,6 @@ def get_user_projects():
         'projects': projects_data,
         'total': len(projects_data)
     })
-# Admin API Endpoints
 @api_bp.route('/admin/users', methods=['GET'])
 @login_required
 @permission_required('users.view')
@@ -201,13 +193,11 @@ def admin_get_users():
 
     users_data = []
     for user in users_pagination.items:
-        # Count clubs led
         from app.models.club import Club
         clubs_led = Club.query.filter(
             (Club.leader_id == user.id) | (Club.co_leader_id == user.id)
         ).count()
 
-        # Count clubs joined
         from app.models.club import ClubMembership
         clubs_joined = ClubMembership.query.filter_by(user_id=user.id).count()
 
@@ -305,11 +295,9 @@ def admin_get_clubs():
 
     clubs_data = []
     for club in clubs_pagination.items:
-        # Get leader info
         leader_username = club.leader.username if club.leader else 'Unknown'
         leader_email = club.leader.email if club.leader else 'Unknown'
 
-        # Count members
         from app.models.club import ClubMembership
         member_count = ClubMembership.query.filter_by(club_id=club.id).count()
 
@@ -476,7 +464,6 @@ def admin_get_permissions():
     from app.models.user import Permission
     permissions = Permission.query.all()
 
-    # Group by category
     permissions_by_category = {}
     for perm in permissions:
         if perm.category not in permissions_by_category:
@@ -502,7 +489,6 @@ def admin_get_user_roles(user_id):
 
         user = User.query.get_or_404(user_id)
 
-        # Get user's roles
         user_roles = UserRole.query.filter_by(user_id=user_id).all()
         roles_data = []
         permissions_data = []
@@ -516,7 +502,6 @@ def admin_get_user_roles(user_id):
                 'description': role.description
             })
 
-            # Collect all permissions from this role
             try:
                 for perm in role.permissions.all():
                     if perm.name not in [p['name'] for p in permissions_data]:
@@ -527,7 +512,6 @@ def admin_get_user_roles(user_id):
                             'category': perm.category
                         })
             except Exception:
-                # RBAC permissions might not be set up
                 pass
 
         return jsonify({
@@ -536,7 +520,6 @@ def admin_get_user_roles(user_id):
             'is_root': user.is_root if hasattr(user, 'is_root') else False
         })
     except Exception as e:
-        # Return empty data if RBAC is not initialized or there's an error
         return jsonify({
             'roles': [],
             'permissions': [],
@@ -632,7 +615,6 @@ def admin_get_audit_logs():
         'per_page': per_page,
         'pages': logs_pagination.pages
     })
-# Admin User Management Endpoints
 @api_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
 @login_required
 @permission_required('users.edit')
@@ -643,15 +625,12 @@ def admin_update_user(user_id):
 
     data = request.get_json()
 
-    # Validate that root user cannot be modified (except by themselves for non-critical fields)
     if user.is_root_user() and current_user.id != user.id:
         return jsonify({'error': 'Cannot modify root user'}), 403
 
-    # Update allowed fields
     if 'username' in data:
         username = sanitize_string(data['username'], max_length=80)
         if username != user.username:
-            # Check if username already exists
             existing = User.query.filter_by(username=username).first()
             if existing:
                 return jsonify({'error': 'Username already exists'}), 400
@@ -660,7 +639,6 @@ def admin_update_user(user_id):
     if 'email' in data:
         email = sanitize_string(data['email'], max_length=120)
         if email != user.email:
-            # Check if email already exists
             existing = User.query.filter_by(email=email).first()
             if existing:
                 return jsonify({'error': 'Email already exists'}), 400
@@ -751,7 +729,6 @@ def admin_delete_user(user_id):
     username = user.username
     email = user.email
 
-    # Delete user (cascade will handle related records)
     db.session.delete(user)
     db.session.commit()
 
@@ -778,7 +755,6 @@ def admin_delete_user(user_id):
 @admin_required
 def admin_get_users_by_ip():
     """Get users grouped by IP address (admin only)"""
-    # Get all users with their IPs
     users = User.query.all()
 
     ip_groups = {}
@@ -795,7 +771,6 @@ def admin_get_users_by_ip():
                 'created_at': user.created_at.isoformat() if user.created_at else None
             })
 
-    # Sort by number of users per IP (most suspicious first)
     sorted_groups = sorted(
         [{'ip': ip, 'users': users, 'count': len(users)}
          for ip, users in ip_groups.items()],
@@ -869,7 +844,6 @@ def admin_login_as_user(user_id):
     if user.is_root_user():
         return jsonify({'error': 'Cannot impersonate root user'}), 403
 
-    # Store original user ID to allow switching back
     if 'original_user_id' not in session:
         session['original_user_id'] = current_user.id
 
@@ -906,7 +880,6 @@ def admin_reset_password(user_id):
     if user.is_root_user() and current_user.id != user.id:
         return jsonify({'error': 'Cannot reset root user password'}), 403
 
-    # Generate a random password
     new_password = secrets.token_urlsafe(16)
     user.set_password(new_password)
     db.session.commit()
@@ -932,7 +905,6 @@ def admin_reset_password(user_id):
             'email': user.email
         }
     })
-# Admin Club Management Endpoints
 @api_bp.route('/admin/clubs/<int:club_id>', methods=['PUT'])
 @login_required
 @permission_required('clubs.edit')
@@ -996,7 +968,6 @@ def admin_delete_club(club_id):
 
     club_name = club.name
 
-    # Delete club (cascade will handle related records)
     db.session.delete(club)
     db.session.commit()
 
@@ -1029,9 +1000,7 @@ def admin_sync_club_immune(club_id):
     data = request.get_json()
     immune = data.get('sync_immune', data.get('immune', False))
 
-    # Add immune field if it doesn't exist
     if not hasattr(club, 'sync_immune'):
-        # This would require a migration to add the field
         return jsonify({'error': 'Sync immune feature not yet implemented'}), 501
 
     club.sync_immune = immune
@@ -1090,7 +1059,6 @@ def admin_transfer_club_leadership(club_id):
         'success': True,
         'message': f'Leadership transferred to {new_leader.username}'
     })
-# Admin Pizza Grants Endpoints
 @api_bp.route('/admin/pizza-grants', methods=['GET'])
 @login_required
 @admin_required
@@ -1171,7 +1139,6 @@ def admin_delete_pizza_grant(grant_id):
     except Exception as e:
         current_app.logger.error(f'Error deleting pizza grant: {str(e)}')
         return jsonify({'error': 'Failed to delete grant'}), 500
-# Admin API Keys & OAuth Endpoints
 @api_bp.route('/admin/apikeys', methods=['POST'])
 @login_required
 @permission_required('admin.manage_api_keys')
@@ -1433,7 +1400,6 @@ def admin_delete_oauth_app(app_id):
         'success': True,
         'message': 'OAuth application deleted'
     })
-# Admin RBAC Endpoints
 @api_bp.route('/admin/rbac/users/<int:user_id>/roles', methods=['POST'])
 @login_required
 @permission_required('users.assign_roles', 'system.manage_roles')
@@ -1561,7 +1527,6 @@ def admin_create_role():
     if not name or not display_name:
         return jsonify({'error': 'name and display_name are required'}), 400
 
-    # Check if role already exists
     existing_role = Role.query.filter_by(name=name).first()
     if existing_role:
         return jsonify({'error': 'Role already exists'}), 400
@@ -1575,7 +1540,6 @@ def admin_create_role():
     db.session.add(role)
     db.session.flush()
 
-    # Assign permissions
     for perm_name in permission_names:
         permission = Permission.query.filter_by(name=perm_name).first()
         if permission:
@@ -1623,10 +1587,8 @@ def admin_update_role(role_id):
         role.description = sanitize_string(data['description'], max_length=500)
 
     if 'permissions' in data:
-        # Remove all existing permissions
         RolePermission.query.filter_by(role_id=role.id).delete()
 
-        # Add new permissions
         for perm_name in data['permissions']:
             permission = Permission.query.filter_by(name=perm_name).first()
             if permission:
@@ -1662,12 +1624,9 @@ def admin_get_role_users(role_id):
 
     role = Role.query.get_or_404(role_id)
 
-    # Get all users with this role
     users = User.query.join(User.roles).filter(Role.id == role_id).all()
 
-    # Helper function to get user avatar (use heidi-avatar as default)
     def get_user_avatar(user):
-        # Could be extended to use Slack avatars or Gravatar in the future
         return '/static/assets/heidi-avatar.png'
 
     return jsonify({
@@ -1698,7 +1657,6 @@ def admin_delete_role(role_id):
     role = Role.query.get_or_404(role_id)
     current_user = get_current_user()
 
-    # Check if role is in use
     users_with_role = UserRole.query.filter_by(role_id=role_id).count()
     force = request.args.get('force') == 'true'
 
@@ -1710,7 +1668,6 @@ def admin_delete_role(role_id):
 
     role_name = role.name
 
-    # Delete role (cascade will handle permissions)
     db.session.delete(role)
     db.session.commit()
 
@@ -1730,7 +1687,6 @@ def admin_delete_role(role_id):
         'success': True,
         'message': 'Role deleted successfully'
     })
-# Admin Banner Settings Endpoint
 @api_bp.route('/admin/banner-settings', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -1776,7 +1732,6 @@ def admin_banner_settings():
             'success': True,
             'message': 'Banner settings updated'
         })
-# Admin Order Management Endpoints
 @api_bp.route('/admin/orders', methods=['GET'])
 @login_required
 @admin_required
@@ -1790,7 +1745,6 @@ def admin_get_orders():
     try:
         all_orders = airtable_service.get_all_orders()
 
-        # Apply filters if provided
         status_filter = request.args.get('status')
         search = request.args.get('search')
 
@@ -1838,7 +1792,6 @@ def admin_update_order_status(order_id):
     if new_status not in valid_statuses:
         return jsonify({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
 
-    # Update order in Airtable
     success = airtable_service.update_order_status(order_id, new_status, reviewer_reason)
 
     if success:
@@ -1931,7 +1884,6 @@ def admin_refund_order(order_id):
     data = request.get_json() or {}
     reason = data.get('reason', 'Order refunded/rejected by admin')
 
-    # Update order status to Rejected in Airtable
     success = airtable_service.update_order_status(order_id, 'Rejected', reason)
 
     if success:
@@ -1952,7 +1904,6 @@ def admin_refund_order(order_id):
         })
     else:
         return jsonify({'error': 'Failed to refund order'}), 500
-# Admin Shop Items Endpoints
 @api_bp.route('/admin/shop-items', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -1963,7 +1914,6 @@ def admin_shop_items():
     if request.method == 'GET':
         items = ShopItem.query.order_by(ShopItem.created_at.desc()).all()
 
-        # Group by category for easier frontend handling
         items_by_category = {}
         for item in items:
             category = item.category or 'Other'
@@ -2089,7 +2039,6 @@ def admin_shop_item(item_id):
             'success': True,
             'message': 'Shop item deleted'
         })
-# Admin Leaderboard Endpoints
 @api_bp.route('/admin/leaderboard/exclusions', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -2122,17 +2071,14 @@ def admin_leaderboard_exclusions():
         if not club_id:
             return jsonify({'error': 'club_id is required'}), 400
 
-        # Check if club exists
         club = Club.query.get(club_id)
         if not club:
             return jsonify({'error': 'Club not found'}), 404
 
-        # Check if already excluded
         existing = LeaderboardExclusion.query.filter_by(club_id=club_id).first()
         if existing:
             return jsonify({'error': 'Club already excluded from leaderboard'}), 400
 
-        # Create exclusion
         exclusion = LeaderboardExclusion(club_id=club_id, reason=reason)
         db.session.add(exclusion)
         db.session.commit()
@@ -2186,7 +2132,6 @@ def admin_delete_leaderboard_exclusion(exclusion_id):
         'success': True,
         'message': 'Leaderboard exclusion removed'
     })
-# User API Endpoints
 @api_bp.route('/user/me', methods=['GET'])
 @login_required
 def get_user_me():
@@ -2218,7 +2163,6 @@ def update_user():
 
     data = request.get_json()
 
-    # Update allowed fields
     if 'first_name' in data:
         user.first_name = sanitize_string(data['first_name'], max_length=50)
 
@@ -2227,7 +2171,6 @@ def update_user():
 
     if 'username' in data:
         new_username = sanitize_string(data['username'], max_length=30).strip()
-        # Check if username is already taken by another user
         if new_username != user.username:
             existing_user = User.query.filter_by(username=new_username).first()
             if existing_user:
@@ -2236,7 +2179,6 @@ def update_user():
 
     if 'email' in data:
         new_email = sanitize_string(data['email'], max_length=120).strip().lower()
-        # Check if email is already taken by another user
         if new_email != user.email:
             existing_user = User.query.filter_by(email=new_email).first()
             if existing_user:
@@ -2252,21 +2194,17 @@ def update_user():
     if 'avatar_url' in data:
         user.avatar_url = sanitize_string(data['avatar_url'], max_length=500)
 
-    # Handle password change
     if 'current_password' in data and 'new_password' in data:
         current_password = data['current_password']
         new_password = data['new_password']
 
-        # Verify current password
         if not user.check_password(current_password):
             return jsonify({'error': 'Current password is incorrect'}), 400
 
-        # Validate new password
         is_valid, validation_message = validate_password(new_password)
         if not is_valid:
             return jsonify({'error': validation_message}), 400
 
-        # Set new password
         user.set_password(new_password)
 
     db.session.commit()
@@ -2284,7 +2222,6 @@ def update_user():
         'success': True,
         'message': 'Profile updated successfully'
     })
-# Identity/OAuth API Endpoints
 @api_bp.route('/identity/status', methods=['GET'])
 @login_required
 def identity_status():
@@ -2293,7 +2230,6 @@ def identity_status():
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # Check if user has Hack Club identity linked
     has_identity = bool(user.identity_token and user.identity_verified)
     slack_id = user.slack_user_id if user.slack_user_id else None
 
@@ -2317,7 +2253,6 @@ def identity_authorize():
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # Get OAuth credentials
     client_id = os.getenv('HACKCLUB_IDENTITY_CLIENT_ID')
     client_secret = os.getenv('HACKCLUB_IDENTITY_CLIENT_SECRET')
     identity_url = os.getenv('HACKCLUB_IDENTITY_URL', 'https://identity.hackclub.com')
@@ -2331,24 +2266,19 @@ def identity_authorize():
     init_service(current_app._get_current_object(), identity_url, client_id, client_secret)
     identity_service = HackClubIdentityService()
 
-    # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     session['hackclub_identity_state'] = state
 
-    # Get redirect URI
     redirect_uri = request.url_root.rstrip('/') + '/auth/identity/callback'
     if request.url_root.startswith('http://'):
-        # Force HTTPS for production
         redirect_uri = redirect_uri.replace('http://', 'https://', 1)
 
-    # Build authorization URL
     auth_url = identity_service.get_auth_url(redirect_uri, state)
 
     return jsonify({
         'url': auth_url,
         'state': state
     })
-# Status API Endpoints
 @api_bp.route('/status/banner', methods=['GET'])
 def status_banner():
     """Get public banner settings"""
@@ -2366,11 +2296,9 @@ def status_banner():
 @api_bp.route('/status/summary', methods=['GET'])
 def status_summary():
     """Get system status summary"""
-    # Get basic stats
     total_users = User.query.count()
     total_clubs = Club.query.count()
 
-    # Check system health
     maintenance_mode = SystemSettings.is_maintenance_mode()
 
     return jsonify({
@@ -2485,7 +2413,6 @@ def admin_status_incident(incident_id):
                 return jsonify({'error': f'Invalid status'}), 400
             incident.status = new_status
 
-            # Mark as resolved if status is resolved
             if new_status == 'resolved' and not incident.resolved_at:
                 incident.resolved_at = datetime.utcnow()
 
@@ -2570,7 +2497,6 @@ def admin_create_status_update(incident_id):
     )
     db.session.add(update)
 
-    # Update incident status
     incident.status = status
     if status == 'resolved' and not incident.resolved_at:
         incident.resolved_at = datetime.utcnow()
@@ -2582,7 +2508,6 @@ def admin_create_status_update(incident_id):
         'message': 'Status update added',
         'update': update.to_dict()
     })
-# Project Review API Endpoints
 @api_bp.route('/user/projects/pending', methods=['GET'])
 @login_required
 def get_projects_for_review():
@@ -2593,21 +2518,17 @@ def get_projects_for_review():
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # Get all projects from Airtable
     airtable_service = AirtableService()
     all_projects = airtable_service.get_ysws_project_submissions()
 
-    # Filter for user's pending projects by email
     user_projects = [
         p for p in all_projects
         if p.get('email', '').lower() == user.email.lower() and
         p.get('status', '').lower() in ['pending', '']
     ]
 
-    # Sort by created time (newest first)
     user_projects.sort(key=lambda x: x.get('createdTime', ''), reverse=True)
 
-    # Transform to expected format
     projects_data = []
     for project in user_projects:
         projects_data.append({
@@ -2663,7 +2584,6 @@ def api_update_project_review(project_id):
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
-        # Validate required fields
         new_status = data.get('status')
         decision_reason = data.get('decisionReason')
 
@@ -2674,11 +2594,9 @@ def api_update_project_review(project_id):
         if new_status not in valid_statuses:
             return jsonify({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
 
-        # Update in Airtable
         airtable_service = AirtableService()
         current_user = get_current_user()
 
-        # Prepare update fields
         update_fields = {
             'Status': new_status,
             'Decision Reason': decision_reason
@@ -2689,7 +2607,6 @@ def api_update_project_review(project_id):
         if not success:
             return jsonify({'error': 'Failed to update project status in Airtable'}), 500
 
-        # Log audit
         create_audit_log(
             action_type='project_review',
             description=f"{('Admin' if current_user.is_admin else 'Reviewer')} {current_user.username} reviewed project submission: {new_status}",
@@ -2728,7 +2645,6 @@ def review_project(project_id):
     admin_notes = sanitize_string(data.get('admin_notes', ''), max_length=2000)
 
     if approved:
-        # Approve in Airtable
         success = airtable_service.update_ysws_project_submission(project_id, {
             'Status': 'Approved',
             'Decision Reason': admin_notes or f'Approved by {current_user.username}'
@@ -2749,7 +2665,6 @@ def review_project(project_id):
         else:
             return jsonify({'error': 'Failed to approve project'}), 500
     else:
-        # Reject in Airtable
         success = airtable_service.update_ysws_project_submission(project_id, {
             'Status': 'Rejected',
             'Decision Reason': admin_notes or f'Rejected by {current_user.username}'
@@ -2825,7 +2740,6 @@ def grant_override_project(project_id):
     if grant_amount < 0:
         return jsonify({'error': 'Grant amount cannot be negative'}), 400
 
-    # Update grant amount in Airtable
     success = airtable_service.update_ysws_project_submission(project_id, {
         'Grant Amount Override': grant_amount,
         'Grant Override Reason': override_reason or f'Override by {current_user.username}'
@@ -2850,7 +2764,6 @@ def grant_override_project(project_id):
         })
     else:
         return jsonify({'error': 'Failed to update grant override'}), 500
-# Public Status Incidents API Endpoints
 @api_bp.route('/status/incidents', methods=['GET'])
 def get_public_status_incidents():
     """Get public status incidents (no auth required)"""
@@ -2884,13 +2797,10 @@ def get_public_status_incident(incident_id):
     return jsonify({
         'incident': incident.to_dict()
     })
-# OAuth v1 API Endpoints (for external apps)
 @api_bp.route('/v1/users/<int:user_id>', methods=['GET'])
 @limiter.limit("100 per minute")
 def oauth_get_user(user_id):
     """Get user info via OAuth (requires valid OAuth token)"""
-    # TODO: Implement OAuth token validation
-    # For now, return basic public info
     user = User.query.get_or_404(user_id)
 
     return jsonify({
@@ -2904,7 +2814,6 @@ def oauth_get_user(user_id):
 @limiter.limit("100 per minute")
 def oauth_get_club(club_id):
     """Get club info via OAuth (requires valid OAuth token)"""
-    # TODO: Implement OAuth token validation
     club = Club.query.get_or_404(club_id)
 
     return jsonify({
@@ -2920,7 +2829,6 @@ def oauth_get_club(club_id):
 @limiter.limit("100 per minute")
 def oauth_get_club_members(club_id):
     """Get club members via OAuth (requires valid OAuth token)"""
-    # TODO: Implement OAuth token validation
     club = Club.query.get_or_404(club_id)
 
     memberships = ClubMembership.query.filter_by(club_id=club_id).all()
@@ -2944,7 +2852,6 @@ def oauth_get_club_members(club_id):
 @limiter.limit("100 per minute")
 def oauth_get_club_projects(club_id):
     """Get club projects via OAuth (requires valid OAuth token)"""
-    # TODO: Implement OAuth token validation
     from app.models.economy import ProjectSubmission
 
     club = Club.query.get_or_404(club_id)
@@ -2968,7 +2875,6 @@ def oauth_get_club_projects(club_id):
         'projects': projects_data,
         'total': len(projects_data)
     })
-# Image Upload API Endpoint
 @api_bp.route('/upload-images', methods=['POST'])
 @login_required
 @limiter.limit("10 per hour")
@@ -2986,7 +2892,6 @@ def upload_images():
     max_size = 10 * 1024 * 1024  # 10MB per image
     allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
-    # Check if it's JSON with base64 images
     if request.is_json:
         data = request.get_json()
         images = data.get('images', [])
@@ -2997,11 +2902,9 @@ def upload_images():
         if len(images) > 20:
             return jsonify({'error': 'Maximum 20 images allowed per upload'}), 400
 
-        # Parse base64 images
         image_data_list = parse_base64_images(images, max_size=max_size)
 
     else:
-        # Handle FormData file uploads
         if 'images' not in request.files:
             return jsonify({'error': 'No images provided'}), 400
 
@@ -3016,7 +2919,6 @@ def upload_images():
             if file.filename == '':
                 continue
 
-            # Check file extension
             filename = secure_filename(file.filename)
             if '.' not in filename:
                 continue
@@ -3026,11 +2928,9 @@ def upload_images():
                 continue
 
             try:
-                # Read file data
                 file.seek(0)
                 image_data = file.read()
 
-                # Check file size
                 if len(image_data) > max_size:
                     current_app.logger.warning(f'File {filename} too large')
                     continue
@@ -3044,7 +2944,6 @@ def upload_images():
     if not image_data_list:
         return jsonify({'error': 'No valid images were processed'}), 400
 
-    # Upload to Hack Club CDN
     success, result = upload_to_hackclub_cdn(image_data_list)
 
     if not success:
@@ -3066,7 +2965,6 @@ def upload_images():
         'message': f'{len(cdn_urls)} images uploaded successfully',
         'urls': cdn_urls
     })
-# Analytics API Endpoints (for OAuth debug)
 @api_bp.route('/v1/analytics/overview', methods=['GET'])
 @login_required
 def analytics_overview():
@@ -3076,7 +2974,6 @@ def analytics_overview():
         'unique_visitors': 0,
         'message': 'Analytics not yet implemented'
     })
-# Club Content API Endpoints
 @api_bp.route('/clubs/<int:club_id>/posts', methods=['GET', 'POST'])
 @login_required
 @limiter.limit("500 per hour")
@@ -3093,12 +2990,10 @@ def club_posts(club_id):
     if not is_leader and not is_co_leader and not is_member and not is_admin_access:
         return jsonify({'error': 'Unauthorized'}), 403
 
-    # Give admins leader privileges
     if is_admin_access:
         is_leader = True
 
     if request.method == 'POST':
-        # Only leaders and co-leaders can create posts
         if not is_leader and not is_co_leader:
             return jsonify({'error': 'Only club leaders and co-leaders can create posts'}), 403
 
@@ -3108,20 +3003,15 @@ def club_posts(club_id):
         if not content:
             return jsonify({'error': 'Content is required'}), 400
 
-        # Security validation with auto-suspend
         valid, result = validate_input_with_security(content, "club_post", current_user, max_length=5000,
                                                      app=current_app)
         if not valid:
             return jsonify({'error': result}), 403
 
-        # For leaders, content is treated as markdown and converted to HTML
         if is_leader or is_co_leader:
-            # Store raw markdown content (basic sanitization only)
             markdown_content = sanitize_string(result, max_length=5000, allow_html=False)
-            # Convert markdown to safe HTML
             html_content = markdown_to_html(markdown_content)
         else:
-            # For regular members, treat as plain text
             markdown_content = sanitize_string(result, max_length=5000, allow_html=False)
             html_content = html.escape(markdown_content).replace('\n', '<br>')
 
@@ -3137,7 +3027,6 @@ def club_posts(club_id):
         db.session.add(post)
         db.session.commit()
 
-        # Create audit log for post creation
         create_audit_log(
             action_type='create_post',
             description=f"User {current_user.username} created a post in {club.name}",
@@ -3154,16 +3043,13 @@ def club_posts(club_id):
 
         return jsonify({'message': 'Post created successfully'})
 
-    # GET request
     posts = ClubPost.query.filter_by(club_id=club_id).order_by(ClubPost.created_at.desc()).all()
     posts_data = []
 
     for post in posts:
         try:
-            # Handle content_html field safely (might be NULL for some posts)
             content_html = post.content_html
             if not content_html:
-                # For posts without HTML content, escape and convert newlines
                 content_html = html.escape(post.content).replace('\n', '<br>')
 
             post_data = {
@@ -3193,7 +3079,6 @@ def delete_club_post(club_id, post_id):
     club = Club.query.get_or_404(club_id)
     post = ClubPost.query.get_or_404(post_id)
 
-    # Verify post belongs to this club
     if post.club_id != club_id:
         return jsonify({'error': 'Post not found in this club'}), 404
 
@@ -3201,7 +3086,6 @@ def delete_club_post(club_id, post_id):
     is_co_leader = is_user_co_leader(club, current_user)
     is_post_author = post.user_id == current_user.id
 
-    # Only leaders, co-leaders, or post authors can delete
     if not is_leader and not is_co_leader and not is_post_author and not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
 
@@ -3236,7 +3120,6 @@ def club_assignments(club_id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     if request.method == 'POST':
-        # Only leaders and co-leaders can create assignments
         if not is_leader and not is_co_leader:
             return jsonify({'error': 'Only club leaders can create assignments'}), 403
 
@@ -3278,7 +3161,6 @@ def club_assignments(club_id):
 
         return jsonify({'message': 'Assignment created successfully', 'assignment_id': assignment.id})
 
-    # GET request
     assignments = ClubAssignment.query.filter_by(club_id=club_id).order_by(ClubAssignment.due_date.desc()).all()
     assignments_data = [{
         'id': a.id,
@@ -3331,7 +3213,6 @@ def club_meetings(club_id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     if request.method == 'POST':
-        # Only leaders and co-leaders can create meetings
         if not is_leader and not is_co_leader:
             return jsonify({'error': 'Only club leaders can create meetings'}), 403
 
@@ -3376,7 +3257,6 @@ def club_meetings(club_id):
 
         return jsonify({'message': 'Meeting created successfully', 'meeting_id': meeting.id})
 
-    # GET request
     meetings = ClubMeeting.query.filter_by(club_id=club_id).order_by(ClubMeeting.meeting_date.desc()).all()
     meetings_data = [{
         'id': m.id,
@@ -3431,7 +3311,6 @@ def club_resources(club_id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     if request.method == 'POST':
-        # Only leaders and co-leaders can create resources
         if not is_leader and not is_co_leader:
             return jsonify({'error': 'Only club leaders can create resources'}), 403
 
@@ -3484,7 +3363,6 @@ def club_resources(club_id):
 
         return jsonify({'message': 'Resource created successfully', 'resource_id': resource.id})
 
-    # GET request
     resources = ClubResource.query.filter_by(club_id=club_id).order_by(ClubResource.created_at.desc()).all()
     resources_data = [{
         'id': r.id,
@@ -3603,7 +3481,6 @@ def club_quests(club_id):
     } for q in quests]
 
     return jsonify({'quests': quests_data})
-# Gallery API Endpoints
 @api_bp.route('/gallery/posts', methods=['GET', 'POST'])
 @limiter.limit("100 per hour")
 def gallery_posts():
@@ -3624,11 +3501,9 @@ def gallery_posts():
         if not club_id or not title or not description:
             return jsonify({'error': 'Club ID, title, and description are required'}), 400
 
-        # Limit to 50 images max
         if len(images) > 50:
             images = images[:50]
 
-        # Verify user is leader or co-leader of the club
         club = Club.query.get_or_404(club_id)
         is_leader = club.leader_id == current_user.id
         is_co_leader = is_user_co_leader(club, current_user)
@@ -3636,7 +3511,6 @@ def gallery_posts():
         if not is_leader and not is_co_leader:
             return jsonify({'error': 'Only club leaders can create gallery posts'}), 403
 
-        # Security validation
         valid, result = validate_input_with_security(title, "gallery_title", current_user, max_length=200, app=current_app)
         if not valid:
             return jsonify({'error': result}), 403
@@ -3647,7 +3521,6 @@ def gallery_posts():
             return jsonify({'error': result}), 403
         description = result
 
-        # Create gallery post
         post = GalleryPost(
             club_id=club_id,
             user_id=current_user.id,
@@ -3656,15 +3529,12 @@ def gallery_posts():
         )
         post.set_images(images)
 
-        # Update quest progress for gallery post
         update_quest_progress(club_id, 'gallery_post', 1)
 
-        # Admin can override club name display
         if current_user.is_admin and custom_club_name:
             valid, result = validate_input_with_security(custom_club_name, "custom_club_name", current_user, max_length=100, app=current_app)
             if not valid:
                 return jsonify({'error': result}), 403
-            # Store custom club name in a new field or use description field with a prefix
             post.description = f"[CUSTOM_CLUB:{result}] {description}"
 
         db.session.add(post)
@@ -3672,7 +3542,6 @@ def gallery_posts():
 
         current_app.logger.info(f"Gallery post created: ID={post.id}, title='{title}', club_id={club_id}, images={len(images)}")
 
-        # Log gallery post to Airtable
         try:
             airtable_success = airtable_service.log_gallery_post(
                 post_title=title,
@@ -3688,7 +3557,6 @@ def gallery_posts():
         except Exception as e:
             current_app.logger.error(f"Exception logging gallery post {post.id} to Airtable: {str(e)}")
 
-        # Create audit log for gallery post creation
         create_audit_log(
             action_type='gallery_post_create',
             description=f"User {current_user.username} created gallery post '{title}' for club '{club.name}'",
@@ -3708,7 +3576,6 @@ def gallery_posts():
 
         return jsonify({'message': 'Gallery post created successfully', 'post_id': post.id})
 
-    # GET request - return all gallery posts
     try:
         posts = GalleryPost.query.order_by(GalleryPost.created_at.desc()).all()
         posts_data = []
@@ -3717,7 +3584,6 @@ def gallery_posts():
 
         for post in posts:
             try:
-                # Get club and user info safely
                 club = Club.query.get(post.club_id)
                 user = User.query.get(post.user_id)
 
@@ -3725,12 +3591,10 @@ def gallery_posts():
                     current_app.logger.warning(f"Skipping post {post.id}: missing club ({club}) or user ({user})")
                     continue
 
-                # Check for admin custom club name override
                 display_club_name = club.name
                 display_description = post.description
 
                 if post.description.startswith('[CUSTOM_CLUB:'):
-                    # Extract custom club name and actual description
                     try:
                         end_idx = post.description.find('] ')
                         if end_idx != -1:
@@ -3781,21 +3645,18 @@ def delete_gallery_post(post_id):
     """Delete a gallery post"""
     current_user = get_current_user()
 
-    # Only admins can delete gallery posts
     if not current_user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
     post = GalleryPost.query.get_or_404(post_id)
 
     try:
-        # Get images and related data before deletion
         images = post.get_images()
         post_title = post.title
         post_author_name = post.user.username if post.user else 'Unknown'
         club_name = post.club.name if post.club else 'Unknown'
         club = post.club
 
-        # Deduct 100 tokens from the club if it has enough tokens
         if club and club.tokens >= 100:
             success, error_msg = create_club_transaction(
                 club_id=club.id,
@@ -3811,7 +3672,6 @@ def delete_gallery_post(post_id):
             if not success:
                 current_app.logger.warning(f"Failed to deduct tokens for gallery post deletion: {error_msg}")
 
-        # Delete the post
         db.session.delete(post)
         db.session.commit()
 

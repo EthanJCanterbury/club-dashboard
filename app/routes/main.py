@@ -31,12 +31,10 @@ def dashboard():
     """User dashboard"""
     user = get_current_user()
 
-    # Get user's club memberships and led clubs
     from app.models.club import ClubMembership
     memberships = ClubMembership.query.filter_by(user_id=user.id).all()
     led_clubs = Club.query.filter_by(leader_id=user.id).all()
 
-    # If user only has one club, redirect directly to it
     all_club_ids = set([club.id for club in led_clubs] + [m.club.id for m in memberships])
     if len(all_club_ids) == 1:
         club_id = list(all_club_ids)[0]
@@ -55,7 +53,6 @@ def club_dashboard(club_id=None):
     if club_id:
         club = Club.query.get_or_404(club_id)
     else:
-        # Get user's first club
         club = Club.query.filter_by(leader_id=user.id).first()
         if not club:
             from app.models.club import ClubMembership
@@ -67,7 +64,6 @@ def club_dashboard(club_id=None):
             flash('You are not a member of any club', 'error')
             return redirect(url_for('main.dashboard'))
 
-    # Verify user has access to this club
     from app.models.club import ClubMembership
     is_leader = club.leader_id == user.id
     is_co_leader = club.co_leader_id == user.id
@@ -79,12 +75,10 @@ def club_dashboard(club_id=None):
         flash('You are not a member of this club', 'error')
         return redirect(url_for('main.dashboard'))
 
-    # Check if club is suspended
     if club.is_suspended and not user.is_admin:
         flash('This club has been suspended', 'error')
         return redirect(url_for('main.dashboard'))
 
-    # Check if club has orders
     from app.services.airtable import AirtableService
     try:
         airtable_service = AirtableService()
@@ -93,15 +87,12 @@ def club_dashboard(club_id=None):
     except:
         has_orders = False
 
-    # Check if connected to directory
     airtable_data = club.get_airtable_data()
     is_connected_to_directory = airtable_data and airtable_data.get('airtable_id')
 
-    # Lock dashboard for non-immune unsynced clubs
     if not is_connected_to_directory and not club.sync_immune and not user.is_admin:
         return render_template('club_connection_required.html', club=club, current_user=user)
 
-    # Get banner settings
     banner_settings = {
         'enabled': SystemSettings.get_setting('banner_enabled', 'false') == 'true',
         'title': SystemSettings.get_setting('banner_title', 'Design Contest'),
@@ -115,10 +106,8 @@ def club_dashboard(club_id=None):
         'link_text': SystemSettings.get_setting('banner_link_text', 'Submit Entry')
     }
 
-    # Get membership date
     membership_date = membership.joined_at if membership else None
 
-    # Role variables for template
     effective_is_leader = is_leader or is_admin_access
     effective_is_co_leader = is_co_leader or is_admin_access
     effective_can_manage = is_leader or is_co_leader or is_admin_access
@@ -140,7 +129,6 @@ def club_dashboard(club_id=None):
 @main_bp.route('/gallery')
 def gallery():
     """Public gallery of club posts"""
-    # Get all gallery posts ordered by date (featured first, then by date)
     posts = GalleryPost.query.order_by(
         GalleryPost.featured.desc(),
         GalleryPost.created_at.desc()
@@ -155,39 +143,32 @@ def leaderboard(leaderboard_type='total_tokens'):
     """Club leaderboard"""
     from app.models.club import ClubMembership
 
-    # Get excluded clubs for this leaderboard type
     excluded_club_ids = [
         exc.club_id for exc in LeaderboardExclusion.query.filter_by(
             leaderboard_type=leaderboard_type
         ).all()
     ]
 
-    # Query clubs based on leaderboard type
     if leaderboard_type == 'total_tokens' or leaderboard_type == 'total':
         clubs = Club.query.filter(
             ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True
         ).order_by(Club.tokens.desc()).limit(100).all()
         title = "Top Clubs by Total Tokens"
     elif leaderboard_type == 'monthly_tokens':
-        # For now, use total tokens (TODO: track monthly separately)
         clubs = Club.query.filter(
             ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True
         ).order_by(Club.tokens.desc()).limit(100).all()
         title = "Top Clubs by Monthly Tokens"
     elif leaderboard_type == 'per_member':
-        # Get clubs with member counts and calculate projects per member
         clubs = Club.query.filter(
             ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True
         ).all()
 
-        # Add member count and calculate projects per member
         for club in clubs:
             member_count = ClubMembership.query.filter_by(club_id=club.id).count()
             club.member_count = max(1, member_count)  # Avoid division by zero
-            # Use tokens as proxy for projects (or add actual project count)
             club.projects_per_member = round(club.tokens / club.member_count, 2) if member_count > 0 else 0
 
-        # Sort by projects per member
         clubs = sorted(clubs, key=lambda c: c.projects_per_member, reverse=True)[:100]
         title = "Top Clubs by Projects Per Member"
     elif leaderboard_type == 'most_members':
@@ -195,25 +176,20 @@ def leaderboard(leaderboard_type='total_tokens'):
             ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True
         ).all()
 
-        # Add member count
         for club in clubs:
             club.member_count = ClubMembership.query.filter_by(club_id=club.id).count()
             club.total_members = club.member_count
 
-        # Sort by member count
         clubs = sorted(clubs, key=lambda c: c.member_count, reverse=True)[:100]
         title = "Top Clubs by Member Count"
     else:
         clubs = []
         title = "Leaderboard"
 
-    # Add rank and ensure all clubs have required attributes
     for i, club in enumerate(clubs, 1):
         club.rank = i
-        # Ensure member_count exists
         if not hasattr(club, 'member_count'):
             club.member_count = ClubMembership.query.filter_by(club_id=club.id).count()
-        # Ensure total_tokens exists
         if not hasattr(club, 'total_tokens'):
             club.total_tokens = club.tokens
 
@@ -234,14 +210,12 @@ def join_club_redirect():
         flash('No join code provided', 'error')
         return redirect(url_for('main.dashboard'))
 
-    # Find club with this join code
     club = Club.query.filter_by(join_code=join_code).first()
 
     if not club:
         flash('Invalid join code', 'error')
         return redirect(url_for('main.dashboard'))
 
-    # Check if user is already a member
     existing_membership = ClubMembership.query.filter_by(
         club_id=club.id,
         user_id=user.id
@@ -251,12 +225,10 @@ def join_club_redirect():
         flash(f'You are already a member of {club.name}', 'info')
         return redirect(url_for('main.club_dashboard', club_id=club.id))
 
-    # Check if user is the leader or co-leader
     if club.leader_id == user.id or club.co_leader_id == user.id:
         flash(f'You are already a leader of {club.name}', 'info')
         return redirect(url_for('main.club_dashboard', club_id=club.id))
 
-    # Add user as a member
     membership = ClubMembership(
         club_id=club.id,
         user_id=user.id,
@@ -287,15 +259,12 @@ def account():
     """User account settings"""
     user = get_current_user()
 
-    # Get user's roles and permissions
     user_roles = [role.name for role in user.roles]
     user_permissions = user.get_all_permissions()
 
-    # Get all permissions grouped by category
     from app.models.user import Permission
     all_permissions = Permission.query.order_by(Permission.category, Permission.name).all()
 
-    # Group permissions by category
     permissions_by_category = {}
     for perm in all_permissions:
         if perm.category not in permissions_by_category:
@@ -306,7 +275,6 @@ def account():
             'has_permission': perm.name in user_permissions
         })
 
-    # Show permissions section only if user has any RBAC-related roles
     show_permissions = len(user_roles) > 0 and not (len(user_roles) == 1 and 'user' in user_roles)
 
     return render_template('account.html',
@@ -351,7 +319,6 @@ def raccoon_mascot():
 def pizza_order():
     """Pizza ordering page"""
     user = get_current_user()
-    # Get user's clubs
     from app.models.club import ClubMembership
     memberships = ClubMembership.query.filter_by(user_id=user.id).all()
     led_clubs = Club.query.filter_by(leader_id=user.id).all()
@@ -367,7 +334,6 @@ def project_review():
     """Project review page (non-admin)"""
     user = get_current_user()
 
-    # Get user's submitted projects
     from app.models.economy import ProjectSubmission
     projects = ProjectSubmission.query.filter_by(user_id=user.id).order_by(
         ProjectSubmission.submitted_at.desc()

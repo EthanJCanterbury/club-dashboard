@@ -22,38 +22,30 @@ def create_app(config_class=Config):
     Returns:
         Configured Flask application instance
     """
-    # Create Flask app
     app = Flask(__name__,
                 template_folder='../templates',
                 static_folder='../static')
 
     app.config.from_object(config_class)
 
-    # Configure logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    # Initialize profanity filter
     profanity.load_censor_words()
 
     db.init_app(app)
     limiter.init_app(app)
 
-    # Import models (ensures they're registered with SQLAlchemy)
     with app.app_context():
         from app import models
 
-    # Register blueprints
     register_blueprints(app)
 
-    # Register error handlers
     register_error_handlers(app)
 
-    # Register template filters and context processors
     register_template_helpers(app)
 
-    # Register middleware
     register_middleware(app)
 
     initialize_services(app)
@@ -63,7 +55,6 @@ def create_app(config_class=Config):
 
 def register_blueprints(app):
     """Register all Flask blueprints for routes"""
-    # Import all blueprints
     from app.routes.main import main_bp
     from app.routes.auth import auth_bp
     from app.routes.clubs import clubs_bp
@@ -74,8 +65,6 @@ def register_blueprints(app):
     from app.routes.status import status_bp
     from app.routes.oauth import oauth_bp
 
-    # Register all blueprints
-    # Note: URL prefixes are defined in the blueprint constructors where applicable
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(clubs_bp)
@@ -242,19 +231,16 @@ def register_template_helpers(app):
     from app.utils.auth_helpers import get_current_user
     from app.models.system import SystemSettings
 
-    # Register custom Jinja2 filters
     app.jinja_env.filters['safe_css_color'] = sanitize_css_color
     app.jinja_env.filters['safe_css_value'] = sanitize_css_value
     app.jinja_env.filters['safe_html_attr'] = sanitize_html_attribute
     app.jinja_env.filters['safe_url'] = sanitize_url
     app.jinja_env.filters['markdown'] = markdown_to_html
 
-    # Context processor for current user
     @app.context_processor
     def inject_user():
         return dict(current_user=get_current_user())
 
-    # Context processor for system settings
     @app.context_processor
     def inject_system_settings():
         """Inject system settings helpers into templates"""
@@ -266,7 +252,6 @@ def register_template_helpers(app):
             )  # Legacy compatibility
         )
 
-    # Context processor for cosmetics functions
     @app.context_processor
     def inject_cosmetics_functions():
         """Inject cosmetics helper functions for templates"""
@@ -285,7 +270,6 @@ def register_template_helpers(app):
             """Convert cosmetic effects to CSS class"""
             if not effects:
                 return ''
-            # Map effects to CSS classes
             effect_classes = {
                 'rainbow': 'rainbow-text',
                 'glow': 'glow-text',
@@ -300,11 +284,9 @@ def register_template_helpers(app):
             escaped_username = html.escape(username) if username else ''
             result = escaped_username
 
-            # Check if user is admin and add lightning bolt
             if user and user.is_admin:
                 result = f'{escaped_username} <i class="fas fa-bolt" style="color: #fbbf24; margin-left: 4px;" title="Admin"></i>'
 
-            # Apply cosmetic effects
             effects = get_member_cosmetics(club_id, user_id)
             if effects:
                 css_class = get_cosmetic_css_class(effects)
@@ -318,7 +300,6 @@ def register_template_helpers(app):
                     get_cosmetic_css_class=get_cosmetic_css_class,
                     apply_member_cosmetics=apply_member_cosmetics)
 
-    # Override url_for to provide backward compatibility for templates
     from flask import url_for as flask_url_for
 
     @app.context_processor
@@ -326,11 +307,8 @@ def register_template_helpers(app):
         """Provide backward compatibility for old endpoint names"""
 
         def url_for_compat(endpoint, **values):
-            # Map old endpoint names to new blueprint names
             endpoint_map = {
-                # Static files
                 'static': 'static',
-                # Main routes
                 'index': 'main.index',
                 'dashboard': 'main.dashboard',
                 'gallery': 'main.gallery',
@@ -338,7 +316,6 @@ def register_template_helpers(app):
                 'maintenance': 'main.maintenance',
                 'account': 'main.account',
                 'contact': 'main.contact',
-                # Auth routes
                 'login': 'auth.login',
                 'logout': 'auth.logout',
                 'signup': 'auth.signup',
@@ -348,13 +325,11 @@ def register_template_helpers(app):
                 'verify_reset_code': 'auth.verify_reset_code',
                 'verify_leader': 'auth.verify_leader',
                 'setup_hackatime': 'auth.setup_hackatime',
-                # Club routes
                 'club_dashboard': 'main.club_dashboard',
                 'club_shop': 'clubs.club_shop',
                 'club_orders': 'clubs.club_orders',
                 'poster_editor': 'clubs.poster_editor',
                 'project_submission': 'clubs.project_submission',
-                # Blog routes
                 'blog': 'blog.blog_index',
                 'blog_list': 'blog.blog_index',
                 'blog_post': 'blog.blog_post',
@@ -362,7 +337,6 @@ def register_template_helpers(app):
                 'blog_create': 'blog.blog_create',
                 'blog_edit': 'blog.blog_edit',
                 'blog_delete': 'blog.blog_delete',
-                # Admin routes
                 'admin': 'admin.dashboard',
                 'admin_dashboard': 'admin.dashboard',
                 'admin_users': 'admin.admin_users',
@@ -370,7 +344,6 @@ def register_template_helpers(app):
                 'admin_settings': 'admin.admin_settings',
             }
 
-            # If endpoint is in map, use the new name, otherwise keep as-is
             endpoint = endpoint_map.get(endpoint, endpoint)
 
             return flask_url_for(endpoint, **values)
@@ -387,12 +360,10 @@ def register_middleware(app):
     @app.before_request
     def check_maintenance_mode():
         """Check if maintenance mode is enabled and redirect if necessary"""
-        # Skip for maintenance page itself and static files
         if request.endpoint in ['main.maintenance', 'static']:
             return None
 
         if SystemSettings.is_maintenance_mode():
-            # Allow admins to bypass maintenance mode
             from app.utils.auth_helpers import get_current_user
             user = get_current_user()
             if not user or not user.is_admin:
@@ -400,7 +371,6 @@ def register_middleware(app):
                 try:
                     return render_template('maintenance.html'), 503
                 except:
-                    # Fallback if template doesn't exist
                     return '<h1>System Maintenance</h1><p>We are currently performing maintenance. Please check back soon.</p>', 503
 
         return None
@@ -416,9 +386,5 @@ def initialize_services(app):
     from app.services.airtable import AirtableService
     from app.services.hackatime import HackatimeService
     from app.services.identity import HackClubIdentityService
-    # Initialize services with app context
-    # Services will be accessible via their respective modules
     with app.app_context():
-        # Services are initialized when imported
-        # Additional initialization can be done here if needed
         pass

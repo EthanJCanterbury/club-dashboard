@@ -11,7 +11,6 @@ def is_user_co_leader(club, user):
     if not user or not club:
         return False
 
-    # Import here to avoid circular imports
     from app.models.club import ClubMembership
 
     membership = ClubMembership.query.filter_by(club_id=club.id, user_id=user.id, role='co-leader').first()

@@ -338,7 +338,7 @@
         {% if led_clubs or memberships %}
         <div class="clubs-section">
             <div class="clubs-grid">
-                {# Show clubs user leads first #}
+
                 {% for club in led_clubs %}
                 {% set _ = all_club_ids.append(club.id) %}
                 <div
@@ -373,7 +373,7 @@
                 </div>
                 {% endfor %}
 
-                {# Show other memberships, excluding duplicates #}
+
                 {% for membership in memberships %}
                 {% if membership.club.id not in all_club_ids %}
                 <div
@@ -462,7 +462,7 @@
     </div>
 </div>
 
-<!-- Join Club Modal -->
+
 <div id="joinClubModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">

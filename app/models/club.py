@@ -21,7 +21,6 @@ class Club(db.Model):
     balance = db.Column(db.Numeric(10, 2), default=0.00)
     tokens = db.Column(db.Integer, default=0, nullable=False)
     piggy_bank_tokens = db.Column(db.Integer, default=0, nullable=False)
-    # Add check constraint to prevent negative balances
     __table_args__ = (
         db.CheckConstraint('tokens >= 0', name='check_tokens_non_negative'),
         db.CheckConstraint('piggy_bank_tokens >= 0', name='check_piggy_bank_tokens_non_negative'),
@@ -67,7 +66,6 @@ class ClubMembership(db.Model):
     club = db.relationship('Club', back_populates='members')
 
 
-# Cosmetics models
 class ClubCosmetic(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=False)
@@ -79,7 +77,6 @@ class ClubCosmetic(db.Model):
     expires_at = db.Column(db.DateTime)  # For time-limited cosmetics
     is_active = db.Column(db.Boolean, default=True, nullable=False)
 
-    # Relationships
     club = db.relationship('Club', backref=db.backref('cosmetics', lazy=True))
 
 
@@ -92,7 +89,6 @@ class MemberCosmetic(db.Model):
     assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Leader who assigned it
     is_active = db.Column(db.Boolean, default=True, nullable=False)
 
-    # Relationships
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('member_cosmetics', lazy=True))
     club = db.relationship('Club', backref=db.backref('member_cosmetics', lazy=True))
     club_cosmetic = db.relationship('ClubCosmetic', backref=db.backref('member_assignments', lazy=True))

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Database initialization script for Docker deployment
 """
@@ -19,14 +18,11 @@ def init_database():
 
     with app.app_context():
         try:
-            # Create all tables
             db.create_all()
             print("✅ Database tables created successfully")
 
-            # Check if admin user exists
             admin_user = User.query.filter_by(email='admin@hackclub.local').first()
             if not admin_user:
-                # Create admin user
                 admin_user = User(
                     username='admin',
                     email='admin@hackclub.local',
@@ -40,7 +36,6 @@ def init_database():
                 admin_user.add_ip('127.0.0.1')
                 db.session.add(admin_user)
 
-                # Create test user
                 test_user = User(
                     username='testuser',
                     email='test@hackclub.local',

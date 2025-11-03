@@ -26,7 +26,6 @@ def login_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Import here to avoid circular imports
         from flask import current_app
         from app.utils.auth_helpers import is_authenticated, get_current_user
         from extensions import db
@@ -44,7 +43,6 @@ def login_required(f):
             flash('Please log in to access this page.', 'info')
             return redirect(url_for('auth.login'))
 
-        # Check if user is suspended (but allow access to suspended page and logout)
         if current_user.is_suspended and request.endpoint not in ['suspended', 'logout']:
             if request.is_json:
                 return jsonify({'error': 'Account suspended'}), 403
@@ -70,7 +68,6 @@ def permission_required(*permissions):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Import here to avoid circular imports
             from app.utils.auth_helpers import is_authenticated, get_current_user
             from flask import current_app
             from extensions import db
@@ -85,7 +82,6 @@ def permission_required(*permissions):
                 flash('Please log in to access this page.', 'info')
                 return redirect(url_for('auth.login'))
 
-            # Check if user has at least one of the required permissions
             has_permission = False
             for perm in permissions:
                 if current_user.has_permission(perm):
@@ -119,7 +115,6 @@ def role_required(*roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Import here to avoid circular imports
             from app.utils.auth_helpers import is_authenticated, get_current_user
             from flask import current_app
             from extensions import db
@@ -134,7 +129,6 @@ def role_required(*roles):
                 flash('Please log in to access this page.', 'info')
                 return redirect(url_for('auth.login'))
 
-            # Check if user has at least one of the required roles
             has_role = False
             for role in roles:
                 if current_user.has_role(role):
@@ -167,7 +161,6 @@ def admin_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Import here to avoid circular imports
         from app.utils.auth_helpers import is_authenticated, get_current_user
         from flask import current_app
         from extensions import db
@@ -182,7 +175,6 @@ def admin_required(f):
             flash('Please log in to access this page.', 'info')
             return redirect(url_for('auth.login'))
 
-        # Check RBAC permissions
         has_admin_access = (
             current_user.has_permission('admin.access_dashboard') or
             current_user.has_role('super-admin') or
@@ -215,7 +207,6 @@ def reviewer_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Import here to avoid circular imports
         from app.utils.auth_helpers import is_authenticated, get_current_user
         from flask import current_app
         from extensions import db
@@ -230,7 +221,6 @@ def reviewer_required(f):
             flash('Please log in to access this page.', 'info')
             return redirect(url_for('auth.login'))
 
-        # Check RBAC permissions
         has_reviewer_access = (
             current_user.has_permission('reviews.submit') or
             current_user.has_role('super-admin') or
@@ -265,13 +255,11 @@ def api_key_required(scopes=None):
     Usage:
         @api_key_required(scopes=['read', 'write'])
         def protected_endpoint():
-            # Access request.api_key to get the validated API key object
             pass
     """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Import here to avoid circular imports
             from flask import current_app
             from extensions import db
             from app.models.auth import APIKey
@@ -315,7 +303,6 @@ def api_key_required(scopes=None):
             key_obj = APIKey.query.filter_by(key=api_key, is_active=True).first()
 
             if not key_obj:
-                # Check if key exists but is inactive
                 inactive_key = APIKey.query.filter_by(key=api_key, is_active=False).first()
                 if inactive_key:
                     return jsonify({
@@ -332,7 +319,6 @@ def api_key_required(scopes=None):
                         'how_to_fix': 'Verify your API key is correct, or contact your administrator for a new one'
                     }), 401
 
-            # Check scopes if provided
             if scopes:
                 key_scopes = key_obj.get_scopes()
                 if not any(scope in key_scopes for scope in scopes):
@@ -345,14 +331,12 @@ def api_key_required(scopes=None):
                         'how_to_fix': 'Contact your administrator to add the required scopes to your API key'
                     }), 403
 
-            # Update last used timestamp
             try:
                 key_obj.last_used_at = datetime.now(timezone.utc)
                 db.session.commit()
             except Exception as e:
                 current_app.logger.error(f"Failed to update API key last_used_at: {e}")
 
-            # Add key info to request context
             request.api_key = key_obj
             return f(*args, **kwargs)
         return decorated_function
@@ -375,13 +359,11 @@ def oauth_required(scopes=None):
     Usage:
         @oauth_required(scopes=['read:user', 'write:posts'])
         def protected_endpoint():
-            # Access request.oauth_token and request.oauth_user for validated objects
             pass
     """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Import here to avoid circular imports
             from flask import current_app
             from extensions import db
             from app.models.auth import OAuthToken
@@ -428,7 +410,6 @@ def oauth_required(scopes=None):
             ).first()
 
             if not token_obj:
-                # Check if token exists but is inactive
                 inactive_token = OAuthToken.query.filter_by(access_token=access_token, is_active=False).first()
                 if inactive_token:
                     return jsonify({
@@ -445,7 +426,6 @@ def oauth_required(scopes=None):
                         'how_to_fix': 'Verify your access token is correct, or obtain a new one through the OAuth flow'
                     }), 401
 
-            # Check if token is expired
             if token_obj.expires_at < datetime.now(timezone.utc):
                 return jsonify({
                     'error': 'OAuth token expired',
@@ -455,7 +435,6 @@ def oauth_required(scopes=None):
                     'how_to_fix': 'Use your refresh token to obtain a new access token, or repeat the OAuth authorization flow'
                 }), 401
 
-            # Check scopes if provided
             if scopes:
                 token_scopes = token_obj.get_scopes()
                 if not any(scope in token_scopes for scope in scopes):
@@ -468,7 +447,6 @@ def oauth_required(scopes=None):
                         'how_to_fix': 'Request authorization with the required scopes during the OAuth flow'
                     }), 403
 
-            # Add token and user info to request context
             request.oauth_token = token_obj
             request.oauth_user = token_obj.user
             return f(*args, **kwargs)

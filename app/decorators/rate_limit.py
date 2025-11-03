@@ -62,6 +62,3 @@ Rate limit exemptions:
         pass
 """
 
-# This file serves as documentation for rate limiting in the application.
-# All rate limiting functionality is provided by Flask-Limiter directly.
-# No custom decorators are needed for standard rate limiting use cases.

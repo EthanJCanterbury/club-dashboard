@@ -24,14 +24,12 @@ class HackatimeService:
             app.logger.warning("get_user_stats: No API key provided")
             return None
 
-        # Mask API key for logging (show first 8 and last 4 characters)
         masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
         app.logger.info(f"get_user_stats: Making request to Hackatime API with key {masked_key}")
 
         url = f"{self.base_url}/users/my/stats?features=projects"
         headers = {"Authorization": f"Bearer {api_key}"}
 
-        # Add rate limit bypass header if available
         if self.bypass_token:
             headers["Rack-Attack-Bypass"] = self.bypass_token
 
@@ -87,7 +85,6 @@ class HackatimeService:
             app.logger.info("get_user_projects: No projects found in API response")
             return []
 
-        # Log project details for debugging
         for i, project in enumerate(projects[:5]):  # Log first 5 projects
             project_name = project.get('name', 'unnamed')
             total_seconds = project.get('total_seconds', 0)
