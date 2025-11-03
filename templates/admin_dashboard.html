@@ -1295,7 +1295,7 @@
             <i class="fas fa-flag"></i> Clubs
         </button>
         {% endif %}
-        {% if can_view_content %}
+        {% if can_view_activity %}
         <button class="admin-tab" onclick="showAdminSection('activity')" data-section="activity">
             <i class="fas fa-stream"></i> Activity
         </button>
@@ -1510,6 +1510,7 @@
         </div>
     </div>
 
+    {% if can_view_activity %}
     <div class="admin-section" id="activity">
         <div class="data-table">
             <div class="table-header">
@@ -1582,6 +1583,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <div class="admin-section" id="api">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
@@ -2208,21 +2210,7 @@
     </div>
 </div>
 
-<div class="modal-backdrop" id="confirmModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="confirmTitle">Confirm Action</h3>
-            <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <p id="confirmMessage">Are you sure you want to proceed?</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
-            <button class="btn btn-primary" id="confirmButton" onclick="executeConfirmedAction()">Confirm</button>
-        </div>
-    </div>
-</div>
+<!-- confirmModal removed - now using UniversalModal for all confirmations -->
 
 <div class="modal-backdrop" id="resetPasswordModal">
     <div class="modal-content">
@@ -2245,79 +2233,68 @@
     </div>
 </div>
 
-<div class="modal-backdrop" id="loginAsModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Login as User</h3>
-            <button class="modal-close" onclick="closeModal('loginAsModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <p>Are you sure you want to login as "<span id="loginAsUsername"></span>"?</p>
-            <p style="color: #f59e0b; font-size: 0.9rem;"><i class="fas fa-exclamation-triangle"></i> This will log you out of your admin account.</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('loginAsModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="executeLoginAs()">Login as User</button>
-        </div>
-    </div>
-</div>
+<!-- loginAsModal removed - now using UniversalModal -->
 
-<div class="modal-backdrop" id="suspendUserModal">
-    <div class="modal-content">
+<!-- suspendUserModal removed - now using UniversalModal -->
+
+<!-- syncImmuneModal removed - now using UniversalModal -->
+
+<!-- Role Users Management Modal -->
+<div class="modal-backdrop" id="roleUsersModal">
+    <div class="modal-content" style="max-width: 900px;">
         <div class="modal-header">
-            <h3 id="suspendModalTitle">Suspend User</h3>
-            <button class="modal-close" onclick="closeModal('suspendUserModal')">&times;</button>
+            <h3><i class="fas fa-users"></i> Manage Users for Role: <span id="roleUsersRoleName"></span></h3>
+            <button class="modal-close" onclick="closeModal('roleUsersModal')">&times;</button>
         </div>
         <div class="modal-body">
-            <p id="suspendModalMessage">Are you sure you want to suspend "<span id="suspendUsername"></span>"?</p>
-            <div id="leaderSuspendOptions" style="display: none;">
-                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
-                    <div style="color: #92400e; font-size: 0.875rem; margin-bottom: 1rem;">
-                        <i class="fas fa-exclamation-triangle"></i> <strong>Club Leader Suspension Options:</strong>
+            <!-- Add User Section -->
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem;">
+                <h4 style="margin: 0 0 1rem 0; color: #16a34a; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-user-plus"></i> Add User to Role
+                </h4>
+                <div style="display: flex; gap: 1rem; align-items: end;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Search Users</label>
+                        <input 
+                            type="text" 
+                            id="roleUserSearch" 
+                            placeholder="Type username or email..." 
+                            style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;"
+                            oninput="searchUsersForRole()"
+                        >
                     </div>
-                    <div style="margin-bottom: 0.75rem;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" id="suspendClubMembers" style="accent-color: #ec3750;">
-                            <span>Suspend all club members</span>
-                        </label>
-                    </div>
-                    <div>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" id="suspendClub" style="accent-color: #ec3750;">
-                            <span>Suspend the entire club</span>
-                        </label>
-                    </div>
+                    <button 
+                        onclick="clearRoleUserSearch()" 
+                        class="btn btn-secondary" 
+                        style="padding: 0.75rem 1.5rem;"
+                    >
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+                <div id="roleUserSearchResults" style="margin-top: 1rem; max-height: 300px; overflow-y: auto;">
+                    <p style="color: #64748b; text-align: center; padding: 1rem;">
+                        <i class="fas fa-search"></i> Search for users to add to this role
+                    </p>
+                </div>
+            </div>
+
+            <!-- Current Users Section -->
+            <div style="background: white; border: 2px solid #e2e8f0; border-radius: 8px; padding: 1.5rem;">
+                <h4 style="margin: 0 0 1rem 0; color: #1e293b; display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fas fa-users"></i> Assigned Users (<span id="roleUsersCount">0</span>)</span>
+                    <button onclick="refreshRoleUsers()" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem;">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </h4>
+                <div id="roleUsersList" style="max-height: 400px; overflow-y: auto;">
+                    <p style="color: #64748b; text-align: center; padding: 2rem;">
+                        <i class="fas fa-spinner fa-spin"></i> Loading users...
+                    </p>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('suspendUserModal')">Cancel</button>
-            <button class="btn btn-primary" id="suspendConfirmButton" onclick="executeSuspendUser()">Suspend User</button>
-        </div>
-    </div>
-</div>
-
-<div class="modal-backdrop" id="syncImmuneModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="syncImmuneModalTitle">Toggle Sync Immune</h3>
-            <button class="modal-close" onclick="closeModal('syncImmuneModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <p id="syncImmuneModalMessage">Are you sure you want to change the sync immune status for this club?</p>
-            <div style="background: #f0f9ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
-                <div style="color: #1e40af; font-size: 0.875rem;">
-                    <i class="fas fa-info-circle"></i> <strong>What is Sync Immune?</strong>
-                    <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
-                        <li><strong>Enabled:</strong> Club can use the dashboard without the intrusive connection popup (banner still shows)</li>
-                        <li><strong>Disabled:</strong> Club must connect to the directory to access dashboard features</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('syncImmuneModal')">Cancel</button>
-            <button class="btn btn-primary" id="syncImmuneConfirmButton" onclick="executeSyncImmuneToggle()">Confirm</button>
+            <button class="btn btn-secondary" onclick="closeModal('roleUsersModal')">Close</button>
         </div>
     </div>
 </div>
@@ -2616,6 +2593,16 @@ window.canViewClubs = {{ 'true' if can_view_clubs else 'false' }};
 window.canViewContent = {{ 'true' if can_view_content else 'false' }};
 window.canManageSettings = {{ 'true' if can_manage_settings else 'false' }};
 window.canAccessApi = {{ 'true' if can_access_api else 'false' }};
+window.canEditClubs = {{ 'true' if 'clubs.edit' in user_permissions or current_user.is_admin else 'false' }};
+window.canDeleteClubs = {{ 'true' if 'clubs.delete' in user_permissions or current_user.is_admin else 'false' }};
+window.canTransferClubLeadership = {{ 'true' if 'clubs.edit' in user_permissions or current_user.is_admin else 'false' }};
+window.canManageSyncImmune = {{ 'true' if 'clubs.edit' in user_permissions or current_user.is_admin else 'false' }};
+
+/* ============================================
+   ADMIN DASHBOARD v2.1 - 2025-11-02 22:52
+   Fixed: Consolidated showAdminSection
+   Cache Buster: Please hard refresh (Ctrl+Shift+R)
+   ============================================ */
 
 // Global dropdown menu element - declare at top to avoid initialization errors
 let globalDropdownMenu = null;
@@ -2713,7 +2700,7 @@ function showAdminSection(section) {
         showToast('error', 'Access denied: You do not have permission to view clubs');
         showAdminSection('overview');
         return;
-    } else if (section === 'activity' && !window.canViewContent) {
+    } else if (section === 'activity' && !window.canViewActivity) {
         showToast('error', 'Access denied: You do not have permission to view activity');
         showAdminSection('overview');
         return;
@@ -2733,11 +2720,9 @@ function showAdminSection(section) {
 
     // Load data if needed
     if (section === 'users') {
-        const sortSelect = document.getElementById('userSortSelect');
-        const sortValue = sortSelect ? sortSelect.value : 'created_at-desc';
-        loadUsers(1, '', sortValue);
+        loadRecentUsers();
     } else if (section === 'clubs') {
-        loadClubs(1, '');
+        loadRecentClubs();
     } else if (section === 'activity') {
         loadLogs();
     } else if (section === 'review') {
@@ -2750,55 +2735,35 @@ function showAdminSection(section) {
 
 // Initialize the page when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Set up event listeners
-    const userSearch = document.getElementById('userSearch');
-    if (userSearch) {
-        userSearch.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredUsers = usersData.filter(user => 
-                user.username.toLowerCase().includes(searchTerm) ||
-                user.email.toLowerCase().includes(searchTerm)
-            );
-            renderUsersTable(filteredUsers);
-        });
-    }
-
     // Show overview section by default
     showAdminSection('overview');
 });
 
-async function loadUsers(page = 1, search = '', sort = 'created_at-desc') {
+async function loadRecentUsers() {
     try {
         const usersTableBody = document.getElementById('usersTableBody');
         usersTableBody.innerHTML = `
             <tr>
                 <td colspan="7" class="text-center py-4">
                     <div class="loading-spinner"></div>
-                    <p class="mt-2">Loading users...</p>
+                    <p class="mt-2">Loading recent users...</p>
                 </td>
             </tr>`;
 
-        let url = `/api/admin/users?page=${page}&per_page=${usersPerPage}&sort=${sort}`;
-        if (search) {
-            url += `&search=${encodeURIComponent(search)}`;
-        }
-
-        const response = await fetch(url);
+        const response = await fetch('/admin/users/recent');
         const data = await response.json();
 
         if (response.ok) {
-            const users = data.users || [];
-            usersData = users; // Store for search functionality
+            const users = data.results || [];
+            usersData = users;
             renderUsersTable(users);
-            totalUsers = data.total || 0;
-            currentUsersPage = page;
-            renderUsersPagination();
         } else {
             throw new Error(data.error || 'Failed to load users');
         }
     } catch (error) {
-        console.error('Error loading users:', error);
-        showToast('error', 'Failed to load users. Please try again.');
+        console.error('Error loading recent users:', error);
+        const usersTableBody = document.getElementById('usersTableBody');
+        usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 2rem;">Failed to load users. Please try searching.</td></tr>';
     }
 }
 
@@ -2818,22 +2783,17 @@ function setUserView(viewType) {
     const normalView = document.getElementById('usersTable');
     const ipView = document.getElementById('groupByIpView');
     const clubView = document.getElementById('groupByClubView');
-    const pagination = document.getElementById('usersPagination');
-    
+
     // Hide all views first
     if (normalView) normalView.style.display = 'none';
     if (ipView) ipView.style.display = 'none';
     if (clubView) clubView.style.display = 'none';
-    if (pagination) pagination.style.display = 'none';
-    
+
     // Show appropriate view and load data
     switch (viewType) {
         case 'normal':
             if (normalView) normalView.style.display = 'table';
-            if (pagination) pagination.style.display = 'block';
-            const sortSelect = document.getElementById('userSortSelect');
-            const sortValue = sortSelect ? sortSelect.value : 'created_at-desc';
-            loadUsers(1, document.getElementById('userSearch').value, sortValue);
+            loadRecentUsers();
             break;
         case 'group-ip':
             if (ipView) ipView.style.display = 'block';
@@ -2846,30 +2806,7 @@ function setUserView(viewType) {
     }
 }
 
-function getCurrentUserSort() {
-    const sortSelect = document.getElementById('userSortSelect');
-    return sortSelect ? sortSelect.value : 'created_at-desc';
-}
-
-function getCurrentUserSearch() {
-    const searchInput = document.getElementById('userSearch');
-    return searchInput ? searchInput.value : '';
-}
-
-function sortUsers() {
-    const sortValue = getCurrentUserSort();
-    const searchValue = getCurrentUserSearch();
-    
-    // Reset to page 1 when sorting changes
-    currentUsersPage = 1;
-    
-    // Load users with new sorting
-    loadUsers(currentUsersPage, searchValue, sortValue);
-}
-
-function loadUsersWithSort(page) {
-    loadUsers(page, getCurrentUserSearch(), getCurrentUserSort());
-}
+// Sorting removed - search only mode
 
 async function loadUsersByIP(page = 1, sort = 'users-desc') {
     try {
@@ -3121,38 +3058,31 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-async function loadClubs(page = 1, search = '') {
+async function loadRecentClubs() {
     try {
         const clubsTableBody = document.getElementById('clubsTableBody');
         clubsTableBody.innerHTML = `
             <tr>
                 <td colspan="6" class="text-center py-4">
                     <div class="loading-spinner"></div>
-                    <p class="mt-2">Loading clubs...</p>
+                    <p class="mt-2">Loading recent clubs...</p>
                 </td>
             </tr>`;
 
-        let url = `/api/admin/clubs?page=${page}&per_page=${clubsPerPage}`;
-        if (search) {
-            url += `&search=${encodeURIComponent(search)}`;
-        }
-
-        const response = await fetch(url);
+        const response = await fetch('/admin/clubs/recent');
         const data = await response.json();
 
         if (response.ok) {
-            const clubs = data.clubs || [];
-            clubsData = clubs; // Store for search functionality
+            const clubs = data.results || [];
+            clubsData = clubs;
             renderClubsTable(clubs);
-            totalClubs = data.total || 0;
-            currentClubsPage = page;
-            renderClubsPagination();
         } else {
             throw new Error(data.error || 'Failed to load clubs');
         }
     } catch (error) {
-        console.error('Error loading clubs:', error);
-        showToast('error', 'Failed to load clubs. Please try again.');
+        console.error('Error loading recent clubs:', error);
+        const clubsTableBody = document.getElementById('clubsTableBody');
+        clubsTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 2rem;">Failed to load clubs. Please try searching.</td></tr>';
     }
 }
 
@@ -3283,18 +3213,22 @@ function renderClubsTable(clubs) {
                         <button class="dropdown-item" onclick="viewClub(${club.id}); closeDropdown(this)">
                             <i class="fas fa-eye"></i> View Club
                         </button>
+                        ${window.canEditClubs ? `
                         <button class="dropdown-item edit" onclick="editClub(${club.id}); closeDropdown(this)">
                             <i class="fas fa-edit"></i> Edit Club
-                        </button>
+                        </button>` : ''}
+                        ${window.canTransferClubLeadership ? `
                         <button class="dropdown-item transfer" onclick="event.stopPropagation(); openTransferLeadershipModal(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${club.leader_id ?? 'null'}); closeDropdown(this); return false;">
                             <i class="fas fa-exchange-alt"></i> Transfer Leadership
-                        </button>
+                        </button>` : ''}
+                        ${window.canManageSyncImmune ? `
                         <button class="dropdown-item" onclick="event.stopPropagation(); toggleSyncImmune(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${club.sync_immune ?? false}); closeDropdown(this); return false;">
                             <i class="fas fa-shield-alt"></i> ${club.sync_immune ? 'Disable' : 'Enable'} Sync Immune
-                        </button>
+                        </button>` : ''}
+                        ${window.canDeleteClubs ? `
                         <button class="dropdown-item danger" onclick="event.stopPropagation(); deleteClub(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}'); closeDropdown(this); return false;">
                             <i class="fas fa-trash"></i> Delete Club
-                        </button>
+                        </button>` : ''}
                     </div>
                 </div>
             </td>
@@ -3303,121 +3237,9 @@ function renderClubsTable(clubs) {
     });
 }
 
-function renderUsersPagination() {
-    const pagination = document.getElementById('usersPagination');
-    if (!pagination) return;
+// Pagination removed - search only mode
 
-    const totalPages = Math.ceil(totalUsers / usersPerPage);
-
-    // Don't show pagination if no results or only one page
-    if (totalPages <= 1) {
-        pagination.innerHTML = totalUsers > 0 ? `
-            <div class="pagination-info">
-                Showing ${totalUsers} result${totalUsers !== 1 ? 's' : ''}
-            </div>
-        ` : '';
-        return;
-    }
-
-    const startItem = ((currentUsersPage - 1) * usersPerPage) + 1;
-    const endItem = Math.min(currentUsersPage * usersPerPage, totalUsers);
-
-    let html = `
-        <div class="pagination">
-            <div class="pagination-info">
-                Showing ${startItem} to ${endItem} of ${totalUsers}
-            </div>
-
-            <div class="pagination-buttons">
-                <button class="pagination-btn" onclick="loadUsers(1, getCurrentUserSearch(), getCurrentUserSort())" ${currentUsersPage === 1 ? 'disabled' : ''}>
-                    &laquo; First
-                </button>
-                <button class="pagination-btn" onclick="loadUsers(${Math.max(1, currentUsersPage - 1)}, getCurrentUserSearch(), getCurrentUserSort())" ${currentUsersPage === 1 ? 'disabled' : ''}>
-                    &lsaquo; Previous
-                </button>
-
-                ${generatePageNumbers(currentUsersPage, totalPages, 'loadUsersWithSort')}
-
-                <button class="pagination-btn" onclick="loadUsers(${Math.min(totalPages, currentUsersPage + 1)}, getCurrentUserSearch(), getCurrentUserSort())" ${currentUsersPage === totalPages ? 'disabled' : ''}>
-                    Next &rsaquo;
-                </button>
-                <button class="pagination-btn" onclick="loadUsers(${totalPages}, getCurrentUserSearch(), getCurrentUserSort())" ${currentUsersPage === totalPages ? 'disabled' : ''}>
-                    Last &raquo;
-                </button>
-            </div>
-
-            <div class="page-size-selector">
-                <span>Show:</span>
-                <select onchange="changeUsersPageSize(this.value)">
-                    <option value="10" ${usersPerPage === 10 ? 'selected' : ''}>10</option>
-                    <option value="25" ${usersPerPage === 25 ? 'selected' : ''}>25</option>
-                    <option value="50" ${usersPerPage === 50 ? 'selected' : ''}>50</option>
-                </select>
-                <span>per page</span>
-            </div>
-        </div>
-    `;
-
-    pagination.innerHTML = html;
-}
-
-function renderClubsPagination() {
-    const pagination = document.getElementById('clubsPagination');
-    if (!pagination) return;
-
-    const totalPages = Math.ceil(totalClubs / clubsPerPage);
-
-    // Don't show pagination if no results or only one page
-    if (totalPages <= 1) {
-        pagination.innerHTML = totalClubs > 0 ? `
-            <div class="pagination-info">
-                Showing ${totalClubs} result${totalClubs !== 1 ? 's' : ''}
-            </div>
-        ` : '';
-        return;
-    }
-
-    const startItem = ((currentClubsPage - 1) * clubsPerPage) + 1;
-    const endItem = Math.min(currentClubsPage * clubsPerPage, totalClubs);
-
-    let html = `
-        <div class="pagination">
-            <div class="pagination-info">
-                Showing ${startItem} to ${endItem} of ${totalClubs}
-            </div>
-
-            <div class="pagination-buttons">
-                <button class="pagination-btn" onclick="loadClubs(1)" ${currentClubsPage === 1 ? 'disabled' : ''}>
-                    &laquo; First
-                </button>
-                <button class="pagination-btn" onclick="loadClubs(${Math.max(1, currentClubsPage - 1)})" ${currentClubsPage === 1 ? 'disabled' : ''}>
-                    &lsaquo; Previous
-                </button>
-
-                ${generatePageNumbers(currentClubsPage, totalPages, 'loadClubs')}
-
-                <button class="pagination-btn" onclick="loadClubs(${Math.min(totalPages, currentClubsPage + 1)})" ${currentClubsPage === totalPages ? 'disabled' : ''}>
-                    Next &rsaquo;
-                </button>
-                <button class="pagination-btn" onclick="loadClubs(${totalPages})" ${currentClubsPage === totalPages ? 'disabled' : ''}>
-                    Last &raquo;
-                </button>
-            </div>
-
-            <div class="page-size-selector">
-                <span>Show:</span>
-                <select onchange="changeClubsPageSize(this.value)">
-                    <option value="10" ${clubsPerPage === 10 ? 'selected' : ''}>10</option>
-                    <option value="25" ${clubsPerPage === 25 ? 'selected' : ''}>25</option>
-                    <option value="50" ${clubsPerPage === 50 ? 'selected' : ''}>50</option>
-                </select>
-                <span>per page</span>
-            </div>
-        </div>
-    `;
-
-    pagination.innerHTML = html;
-}
+// Pagination removed - search only mode
 
 function generatePageNumbers(currentPage, totalPages, functionName) {
     let html = '';
@@ -3436,17 +3258,7 @@ function generatePageNumbers(currentPage, totalPages, functionName) {
     return html;
 }
 
-function changeUsersPageSize(newSize) {
-    usersPerPage = parseInt(newSize);
-    currentUsersPage = 1;
-    loadUsers(1, getCurrentUserSearch(), getCurrentUserSort());
-}
-
-function changeClubsPageSize(newSize) {
-    clubsPerPage = parseInt(newSize);
-    currentClubsPage = 1;
-    loadClubs(1);
-}
+// Page size functions removed - search only mode
 
 // Debounce function to limit API calls during search
 function debounce(func, wait) {
@@ -3464,9 +3276,9 @@ function debounce(func, wait) {
 // Search users with debounce
 const handleUserSearch = debounce(async function(searchTerm) {
     if (searchTerm === '') {
-        // Reset to paginated view
-        currentUsersPage = 1;
-        loadUsers(1, '', getCurrentUserSort());
+        // Clear search results and show message
+        const usersTableBody = document.getElementById('usersTableBody');
+        usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 2rem;">Enter a search term to find users</td></tr>';
         return;
     }
 
@@ -3480,16 +3292,13 @@ const handleUserSearch = debounce(async function(searchTerm) {
                 </td>
             </tr>`;
 
-        const response = await fetch(`/api/admin/users?search=${encodeURIComponent(searchTerm)}&page=1&per_page=${usersPerPage}`);
+        const response = await fetch(`/admin/search/users?q=${encodeURIComponent(searchTerm)}`);
         const data = await response.json();
 
         if (response.ok) {
-            const users = data.items || [];
+            const users = data.results || [];
             usersData = users;
             renderUsersTable(users);
-            totalUsers = data.total || 0;
-            currentUsersPage = 1;
-            renderUsersPagination();
         } else {
             throw new Error(data.error || 'Search failed');
         }
@@ -3513,9 +3322,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Search clubs with debounce
 const handleClubSearch = debounce(async function(searchTerm) {
     if (searchTerm === '') {
-        // Reset to paginated view
-        currentClubsPage = 1;
-        loadClubs(1);
+        // Clear search results and show message
+        const clubsTableBody = document.getElementById('clubsTableBody');
+        clubsTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 2rem;">Enter a search term to find clubs</td></tr>';
         return;
     }
 
@@ -3529,16 +3338,13 @@ const handleClubSearch = debounce(async function(searchTerm) {
                 </td>
             </tr>`;
 
-        const response = await fetch(`/api/admin/clubs?search=${encodeURIComponent(searchTerm)}&page=1&per_page=${clubsPerPage}`);
+        const response = await fetch(`/admin/search/clubs?q=${encodeURIComponent(searchTerm)}`);
         const data = await response.json();
 
         if (response.ok) {
-            const clubs = data.items || [];
+            const clubs = data.results || [];
             clubsData = clubs;
             renderClubsTable(clubs);
-            totalClubs = data.total || 0;
-            currentClubsPage = 1;
-            renderClubsPagination();
         } else {
             throw new Error(data.error || 'Search failed');
         }
@@ -3578,28 +3384,32 @@ let pendingSubmissionId = null;
 let pendingProjectName = null;
 
 function loginAsUser(userId, username) {
-    document.getElementById('loginAsUsername').textContent = username;
-    pendingUserId = userId;
-    pendingUsername = username;
-    openModal('loginAsModal');
-}
+    UniversalModal.confirm(
+        `Are you sure you want to login as <strong>${username}</strong>?<br><span style="color: #64748b; font-size: 0.9rem; margin-top: 0.5rem; display: block;">You will be logged in as this user and can perform actions on their behalf. This action is logged.</span>`,
+        async function() {
+            // User confirmed
+            try {
+                const response = await makeSecureRequest(`/api/admin/login-as-user/${userId}`, {
+                    method: 'POST'
+                });
 
-async function executeLoginAs() {
-    try {
-        const response = await makeSecureRequest(`/api/admin/login-as-user/${pendingUserId}`, {
-            method: 'POST'
-        });
-
-        if (response.ok) {
-            window.location.href = '/dashboard';
-        } else {
-            const error = await response.json();
-            showToast('error', error.error || 'Failed to login as user');
-        }
-    } catch (error) {
-        showToast('error', 'Failed to login as user');
-    }
-    closeModal('loginAsModal');
+                if (response.ok) {
+                    showToast('success', `Logging in as ${username}...`);
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1000);
+                } else {
+                    const error = await response.json();
+                    showToast('error', error.error || 'Failed to login as user');
+                }
+            } catch (error) {
+                console.error('Error logging in as user:', error);
+                showToast('error', 'Failed to login as user');
+            }
+        },
+        null,
+        'Login As User'
+    );
 }
 
 function resetUserPassword(userId, username) {
@@ -3714,69 +3524,79 @@ function suspendUser(userId, username, isLeader) {
     const user = usersData.find(u => u.id === userId);
     if (!user) return;
 
-    currentSuspendUserId = userId;
-    currentSuspendUsername = username;
-    isClubLeader = isLeader;
-
-    document.getElementById('suspendUsername').textContent = username;
-
-    if (user.is_suspended) {
-        document.getElementById('suspendModalTitle').textContent = 'Unsuspend User';
-        document.getElementById('suspendModalMessage').innerHTML = `Are you sure you want to unsuspend "<span id="suspendUsername">${username}</span>"?`;
-        document.getElementById('suspendConfirmButton').textContent = 'Unsuspend User';
-        document.getElementById('leaderSuspendOptions').style.display = 'none';
-    } else {
-        document.getElementById('suspendModalTitle').textContent = 'Suspend User';
-        document.getElementById('suspendModalMessage').innerHTML = `Are you sure you want to suspend "<span id="suspendUsername">${username}</span>"?`;
-        document.getElementById('suspendConfirmButton').textContent = 'Suspend User';
-
-        if (isLeader) {
-            document.getElementById('leaderSuspendOptions').style.display = 'block';
-        } else {
-            document.getElementById('leaderSuspendOptions').style.display = 'none';
-        }
+    const isSuspended = user.is_suspended;
+    const action = isSuspended ? 'unsuspend' : 'suspend';
+    const actionCap = isSuspended ? 'Unsuspend' : 'Suspend';
+    
+    // Build the HTML content
+    let htmlContent = `Are you sure you want to ${action} "<strong>${username}</strong>"?`;
+    
+    // Add checkbox options if suspending a leader
+    if (!isSuspended && isLeader) {
+        htmlContent += `
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem; text-align: left;">
+                <div style="color: #92400e; font-size: 0.875rem; margin-bottom: 1rem;">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Club Leader Suspension Options:</strong>
+                </div>
+                <div style="margin-bottom: 0.75rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="suspendClubMembers" style="accent-color: #ec3750;">
+                        <span>Suspend all club members</span>
+                    </label>
+                </div>
+                <div>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="suspendClub" style="accent-color: #ec3750;">
+                        <span>Suspend the entire club</span>
+                    </label>
+                </div>
+            </div>
+        `;
     }
+    
+    UniversalModal.custom({
+        type: isSuspended ? 'info' : 'warning',
+        title: `${actionCap} User`,
+        html: htmlContent,
+        confirmText: `${actionCap} User`,
+        cancelText: 'Cancel',
+        onConfirm: async function() {
+            // Get checkbox values if they exist
+            const suspendMembersCheckbox = document.getElementById('suspendClubMembers');
+            const suspendClubCheckbox = document.getElementById('suspendClub');
+            
+            const requestBody = {
+                is_suspended: !isSuspended
+            };
 
-    openModal('suspendUserModal');
-}
+            if (isLeader && !isSuspended) {
+                requestBody.suspend_club_members = suspendMembersCheckbox ? suspendMembersCheckbox.checked : false;
+                requestBody.suspend_club = suspendClubCheckbox ? suspendClubCheckbox.checked : false;
+            }
+            
+            try {
+                const response = await makeSecureRequest(`/api/admin/users/${userId}/suspend`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
 
-async function executeSuspendUser() {
-    const user = usersData.find(u => u.id === currentSuspendUserId);
-    if (!user) return;
+                const data = await response.json();
 
-    const suspendClubMembers = document.getElementById('suspendClubMembers').checked;
-    const suspendClub = document.getElementById('suspendClub').checked;
-
-    try {
-        const requestBody = {
-            is_suspended: !user.is_suspended
-        };
-
-        if (isClubLeader && !user.is_suspended) {
-            requestBody.suspend_club_members = suspendClubMembers;
-            requestBody.suspend_club = suspendClub;
+                if (response.ok) {
+                    showToast('success', data.message || `User ${action}ed successfully`);
+                    loadUsers(currentUsersPage, getCurrentUserSearch(), getCurrentUserSort());
+                } else {
+                    showToast('error', data.error || `Failed to ${action} user`);
+                }
+            } catch (error) {
+                console.error(`Error ${action}ing user:`, error);
+                showToast('error', `Failed to ${action} user`);
+            }
         }
-
-        const response = await makeSecureRequest(`/api/admin/users/${currentSuspendUserId}/suspend`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            showToast('success', data.message || `User ${user.is_suspended ? 'unsuspended' : 'suspended'} successfully`);
-            closeModal('suspendUserModal');
-            loadUsers(currentUsersPage, getCurrentUserSearch(), getCurrentUserSort());
-        } else {
-            showToast('error', data.error || `Failed to ${user.is_suspended ? 'unsuspend' : 'suspend'} user`);
-        }
-    } catch (error) {
-        showToast('error', `Failed to ${user.is_suspended ? 'unsuspend' : 'suspend'} user`);
-    }
+    });
 }
 
 async function loadProjectGrantSubmissions() {
@@ -4019,32 +3839,31 @@ function filterSubmissionsByStatus() {
 }
 
 function deleteSubmission(submissionId, projectName) {
-    document.getElementById('confirmTitle').textContent = 'Delete Submission';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to permanently delete the submission for "<strong>${projectName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone and will remove the submission from Airtable.</span>`;
-    pendingAction = 'deleteSubmission';
-    pendingSubmissionId = submissionId;
-    pendingProjectName = projectName;
-    openModal('confirmModal');
-}
+    UniversalModal.confirm(
+        `Are you sure you want to permanently delete the submission for "<strong>${projectName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone and will remove the submission from Airtable.</span>`,
+        async function() {
+            // User confirmed deletion
+            try {
+                const response = await makeSecureRequest(`/api/admin/pizza-grants/${submissionId}`, {
+                    method: 'DELETE'
+                });
 
-async function executeDeleteSubmission() {
-    try {
-        const response = await makeSecureRequest(`/api/admin/pizza-grants/${pendingSubmissionId}`, {
-            method: 'DELETE'
-        });
-
-        const data = await response.json();
+                const data = await response.json();
 
                 if (response.ok) {
-            showToast('success', 'Submission deleted successfully');
-            loadProjectGrantSubmissions(); // Refresh the table
-        } else {
-            showToast('error', data.error || 'Failed to delete submission');
-        }
-    } catch (error) {
-        console.error('Error deleting submission:', error);
-        showToast('error', 'Failed to delete submission');
-    }
+                    showToast('success', 'Submission deleted successfully');
+                    loadProjectGrantSubmissions(); // Refresh the table
+                } else {
+                    showToast('error', data.error || 'Failed to delete submission');
+                }
+            } catch (error) {
+                console.error('Error deleting submission:', error);
+                showToast('error', 'Failed to delete submission');
+            }
+        },
+        null,
+        'Delete Submission'
+    );
 }
 
 function editClub(clubId) {
@@ -4059,6 +3878,56 @@ function editClub(clubId) {
     document.getElementById('editClubBalance').value = club.balance;
 
     openModal('editClubModal');
+}
+
+async function createNewClub() {
+    const name = document.getElementById('createClubName').value;
+    const description = document.getElementById('createClubDescription').value;
+    const location = document.getElementById('createClubLocation').value;
+    const leaderEmail = document.getElementById('createClubLeaderEmail').value;
+    const balance = document.getElementById('createClubBalance').value;
+
+    if (!name.trim()) {
+        showToast('error', 'Club name is required');
+        return;
+    }
+
+    if (!leaderEmail.trim()) {
+        showToast('error', 'Leader email is required');
+        return;
+    }
+
+    try {
+        const response = await makeSecureRequest('/admin/clubs/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name.trim(),
+                description: description.trim(),
+                location: location.trim(),
+                leader_email: leaderEmail.trim(),
+                balance: parseFloat(balance) || 0
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showToast('success', data.message || 'Club created successfully');
+            closeModal('createClubModal');
+            // Clear form
+            document.getElementById('createClubForm').reset();
+            // Refresh the clubs list
+            loadRecentClubs();
+        } else {
+            showToast('error', data.error || 'Failed to create club');
+        }
+    } catch (error) {
+        console.error('Error creating club:', error);
+        showToast('error', 'Error creating club');
+    }
 }
 
 async function saveClubChanges() {
@@ -4092,7 +3961,7 @@ async function saveClubChanges() {
         if (response.ok) {
             showToast('success', 'Club updated successfully');
             closeModal('editClubModal');
-            loadClubs(currentClubsPage); // Refresh the table
+            loadRecentClubs(); // Refresh the table
         } else {
             showToast('error', data.error || 'Failed to update club');
         }
@@ -4392,30 +4261,29 @@ async function updateApiKey(apiKeyId, updateData) {
 }
 
 function deleteApiKey(apiKeyId, apiKeyName) {
-    document.getElementById('confirmTitle').textContent = 'Delete API Key';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete API key "<strong>${apiKeyName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`;
-    pendingAction = 'deleteApiKey';
-    pendingUserId = apiKeyId;
-    pendingUsername = apiKeyName;
-    openModal('confirmModal');
-}
+    UniversalModal.confirm(
+        `Are you sure you want to delete API key "<strong>${apiKeyName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`,
+        async function() {
+            // User confirmed deletion
+            try {
+                const response = await makeSecureRequest(`/api/admin/api-keys/${apiKeyId}`, {
+                    method: 'DELETE'
+                });
 
-async function executeDeleteApiKey(apiKeyId) {
-    try {
-        const response = await makeSecureRequest(`/api/admin/api-keys/${apiKeyId}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            showToast('success', 'API key deleted successfully');
-            loadApiKeys();
-        } else {
-            const error = await response.json();
-            showToast('error', error.error || 'Failed to delete API key');
-        }
-    } catch (error) {
-        showToast('error', 'Failed to delete API key');
-    }
+                if (response.ok) {
+                    showToast('success', 'API key deleted successfully');
+                    loadApiKeys();
+                } else {
+                    const error = await response.json();
+                    showToast('error', error.error || 'Failed to delete API key');
+                }
+            } catch (error) {
+                showToast('error', 'Failed to delete API key');
+            }
+        },
+        null,
+        'Delete API Key'
+    );
 }
 
 function editOAuthApp(oauthAppId) {
@@ -4486,32 +4354,33 @@ async function updateOAuthApp(oauthAppId, updateData) {
     }
 }
 
+
 function deleteOAuthApp(oauthAppId, oauthAppName) {
-    document.getElementById('confirmTitle').textContent = 'Delete OAuth Application';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete OAuth application "<strong>${oauthAppName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This will also delete all related tokens and authorization codes. This action cannot be undone.</span>`;
-    pendingAction = 'deleteOAuthApp';
-    pendingUserId = oauthAppId;
-    pendingUsername = oauthAppName;
-    openModal('confirmModal');
+    UniversalModal.confirm(
+        `Are you sure you want to delete OAuth application "<strong>${oauthAppName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This will also delete all related tokens and authorization codes. This action cannot be undone.</span>`,
+        async function() {
+            // User confirmed deletion
+            try {
+                const response = await makeSecureRequest(`/api/admin/oauth-applications/${oauthAppId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showToast('success', 'OAuth application deleted successfully');
+                    loadOAuthApps();
+                } else {
+                    const error = await response.json();
+                    showToast('error', error.error || 'Failed to delete OAuth application');
+                }
+            } catch (error) {
+                showToast('error', 'Failed to delete OAuth application');
+            }
+        },
+        null,
+        'Delete OAuth Application'
+    );
 }
 
-async function executeDeleteOAuthApp(oauthAppId) {
-    try {
-        const response = await makeSecureRequest(`/api/admin/oauth-applications/${oauthAppId}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            showToast('success', 'OAuth application deleted successfully');
-            loadOAuthApps();
-        } else {
-            const error = await response.json();
-            showToast('error', error.error || 'Failed to delete OAuth application');
-        }
-    } catch (error) {
-        showToast('error', 'Failed to delete OAuth application');
-    }
-}
 
 function executeConfirmedAction() {
     console.log('[DEBUG] executeConfirmedAction called - user clicked CONFIRM button');
@@ -4521,21 +4390,10 @@ function executeConfirmedAction() {
     closeModal('confirmModal');
     
     // Then execute the action
-    if (pendingAction === 'deleteSubmission') {
-        executeDeleteSubmission();
-    } else if (pendingAction === 'deleteUser') {
-        console.log('[DEBUG] Calling executeDeleteUser...');
-        executeDeleteUser();
-    } else if (pendingAction === 'deleteClub') {
-        console.log('[DEBUG] Calling executeDeleteClub...');
-        executeDeleteClub();
-    } else if (pendingAction === 'deleteApiKey') {
-        executeDeleteApiKey(pendingUserId);
-    } else if (pendingAction === 'deleteOAuthApp') {
-        executeDeleteOAuthApp(pendingUserId);
-    } else if (pendingAction === 'transferLeadership') {
+    if (pendingAction === 'transferLeadership') {
         executeTransferLeadership();
     }
+    // Note: All delete operations now use UniversalModal directly with callbacks
     
     // Clear pending action
     pendingAction = null;
@@ -4797,26 +4655,62 @@ window.addEventListener('resize', function() {
 
 async function deleteUser(userId, username) {
     console.log('[DEBUG] deleteUser called:', userId, username);
-    document.getElementById('confirmTitle').textContent = 'Delete User';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete the user "<strong>${username}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`;
-    pendingAction = 'deleteUser';
-    pendingUserId = userId;
-    pendingUsername = username;
-    console.log('[DEBUG] Opening confirmModal');
-    openModal('confirmModal');
-    console.log('[DEBUG] deleteUser completed - modal should be open');
+    
+    UniversalModal.confirm(
+        `Are you sure you want to delete the user "<strong>${username}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`,
+        async function() {
+            // User confirmed deletion
+            console.log('[DEBUG] User confirmed deletion of:', username);
+            try {
+                const response = await makeSecureRequest(`/api/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showToast('success', 'User deleted successfully');
+                    loadUsers();
+                } else {
+                    const error = await response.json();
+                    showToast('error', error.error || 'Failed to delete user');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showToast('error', 'Failed to delete user');
+            }
+        },
+        null,
+        'Delete User'
+    );
 }
 
 async function deleteClub(clubId, clubName) {
     console.log('[DEBUG] deleteClub called:', clubId, clubName);
-    document.getElementById('confirmTitle').textContent = 'Delete Club';
-    document.getElementById('confirmMessage').innerHTML = `Are you sure you want to delete the club "<strong>${clubName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`;
-    pendingAction = 'deleteClub';
-    pendingUserId = clubId;
-    pendingUsername = clubName;
-    console.log('[DEBUG] Opening confirmModal');
-    openModal('confirmModal');
-    console.log('[DEBUG] deleteClub completed - modal should be open');
+    
+    UniversalModal.confirm(
+        `Are you sure you want to delete the club "<strong>${clubName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`,
+        async function() {
+            // User confirmed deletion
+            console.log('[DEBUG] User confirmed deletion of:', clubName);
+            try {
+                const response = await makeSecureRequest(`/api/admin/clubs/${clubId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showToast('success', 'Club deleted successfully');
+                    loadRecentClubs();
+                } else {
+                    const error = await response.json();
+                    showToast('error', error.error || 'Failed to delete club');
+                }
+            } catch (error) {
+                console.error('Error deleting club:', error);
+                showToast('error', 'Failed to delete club');
+            }
+        },
+        null,
+        'Delete Club'
+    );
 }
 
 async function executeDeleteUser() {
@@ -4850,7 +4744,7 @@ async function executeDeleteClub() {
 
         if (response.ok) {
             showToast('success', 'Club deleted successfully');
-            loadClubs();
+            loadRecentClubs();
         } else {
             const error = await response.json();
             showToast('error', error.error || 'Failed to delete club');
@@ -4861,68 +4755,49 @@ async function executeDeleteClub() {
     }
 }
 
-let pendingSyncImmuneData = null;
+// Note: executeDeleteUser and executeDeleteClub removed - now using UniversalModal callbacks directly
 
 function toggleSyncImmune(clubId, clubName, currentStatus) {
     const action = currentStatus ? 'disable' : 'enable';
     const actionCapitalized = action.charAt(0).toUpperCase() + action.slice(1);
+    
+    UniversalModal.confirm(
+        `Are you sure you want to <strong>${action}</strong> Sync Immune for "<strong>${clubName}</strong>"?<br><br>` +
+        `<span style="color: ${currentStatus ? '#dc2626' : '#16a34a'};">` +
+        `${currentStatus
+            ? '<i class="fas fa-exclamation-triangle"></i> The club will be required to connect to the directory to access the dashboard.'
+            : '<i class="fas fa-shield-alt"></i> The club will bypass the intrusive connection popup (banner will still show).'}` +
+        `</span>`,
+        async function() {
+            // User confirmed
+            const newStatus = !currentStatus;
+            try {
+                const response = await makeSecureRequest(`/api/admin/clubs/${clubId}/sync-immune`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sync_immune: newStatus
+                    })
+                });
 
-    // Store the data for later execution
-    pendingSyncImmuneData = {
-        clubId,
-        clubName,
-        currentStatus,
-        newStatus: !currentStatus
-    };
-
-    // Update modal content
-    document.getElementById('syncImmuneModalTitle').textContent = `${actionCapitalized} Sync Immune`;
-    document.getElementById('syncImmuneModalMessage').innerHTML = `
-        Are you sure you want to <strong>${action}</strong> Sync Immune for "<strong>${clubName}</strong>"?<br><br>
-        <span style="color: ${currentStatus ? '#dc2626' : '#16a34a'};">
-            ${currentStatus
-                ? '<i class="fas fa-exclamation-triangle"></i> The club will be required to connect to the directory to access the dashboard.'
-                : '<i class="fas fa-shield-alt"></i> The club will bypass the intrusive connection popup (banner will still show).'}
-        </span>
-    `;
-    document.getElementById('syncImmuneConfirmButton').textContent = `${actionCapitalized} Sync Immune`;
-
-    // Open modal
-    openModal('syncImmuneModal');
-}
-
-async function executeSyncImmuneToggle() {
-    if (!pendingSyncImmuneData) return;
-
-    const { clubId, clubName, currentStatus, newStatus } = pendingSyncImmuneData;
-    const action = currentStatus ? 'disable' : 'enable';
-
-    try {
-        const response = await makeSecureRequest(`/api/admin/clubs/${clubId}/sync-immune`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                sync_immune: newStatus
-            })
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            showToast('success', result.message || `Sync immune ${action}d successfully`);
-            closeModal('syncImmuneModal');
-            loadClubs(); // Refresh the clubs list
-        } else {
-            const error = await response.json();
-            showToast('error', error.error || `Failed to ${action} sync immune`);
-        }
-    } catch (error) {
-        console.error(`Error toggling sync immune:`, error);
-        showToast('error', `Failed to ${action} sync immune`);
-    } finally {
-        pendingSyncImmuneData = null;
-    }
+                if (response.ok) {
+                    const result = await response.json();
+                    showToast('success', result.message || `Sync immune ${action}d successfully`);
+                    loadRecentClubs(); // Refresh the clubs list
+                } else {
+                    const error = await response.json();
+                    showToast('error', error.error || `Failed to ${action} sync immune`);
+                }
+            } catch (error) {
+                console.error(`Error toggling sync immune:`, error);
+                showToast('error', `Failed to ${action} sync immune`);
+            }
+        },
+        null,
+        `${actionCapitalized} Sync Immune`
+    );
 }
 
 async function editClub(clubId) {
@@ -5662,7 +5537,7 @@ async function executeTransferLeadership() {
 
         if (response.ok) {
             showToast('success', 'Club leadership transferred successfully');
-            loadClubs();
+            loadRecentClubs();
         } else {
             const error = await response.json();
             showToast('error', error.error || 'Failed to transfer leadership');
@@ -5699,14 +5574,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Update the showAdminSection function to load settings when switching to settings tab
-const originalShowAdminSection = showAdminSection;
+// ===== CONSOLIDATED showAdminSection function with all extensions =====
+const _baseShowAdminSection = showAdminSection;
 showAdminSection = function(section) {
-    originalShowAdminSection(section);
+    // Call the original function
+    _baseShowAdminSection(section);
     
     // Load settings when switching to settings tab
     if (section === 'settings') {
         loadSettings();
+    }
+    
+    // Load roles when switching to roles tab
+    if (section === 'roles') {
+        loadRoles();
     }
 };
 
@@ -6117,6 +5998,10 @@ function loadRoles() {
                                 </p>
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <button onclick="viewRoleUsers(${role.id}, '${role.display_name.replace(/'/g, "\\'")}')"
+                                        class="btn btn-sm" style="padding: 0.5rem 1rem; background: #3b82f6; color: white;">
+                                    <i class="fas fa-users"></i> Assigned Users
+                                </button>
                                 ${canManageRoles ? `
                                 <button onclick="editRoleById(${role.id})"
                                         class="btn btn-sm btn-secondary" style="padding: 0.5rem 1rem;"
@@ -6405,15 +6290,7 @@ function removeUserRole(userId, roleName) {
     });
 }
 
-// Load roles when the roles section is shown
-const originalShowAdminSectionRBAC = showAdminSection;
-showAdminSection = function(section) {
-    originalShowAdminSectionRBAC(section);
-
-    if (section === 'roles') {
-        loadRoles();
-    }
-};
+// (showAdminSection already extended above to load roles)
 
 // ============ Custom Role Management Functions ============
 
@@ -6772,4 +6649,257 @@ function setupAdminPermissionDependencies() {
 }
 
 </script>
+
+<!-- Role Users Management Functions -->
+<script>
+let currentRoleId = null;
+let currentRoleName = null;
+let roleUserSearchTimeout;
+
+// Open role users modal
+async function viewRoleUsers(roleId, roleName) {
+    currentRoleId = roleId;
+    currentRoleName = roleName;
+    
+    document.getElementById('roleUsersRoleName').textContent = roleName;
+    document.getElementById('roleUserSearch').value = '';
+    document.getElementById('roleUserSearchResults').innerHTML = '<p style="color: #64748b; text-align: center; padding: 1rem;"><i class="fas fa-search"></i> Search for users to add to this role</p>';
+    
+    openModal('roleUsersModal');
+    await loadRoleUsers();
+}
+
+// Load users assigned to role
+async function loadRoleUsers() {
+    if (!currentRoleId) return;
+    
+    try {
+        const response = await makeSecureRequest(`/api/admin/rbac/roles/${currentRoleId}/users`);
+        const data = await response.json();
+        
+        const usersList = document.getElementById('roleUsersList');
+        const usersCount = document.getElementById('roleUsersCount');
+        
+        if (data.users && data.users.length > 0) {
+            usersCount.textContent = data.users.length;
+            usersList.innerHTML = data.users.map(user => `
+                <div class="user-row" style="
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    padding: 1rem;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    margin-bottom: 0.75rem;
+                    background: white;
+                ">
+                    <img src="${user.avatar_url || '/static/assets/heidi-avatar.png'}" 
+                         alt="${user.username}" 
+                         style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #1e293b;">${user.username}</div>
+                        <div style="font-size: 0.875rem; color: #64748b;">${user.email}</div>
+                        ${user.first_name || user.last_name ? 
+                            `<div style="font-size: 0.875rem; color: #64748b;">${user.first_name || ''} ${user.last_name || ''}</div>` : ''}
+                    </div>
+                    <button 
+                        onclick="removeUserFromRole(${user.id}, '${user.username.replace(/'/g, "\\'")}')" 
+                        class="btn btn-sm" 
+                        style="padding: 0.5rem 1rem; background: #dc2626; color: white;"
+                    >
+                        <i class="fas fa-user-minus"></i> Remove
+                    </button>
+                </div>
+            `).join('');
+        } else {
+            usersCount.textContent = '0';
+            usersList.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: #64748b;">
+                    <i class="fas fa-users" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                    <p style="margin: 0; font-size: 1.1rem;">No users assigned to this role yet</p>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Use the search above to add users</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading role users:', error);
+        document.getElementById('roleUsersList').innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #ef4444;">
+                <i class="fas fa-exclamation-circle"></i> Failed to load users
+            </div>
+        `;
+    }
+}
+
+// Search users for adding to role
+function searchUsersForRole() {
+    clearTimeout(roleUserSearchTimeout);
+    const searchTerm = document.getElementById('roleUserSearch').value.trim();
+    
+    if (searchTerm.length < 2) {
+        document.getElementById('roleUserSearchResults').innerHTML = `
+            <p style="color: #64748b; text-align: center; padding: 1rem;">
+                <i class="fas fa-search"></i> Type at least 2 characters to search
+            </p>
+        `;
+        return;
+    }
+    
+    document.getElementById('roleUserSearchResults').innerHTML = `
+        <p style="color: #64748b; text-align: center; padding: 1rem;">
+            <i class="fas fa-spinner fa-spin"></i> Searching...
+        </p>
+    `;
+    
+    roleUserSearchTimeout = setTimeout(async () => {
+        try {
+            const response = await makeSecureRequest(`/api/admin/users/search?q=${encodeURIComponent(searchTerm)}`);
+            const data = await response.json();
+            
+            const resultsContainer = document.getElementById('roleUserSearchResults');
+            
+            if (data.users && data.users.length > 0) {
+                resultsContainer.innerHTML = data.users.map(user => `
+                    <div class="user-row" style="
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
+                        padding: 1rem;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        margin-bottom: 0.75rem;
+                        background: white;
+                    ">
+                        <img src="${user.avatar_url || '/static/assets/heidi-avatar.png'}" 
+                             alt="${user.username}" 
+                             style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1e293b;">${user.username}</div>
+                            <div style="font-size: 0.875rem; color: #64748b;">${user.email}</div>
+                        </div>
+                        <button 
+                            onclick="addUserToRole(${user.id}, '${user.username.replace(/'/g, "\\'")}')" 
+                            class="btn btn-sm" 
+                            style="padding: 0.5rem 1rem; background: #16a34a; color: white;"
+                        >
+                            <i class="fas fa-user-plus"></i> Add to Role
+                        </button>
+                    </div>
+                `).join('');
+            } else {
+                resultsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #64748b;">
+                        <i class="fas fa-user-slash"></i> No users found matching "${searchTerm}"
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error searching users:', error);
+            document.getElementById('roleUserSearchResults').innerHTML = `
+                <div style="text-align: center; padding: 1rem; color: #ef4444;">
+                    <i class="fas fa-exclamation-circle"></i> Error searching users
+                </div>
+            `;
+        }
+    }, 500);
+}
+
+// Add user to role
+async function addUserToRole(userId, username) {
+    if (!currentRoleId) return;
+    
+    try {
+        // Get the role name first
+        const rolesResponse = await makeSecureRequest('/api/admin/rbac/roles');
+        const rolesData = await rolesResponse.json();
+        const role = rolesData.roles.find(r => r.id === currentRoleId);
+        
+        if (!role) {
+            showToast('error', 'Role not found');
+            return;
+        }
+        
+        const response = await makeSecureRequest(`/api/admin/rbac/users/${userId}/roles`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                role_name: role.name  // Send role_name, not role_id
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('success', `Added ${username} to ${currentRoleName}`);
+            await loadRoleUsers();
+            clearRoleUserSearch();
+        } else {
+            showToast('error', data.error || 'Failed to add user to role');
+        }
+    } catch (error) {
+        console.error('Error adding user to role:', error);
+        showToast('error', 'Error adding user to role');
+    }
+}
+
+// Remove user from role (using universal modal)
+function removeUserFromRole(userId, username) {
+    if (!currentRoleId) return;
+    
+    UniversalModal.confirm(
+        `Are you sure you want to remove <strong>${username}</strong> from the <strong>${currentRoleName}</strong> role?<br><span style="color: #64748b; font-size: 0.9rem; margin-top: 0.5rem; display: block;">This will revoke all permissions associated with this role for this user.</span>`,
+        async function() {
+            // Confirmed - execute the removal
+            try {
+                // Get the role name
+                const rolesResponse = await makeSecureRequest('/api/admin/rbac/roles');
+                const rolesData = await rolesResponse.json();
+                const role = rolesData.roles.find(r => r.id === currentRoleId);
+                
+                if (!role) {
+                    showToast('error', 'Role not found');
+                    return;
+                }
+                
+                const response = await makeSecureRequest(`/api/admin/rbac/users/${userId}/roles/${encodeURIComponent(role.name)}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast('success', `Removed ${username} from ${currentRoleName}`);
+                    await loadRoleUsers();
+                } else {
+                    showToast('error', data.error || 'Failed to remove user from role');
+                }
+            } catch (error) {
+                console.error('Error removing user from role:', error);
+                showToast('error', 'Error removing user from role');
+            }
+        },
+        null,
+        'Remove User from Role'
+    );
+}
+
+// Clear role user search
+function clearRoleUserSearch() {
+    document.getElementById('roleUserSearch').value = '';
+    document.getElementById('roleUserSearchResults').innerHTML = `
+        <p style="color: #64748b; text-align: center; padding: 1rem;">
+            <i class="fas fa-search"></i> Search for users to add to this role
+        </p>
+    `;
+}
+
+// Refresh role users list
+async function refreshRoleUsers() {
+    await loadRoleUsers();
+    showToast('success', 'User list refreshed');
+}
+</script>
+
 {% endblock %}

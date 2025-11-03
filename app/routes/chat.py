@@ -25,13 +25,16 @@ def chat_messages(club_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a member
+    # Verify user has access (leader, co-leader, member, or admin)
+    is_leader = club.leader_id == user.id
+    is_co_leader = club.co_leader_id == user.id
     membership = ClubMembership.query.filter_by(
         club_id=club_id,
         user_id=user.id
     ).first()
+    is_admin_access = request.args.get('admin') == 'true' and user.is_admin
 
-    if not membership:
+    if not is_leader and not is_co_leader and not membership and not is_admin_access:
         return jsonify({'error': 'Not authorized'}), 403
 
     if request.method == 'GET':
@@ -131,13 +134,16 @@ def chat_message_operations(club_id, message_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a member
+    # Verify user has access (leader, co-leader, member, or admin)
+    is_leader = club.leader_id == user.id
+    is_co_leader = club.co_leader_id == user.id
     membership = ClubMembership.query.filter_by(
         club_id=club_id,
         user_id=user.id
     ).first()
+    is_admin_access = request.args.get('admin') == 'true' and user.is_admin
 
-    if not membership:
+    if not is_leader and not is_co_leader and not membership and not is_admin_access:
         return jsonify({'error': 'Not authorized'}), 403
 
     # Get the message
@@ -213,15 +219,16 @@ def upload_chat_image(club_id):
     user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
-    # Verify user is a member (or admin)
+    # Verify user has access (leader, co-leader, member, or admin)
+    is_leader = club.leader_id == user.id
+    is_co_leader = club.co_leader_id == user.id
     membership = ClubMembership.query.filter_by(
         club_id=club_id,
         user_id=user.id
     ).first()
-
     is_admin_access = request.args.get('admin') == 'true' and user.is_admin
 
-    if not membership and not is_admin_access:
+    if not is_leader and not is_co_leader and not membership and not is_admin_access:
         return jsonify({'error': 'Not authorized'}), 403
 
     max_size = 10 * 1024 * 1024  # 10MB for chat images

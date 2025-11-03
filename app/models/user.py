@@ -49,6 +49,12 @@ class User(db.Model):
     last_login_ip = db.Column(db.String(45))
     all_ips = db.Column(db.Text)  # JSON array of all IPs used by this user
 
+    # 2FA / TOTP fields
+    totp_secret = db.Column(db.String(32))  # Base32 encoded secret
+    totp_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    totp_backup_codes = db.Column(db.Text)  # JSON array of hashed backup codes
+    totp_enabled_at = db.Column(db.DateTime)
+
     # RBAC relationships - specify foreign_keys to avoid ambiguity with assigned_by
     roles = db.relationship('Role', secondary='user_role',
                            primaryjoin='User.id==UserRole.user_id',
@@ -152,6 +158,72 @@ class User(db.Model):
 
         # Update last login IP
         self.last_login_ip = ip_address
+
+    def generate_totp_secret(self):
+        """Generate a new TOTP secret for 2FA"""
+        import pyotp
+        return pyotp.random_base32()
+
+    def get_totp_uri(self, issuer_name='Hack Club Dashboard'):
+        """Get the provisioning URI for TOTP (for QR code)"""
+        import pyotp
+        if not self.totp_secret:
+            return None
+        return pyotp.totp.TOTP(self.totp_secret).provisioning_uri(
+            name=self.email,
+            issuer_name=issuer_name
+        )
+
+    def verify_totp(self, token):
+        """Verify a TOTP token"""
+        import pyotp
+        if not self.totp_secret:
+            return False
+        totp = pyotp.TOTP(self.totp_secret)
+        return totp.verify(token, valid_window=1)
+
+    def generate_backup_codes(self, count=10):
+        """Generate backup codes for 2FA"""
+        import secrets
+        codes = []
+        for _ in range(count):
+            code = '-'.join([
+                ''.join(secrets.choice('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ') for _ in range(4))
+                for _ in range(2)
+            ])
+            codes.append(code)
+        return codes
+
+    def set_backup_codes(self, codes):
+        """Hash and store backup codes"""
+        hashed_codes = [generate_password_hash(code) for code in codes]
+        self.totp_backup_codes = json.dumps(hashed_codes)
+
+    def get_backup_codes_count(self):
+        """Get the count of remaining backup codes"""
+        if not self.totp_backup_codes:
+            return 0
+        try:
+            codes = json.loads(self.totp_backup_codes)
+            return len(codes)
+        except:
+            return 0
+
+    def verify_backup_code(self, code):
+        """Verify and consume a backup code"""
+        if not self.totp_backup_codes:
+            return False
+        try:
+            codes = json.loads(self.totp_backup_codes)
+            for i, hashed_code in enumerate(codes):
+                if check_password_hash(hashed_code, code):
+                    # Remove the used code
+                    codes.pop(i)
+                    self.totp_backup_codes = json.dumps(codes)
+                    return True
+            return False
+        except:
+            return False
 
 
 # Role-Based Access Control (RBAC) Models

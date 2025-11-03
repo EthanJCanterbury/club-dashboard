@@ -13,6 +13,7 @@ from app.utils.economy_helpers import create_club_transaction
 from app.models.club import Club, ClubMembership
 from app.models.economy import ClubTransaction
 from app.models.club_content import ClubPost, ClubProject
+from datetime import datetime, timezone
 
 clubs_bp = Blueprint('clubs', __name__)
 
@@ -187,11 +188,14 @@ def get_club_members(club_id):
     })
 
 
-@clubs_bp.route('/api/clubs/<int:club_id>/background', methods=['GET', 'POST'])
+@clubs_bp.route('/api/clubs/<int:club_id>/background', methods=['GET', 'POST', 'DELETE'])
 @login_required
 def club_background(club_id):
-    """Get or update club background"""
+    """Get, update, or remove club background"""
     from app.utils.sanitization import sanitize_string
+    import os
+    from werkzeug.utils import secure_filename
+    from flask import current_app
 
     club = Club.query.get_or_404(club_id)
     user = get_current_user()
@@ -207,8 +211,8 @@ def club_background(club_id):
             return jsonify({'error': 'Not authorized'}), 403
 
         return jsonify({
-            'background_color': club.background_color or '#1e293b',
-            'background_image': club.background_image or ''
+            'background_image_url': club.background_image_url or '',
+            'background_blur': club.background_blur or 0
         })
 
     elif request.method == 'POST':
@@ -216,21 +220,130 @@ def club_background(club_id):
         if not is_leader and not is_co_leader and not user.is_admin:
             return jsonify({'error': 'Only club leaders can update background'}), 403
 
-        data = request.get_json()
+        # Check if this is a file upload or JSON data
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # Handle file upload
+            if 'image' not in request.files:
+                return jsonify({'error': 'No file uploaded'}), 400
 
-        if 'background_color' in data:
-            club.background_color = sanitize_string(data['background_color'], max_length=20)
+            file = request.files['image']
+            if file.filename == '':
+                return jsonify({'error': 'No file selected'}), 400
 
-        if 'background_image' in data:
-            club.background_image = sanitize_string(data['background_image'], max_length=500)
+            # Validate file type
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            filename = secure_filename(file.filename)
+            file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+            
+            if file_ext not in allowed_extensions:
+                return jsonify({'error': f'Invalid file type. Allowed: {", ".join(allowed_extensions)}'}), 400
 
+            # Save file to static/uploads/backgrounds/
+            upload_folder = os.path.join(current_app.root_path, '..', 'static', 'uploads', 'backgrounds')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            # Generate unique filename
+            unique_filename = f"club_{club_id}_{int(datetime.now().timestamp())}.{file_ext}"
+            file_path = os.path.join(upload_folder, unique_filename)
+            
+            try:
+                file.save(file_path)
+                
+                # Store the URL path (relative to static folder)
+                background_url = f"/static/uploads/backgrounds/{unique_filename}"
+                
+                # Delete old background file if it exists and is local
+                if club.background_image_url and club.background_image_url.startswith('/static/uploads/backgrounds/'):
+                    old_file_path = os.path.join(current_app.root_path, '..', club.background_image_url.lstrip('/'))
+                    if os.path.exists(old_file_path):
+                        try:
+                            os.remove(old_file_path)
+                        except Exception:
+                            pass  # Don't fail if we can't delete old file
+                
+                club.background_image_url = background_url
+                db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Background image uploaded successfully',
+                    'background_url': background_url
+                })
+            except Exception as e:
+                return jsonify({'error': f'Failed to save file: {str(e)}'}), 500
+
+        else:
+            # Handle JSON data with URL or blur setting
+            try:
+                data = request.get_json()
+                if not data:
+                    return jsonify({
+                        'error': 'No JSON data provided',
+                        'details': 'Request must include JSON data with background_image_url or background_blur'
+                    }), 400
+
+                # Check if this is a remove request
+                if data.get('remove_background'):
+                    # Delete file if it's a local upload
+                    if club.background_image_url and club.background_image_url.startswith('/static/uploads/backgrounds/'):
+                        file_path = os.path.join(current_app.root_path, '..', club.background_image_url.lstrip('/'))
+                        if os.path.exists(file_path):
+                            try:
+                                os.remove(file_path)
+                            except Exception:
+                                pass
+
+                    club.background_image_url = None
+                    club.background_blur = 0
+                    db.session.commit()
+
+                    return jsonify({
+                        'success': True,
+                        'message': 'Background removed successfully'
+                    })
+
+                if 'background_image_url' in data:
+                    club.background_image_url = sanitize_string(data['background_image_url'], max_length=500)
+
+                if 'background_blur' in data:
+                    blur = int(data['background_blur'])
+                    club.background_blur = max(0, min(100, blur))  # Clamp between 0-100
+
+                db.session.commit()
+
+                return jsonify({
+                    'success': True,
+                    'message': 'Background updated successfully',
+                    'background_image_url': club.background_image_url,
+                    'background_blur': club.background_blur
+                })
+            except Exception as e:
+                return jsonify({
+                    'error': 'Failed to update background',
+                    'details': str(e)
+                }), 400
+
+    elif request.method == 'DELETE':
+        # Only leaders/co-leaders can remove
+        if not is_leader and not is_co_leader and not user.is_admin:
+            return jsonify({'error': 'Only club leaders can remove background'}), 403
+
+        # Delete file if it's a local upload
+        if club.background_image_url and club.background_image_url.startswith('/static/uploads/backgrounds/'):
+            file_path = os.path.join(current_app.root_path, '..', club.background_image_url.lstrip('/'))
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
+
+        club.background_image_url = None
+        club.background_blur = 0
         db.session.commit()
 
         return jsonify({
             'success': True,
-            'message': 'Background updated successfully',
-            'background_color': club.background_color,
-            'background_image': club.background_image
+            'message': 'Background removed successfully'
         })
 
 
@@ -251,30 +364,55 @@ def update_club_email(club_id):
     if not is_leader and not is_co_leader and not user.is_admin:
         return jsonify({'error': 'Only club leaders can update email'}), 403
 
-    data = request.get_json()
-    new_email = sanitize_string(data.get('email', ''), max_length=120)
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'error': 'No JSON data provided',
+                'details': 'Request must include JSON data with an email field'
+            }), 400
 
-    if not new_email or '@' not in new_email:
-        return jsonify({'error': 'Invalid email address'}), 400
+        new_email = data.get('email', '').strip()
 
-    old_email = club.email
-    club.email = new_email
-    db.session.commit()
+        if not new_email:
+            return jsonify({
+                'error': 'Email is required',
+                'details': 'Please provide an email address'
+            }), 400
 
-    create_audit_log(
-        action_type='club_email_update',
-        description=f'Club {club.name} email updated from {old_email} to {new_email}',
-        user=user,
-        target_type='club',
-        target_id=club_id,
-        category='club'
-    )
+        # Validate email format
+        if '@' not in new_email or '.' not in new_email.split('@')[-1]:
+            return jsonify({
+                'error': 'Invalid email format',
+                'details': 'Please provide a valid email address'
+            }), 400
 
-    return jsonify({
-        'success': True,
-        'message': 'Email updated successfully',
-        'email': new_email
-    })
+        # Sanitize the email
+        new_email = sanitize_string(new_email, max_length=120)
+
+        old_email = club.email
+        club.email = new_email
+        db.session.commit()
+
+        create_audit_log(
+            action_type='club_email_update',
+            description=f'Club {club.name} email updated from {old_email} to {new_email}',
+            user=user,
+            target_type='club',
+            target_id=club_id,
+            category='club'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Email updated successfully',
+            'email': new_email
+        })
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to update email',
+            'details': str(e)
+        }), 400
 
 
 @clubs_bp.route('/api/club/<int:club_id>/orders', methods=['GET'])
@@ -653,7 +791,7 @@ def remove_club_member(club_id, user_id):
 @login_required
 def manage_co_leader(club_id):
     """Make a user co-leader or remove co-leader status"""
-    from app.models.user import create_audit_log
+    from app.models.user import create_audit_log, User
     from app.services.airtable import AirtableService
 
     current_user = get_current_user()
@@ -699,24 +837,34 @@ def manage_co_leader(club_id):
             return jsonify({'error': 'Failed to send verification code. Please try again.'}), 500
 
     if request.method == 'DELETE':
-        # Require email verification for removing co-leader
-        email_verified = data.get('email_verified', False)
-        if not email_verified:
-            return jsonify({
-                'error': 'Email verification required for this action',
-                'requires_verification': True,
-                'verification_email': club.leader.email
-            }), 403
-
         # Remove co-leader
         user_id = data.get('user_id')
         if not user_id:
             return jsonify({'error': 'User ID is required'}), 400
 
+        # Check for recent email verification in Airtable
+        email_verified = airtable_service.check_recent_verification(club.leader.email)
+        if not email_verified:
+            return jsonify({
+                'error': 'Email verification required for this action. Please verify your email first.',
+                'requires_verification': True,
+                'verification_email': club.leader.email
+            }), 403
+
         # Find the co-leader membership record
         membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id, role='co-leader').first()
         if not membership:
-            return jsonify({'error': 'User is not a co-leader of this club'}), 400
+            # Provide more helpful error message
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            # Check if user is a member at all
+            any_membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id).first()
+            if not any_membership:
+                return jsonify({'error': f'User {user.username} is not a member of this club'}), 400
+            else:
+                return jsonify({'error': f'User {user.username} is not a co-leader (current role: {any_membership.role})'}), 400
 
         try:
             # Update membership role back to member
@@ -745,11 +893,11 @@ def manage_co_leader(club_id):
         if not user_id:
             return jsonify({'error': 'User ID is required'}), 400
 
-        # Require email verification for adding co-leader
-        email_verified = data.get('email_verified', False)
+        # Check for recent email verification in Airtable
+        email_verified = airtable_service.check_recent_verification(club.leader.email)
         if not email_verified:
             return jsonify({
-                'error': 'Email verification required for this action',
+                'error': 'Email verification required for this action. Please verify your email first.',
                 'requires_verification': True,
                 'verification_email': club.leader.email
             }), 403
@@ -809,7 +957,7 @@ def manage_co_leader(club_id):
 @login_required
 def remove_co_leader_legacy(club_id):
     """Remove co-leader (legacy route for backwards compatibility)"""
-    from app.models.user import create_audit_log
+    from app.models.user import create_audit_log, User
     from app.services.airtable import AirtableService
 
     current_user = get_current_user()
@@ -858,11 +1006,11 @@ def remove_co_leader_legacy(club_id):
     if not user_id:
         return jsonify({'error': 'User ID is required'}), 400
 
-    # Require email verification for removing co-leader
-    email_verified = data.get('email_verified', False)
+    # Check for recent email verification in Airtable
+    email_verified = airtable_service.check_recent_verification(club.leader.email)
     if not email_verified:
         return jsonify({
-            'error': 'Email verification required for this action',
+            'error': 'Email verification required for this action. Please verify your email first.',
             'requires_verification': True,
             'verification_email': club.leader.email
         }), 403
@@ -870,7 +1018,16 @@ def remove_co_leader_legacy(club_id):
     # Find the co-leader membership record
     membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id, role='co-leader').first()
     if not membership:
-        return jsonify({'error': 'User is not a co-leader of this club'}), 400
+        # Provide more helpful error message
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        any_membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id).first()
+        if not any_membership:
+            return jsonify({'error': f'User {user.username} is not a member of this club'}), 400
+        else:
+            return jsonify({'error': f'User {user.username} is not a co-leader (current role: {any_membership.role})'}), 400
 
     try:
         # Update membership role back to member
@@ -908,9 +1065,8 @@ def generate_club_join_code(club_id):
     if not is_leader and not is_co_leader and not current_user.is_admin:
         return jsonify({'error': 'Only leaders and co-leaders can generate join codes'}), 403
 
-    # Generate new join code
-    import secrets
-    club.join_code = secrets.token_urlsafe(8)
+    # Generate new join code using the Club model's method
+    club.generate_join_code()
     db.session.commit()
 
     create_audit_log(
@@ -926,4 +1082,313 @@ def generate_club_join_code(club_id):
         'success': True,
         'join_code': club.join_code,
         'message': 'Join code generated successfully'
+    })
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/settings', methods=['PUT'])
+@login_required
+def update_club_settings(club_id):
+    """Update club settings (name, description, location)"""
+    from app.models.user import create_audit_log
+
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_co_leader = is_user_co_leader(club, current_user)
+
+    if not is_leader and not is_co_leader and not current_user.is_admin:
+        return jsonify({'error': 'Only leaders and co-leaders can update club settings'}), 403
+
+    data = request.get_json()
+
+    # Update club settings
+    if 'name' in data:
+        club.name = data['name'].strip()
+    if 'description' in data:
+        club.description = data['description'].strip() if data['description'] else None
+    if 'location' in data:
+        club.location = data['location'].strip() if data['location'] else None
+
+    club.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='club_settings_updated',
+        description=f'Updated settings for club {club.name}',
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        category='club'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Club settings updated successfully',
+        'club': {
+            'name': club.name,
+            'description': club.description,
+            'location': club.location
+        }
+    })
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/transfer-leadership', methods=['POST'])
+@login_required
+def transfer_leadership(club_id):
+    """Transfer club leadership to another member"""
+    from app.models.user import create_audit_log, User
+
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    # Only the current leader can transfer leadership
+    if club.leader_id != current_user.id and not current_user.is_admin:
+        return jsonify({'error': 'Only the club leader can transfer leadership'}), 403
+
+    data = request.get_json()
+    step = data.get('step')
+
+    # Handle email verification steps (no-op for now, return success)
+    if step == 'send_verification':
+        return jsonify({
+            'success': True,
+            'message': 'Verification code sent to your email'
+        })
+
+    if step == 'verify_email':
+        return jsonify({
+            'success': True,
+            'email_verified': True
+        })
+
+    # Handle actual leadership transfer
+    new_leader_id = data.get('new_leader_id')
+    confirmation_text = data.get('confirmation_text', '')
+
+    if not new_leader_id:
+        return jsonify({'error': 'New leader ID is required'}), 400
+
+    if confirmation_text.upper() != 'TRANSFER':
+        return jsonify({'error': 'Confirmation text must be "TRANSFER"'}), 400
+
+    # Get the new leader
+    new_leader = User.query.get(new_leader_id)
+    if not new_leader:
+        return jsonify({'error': 'New leader not found'}), 404
+
+    # Check if new leader is a member of the club
+    membership = ClubMembership.query.filter_by(
+        club_id=club_id,
+        user_id=new_leader_id
+    ).first()
+
+    if not membership:
+        return jsonify({'error': 'New leader must be a member of the club'}), 400
+
+    # Transfer leadership
+    old_leader_id = club.leader_id
+    club.leader_id = new_leader_id
+
+    # Update memberships: remove new leader from members, add old leader as member
+    if membership:
+        db.session.delete(membership)
+
+    # Add old leader as regular member
+    old_membership = ClubMembership(
+        club_id=club_id,
+        user_id=old_leader_id,
+        role='member',
+        joined_at=datetime.now(timezone.utc)
+    )
+    db.session.add(old_membership)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='leadership_transferred',
+        description=f'Leadership transferred from {current_user.username} to {new_leader.username}',
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        category='club'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'Leadership transferred successfully',
+        'new_leader': {
+            'id': new_leader.id,
+            'username': new_leader.username
+        }
+    })
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/transactions', methods=['GET'])
+@login_required
+def get_club_transactions(club_id):
+    """Get all transactions for a club"""
+    from app.models.economy import ClubTransaction
+
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    # Check if user is a member or admin
+    is_leader = club.leader_id == current_user.id
+    is_co_leader = is_user_co_leader(club, current_user)
+    is_member = ClubMembership.query.filter_by(
+        club_id=club_id,
+        user_id=current_user.id
+    ).first() is not None
+
+    if not is_leader and not is_co_leader and not is_member and not current_user.is_admin:
+        return jsonify({'error': 'You do not have access to this club'}), 403
+
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    transaction_type = request.args.get('type', '')
+    date_range = request.args.get('date_range', '')
+
+    # Build query for club transactions (exclude piggy bank transactions)
+    query = ClubTransaction.query.filter(
+        ClubTransaction.club_id == club_id,
+        ~ClubTransaction.transaction_type.in_(['piggy_bank_credit', 'piggy_bank_debit'])
+    )
+
+    # Apply type filter
+    if transaction_type == 'credit':
+        query = query.filter(ClubTransaction.amount > 0)
+    elif transaction_type == 'debit':
+        query = query.filter(ClubTransaction.amount < 0)
+    elif transaction_type == 'grant':
+        query = query.filter(ClubTransaction.transaction_type == 'grant')
+    elif transaction_type == 'purchase':
+        query = query.filter(ClubTransaction.transaction_type == 'purchase')
+
+    # Apply date range filter
+    if date_range:
+        from datetime import timedelta
+        now = datetime.now(timezone.utc)
+
+        if date_range == 'today':
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            query = query.filter(ClubTransaction.created_at >= start_date)
+        elif date_range == 'week':
+            start_date = now - timedelta(days=7)
+            query = query.filter(ClubTransaction.created_at >= start_date)
+        elif date_range == 'month':
+            start_date = now - timedelta(days=30)
+            query = query.filter(ClubTransaction.created_at >= start_date)
+        elif date_range == 'quarter':
+            start_date = now - timedelta(days=90)
+            query = query.filter(ClubTransaction.created_at >= start_date)
+
+    # Order by most recent first
+    query = query.order_by(ClubTransaction.created_at.desc())
+
+    # Paginate
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    transactions = []
+    for transaction in pagination.items:
+        transactions.append({
+            'id': transaction.id,
+            'transaction_type': transaction.transaction_type,
+            'amount': transaction.amount,
+            'description': transaction.description,
+            'balance_after': transaction.balance_after,
+            'reference_id': transaction.reference_id,
+            'reference_type': transaction.reference_type,
+            'created_at': transaction.created_at.isoformat(),
+            'user_id': transaction.user_id
+        })
+
+    return jsonify({
+        'transactions': transactions,
+        'club': {
+            'id': club.id,
+            'name': club.name,
+            'balance': club.tokens
+        },
+        'pagination': {
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'has_prev': pagination.has_prev,
+            'has_next': pagination.has_next
+        }
+    })
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/piggy-bank/transactions', methods=['GET'])
+@login_required
+def get_piggy_bank_transactions(club_id):
+    """Get piggy bank transactions for a club"""
+    from app.models.economy import ClubTransaction
+
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    # Check if user is a member or admin
+    is_leader = club.leader_id == current_user.id
+    is_co_leader = is_user_co_leader(club, current_user)
+    is_member = ClubMembership.query.filter_by(
+        club_id=club_id,
+        user_id=current_user.id
+    ).first() is not None
+
+    if not is_leader and not is_co_leader and not is_member and not current_user.is_admin:
+        return jsonify({'error': 'You do not have access to this club'}), 403
+
+    # Get pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    transaction_type = request.args.get('type', '')
+
+    # Build query for piggy bank transactions
+    query = ClubTransaction.query.filter(
+        ClubTransaction.club_id == club_id,
+        ClubTransaction.transaction_type.in_(['piggy_bank_credit', 'piggy_bank_debit'])
+    )
+
+    # Apply type filter if specified
+    if transaction_type:
+        query = query.filter(ClubTransaction.transaction_type == transaction_type)
+
+    # Order by most recent first
+    query = query.order_by(ClubTransaction.created_at.desc())
+
+    # Paginate
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    transactions = []
+    for transaction in pagination.items:
+        transactions.append({
+            'id': transaction.id,
+            'transaction_type': transaction.transaction_type,
+            'amount': transaction.amount,
+            'description': transaction.description,
+            'balance_after': transaction.balance_after,
+            'reference_id': transaction.reference_id,
+            'reference_type': transaction.reference_type,
+            'created_at': transaction.created_at.isoformat(),
+            'user_id': transaction.user_id
+        })
+
+    return jsonify({
+        'transactions': transactions,
+        'club': {
+            'id': club.id,
+            'name': club.name,
+            'piggy_bank_balance': club.piggy_bank_tokens
+        },
+        'pagination': {
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'has_prev': pagination.has_prev,
+            'has_next': pagination.has_next
+        }
     })

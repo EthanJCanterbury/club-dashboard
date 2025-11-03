@@ -290,15 +290,15 @@
     </div>
 
     <div class="leaderboard-nav">
-        <a href="{{ url_for('leaderboard', leaderboard_type='total') }}" 
-           class="nav-tab {{ 'active' if leaderboard_type == 'total' else '' }}">
+        <a href="{{ url_for('main.leaderboard', leaderboard_type='total') }}" 
+           class="nav-tab {{ 'active' if leaderboard_type == 'total' or leaderboard_type == 'total_tokens' else '' }}">
             <i class="fas fa-coins"></i> Total Tokens
         </a>
-        <a href="{{ url_for('leaderboard', leaderboard_type='per_member') }}" 
+        <a href="{{ url_for('main.leaderboard', leaderboard_type='per_member') }}" 
            class="nav-tab {{ 'active' if leaderboard_type == 'per_member' else '' }}">
             <i class="fas fa-user-friends"></i> Projects Per Member
         </a>
-        <a href="{{ url_for('leaderboard', leaderboard_type='most_members') }}" 
+        <a href="{{ url_for('main.leaderboard', leaderboard_type='most_members') }}" 
            class="nav-tab {{ 'active' if leaderboard_type == 'most_members' else '' }}">
             <i class="fas fa-users"></i> Most Members
         </a>
@@ -382,92 +382,72 @@
 </div>
 
 <!-- Exclude Club Modal -->
-<div id="excludeModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Exclude Club from Leaderboard</h3>
-            <button class="close" onclick="closeModal('excludeModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <p>Are you sure you want to exclude <strong id="excludeClubName"></strong> from the <span id="excludeLeaderboardType"></span> leaderboard?</p>
-            <p style="color: #ef4444; font-size: 0.9rem; margin-top: 1rem;">This action will remove the club from the current leaderboard view.</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('excludeModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="confirmExcludeClub()" style="background-color: #dc3545;">Exclude Club</button>
-        </div>
-    </div>
-</div>
+<!-- excludeModal removed - now using UniversalModal -->
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-let pendingExclusion = null;
-
 function excludeClub(clubId, clubName, leaderboardType) {
-    pendingExclusion = { clubId, clubName, leaderboardType };
-    document.getElementById('excludeClubName').textContent = clubName;
-    document.getElementById('excludeLeaderboardType').textContent = 
-        leaderboardType === 'per_member' ? 'projects per member' : 
+    const leaderboardTypeText = leaderboardType === 'per_member' ? 'projects per member' : 
         leaderboardType === 'most_members' ? 'most members' : 'total tokens';
-    openModal('excludeModal');
+    
+    UniversalModal.confirm(
+        `Are you sure you want to exclude <strong>${clubName}</strong> from the <strong>${leaderboardTypeText}</strong> leaderboard?<br><span style="color: #ef4444; font-size: 0.9rem; margin-top: 1rem; display: block;">This action will remove the club from the current leaderboard view.</span>`,
+        async function() {
+            // User confirmed exclusion
+            try {
+                const leaderboardApiType = leaderboardType === 'per_member' ? 'projects_per_member' : 
+                                           leaderboardType === 'most_members' ? 'most_members' : 'total_tokens';
+                
+                const response = await fetch('/api/admin/leaderboard/exclusions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        club_id: clubId,
+                        leaderboard_type: leaderboardApiType,
+                        reason: `Excluded from ${leaderboardType} leaderboard by admin`
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Remove the row from the leaderboard
+                    const row = document.querySelector(`[data-club-id="${clubId}"]`);
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s ease';
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 300);
+                    }
+                    
+                    // Show success message
+                    if (typeof showToast === 'function') {
+                        showToast('success', `${clubName} has been excluded from the leaderboard`);
+                    } else {
+                        alert(`${clubName} has been excluded from the leaderboard`);
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('error', data.error || 'Failed to exclude club');
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to exclude club'));
+                    }
+                }
+            } catch (error) {
+                console.error('Error excluding club:', error);
+                if (typeof showToast === 'function') {
+                    showToast('error', 'Network error occurred');
+                } else {
+                    alert('Network error occurred');
+                }
+            }
+        },
+        null,
+        'Exclude Club from Leaderboard'
+    );
 }
-
-async function confirmExcludeClub() {
-    if (!pendingExclusion) return;
-    
-    const { clubId, clubName, leaderboardType } = pendingExclusion;
-    
-    try {
-        const leaderboardApiType = leaderboardType === 'per_member' ? 'projects_per_member' : 
-                                   leaderboardType === 'most_members' ? 'most_members' : 'total_tokens';
-        
-        const response = await fetch('/api/admin/leaderboard/exclusions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                club_id: clubId,
-                leaderboard_type: leaderboardApiType,
-                reason: `Excluded from ${leaderboardType} leaderboard by admin`
-            })
-        });
-        
-        const data = await response.json();
-        
-        closeModal('excludeModal');
-        pendingExclusion = null;
-        
-        if (data.success) {
-            // Remove the row from the leaderboard
-            const row = document.querySelector(`[data-club-id="${clubId}"]`);
-            if (row) {
-                row.style.transition = 'opacity 0.3s ease';
-                row.style.opacity = '0';
-                setTimeout(() => row.remove(), 300);
-            }
-            
-            // Show success message
-            if (typeof showToast === 'function') {
-                showToast('success', `${clubName} has been excluded from the leaderboard`);
-            } else {
-                alert(`${clubName} has been excluded from the leaderboard`);
-            }
-        } else {
-            if (typeof showToast === 'function') {
-                showToast('error', data.error || 'Failed to exclude club');
-            } else {
-                alert('Error: ' + (data.error || 'Failed to exclude club'));
-            }
-        }
-    } catch (error) {
-        console.error('Error excluding club:', error);
-        closeModal('excludeModal');
-        pendingExclusion = null;
-        if (typeof showToast === 'function') {
-            showToast('error', 'Network error occurred');
-        } else {
             alert('Network error occurred');
         }
     }

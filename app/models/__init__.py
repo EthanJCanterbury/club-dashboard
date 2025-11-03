@@ -8,7 +8,6 @@ from app.models.user import User, Role, Permission, RolePermission, UserRole, Au
 from app.models.auth import APIKey, OAuthApplication, OAuthToken, OAuthAuthorizationCode
 from app.models.club import Club, ClubMembership, ClubCosmetic, MemberCosmetic
 from app.models.club_content import ClubPost, ClubAssignment, ClubMeeting, ClubResource, ClubProject
-from app.models.slack import ClubSlackSettings
 from app.models.chat import ClubChatMessage
 from app.models.attendance import AttendanceSession, AttendanceRecord, AttendanceGuest
 from app.models.economy import ClubTransaction, ProjectSubmission, WeeklyQuest, ClubQuestProgress, LeaderboardExclusion
@@ -29,8 +28,6 @@ __all__ = [
     'Club', 'ClubMembership', 'ClubCosmetic', 'MemberCosmetic',
     # Club content models
     'ClubPost', 'ClubAssignment', 'ClubMeeting', 'ClubResource', 'ClubProject',
-    # Integration models
-    'ClubSlackSettings',
     # Chat models
     'ClubChatMessage',
     # Attendance models

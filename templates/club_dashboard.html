@@ -128,6 +128,105 @@ endblock %} {% block extra_head %}
             letter-spacing: 0.1em;
         }
     }
+
+    /* Override modal z-index to be MUCH higher than navbar (navbar is z-index: 10000) */
+    .club-dashboard .modal {
+        z-index: 150000 !important;
+    }
+
+    .club-dashboard .modal-content {
+        z-index: 150001 !important;
+    }
+
+    /* Disabled nav links for sync-immune unsynced clubs */
+    .nav-link.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .nav-link.disabled:hover {
+        background: transparent;
+        color: #64748b;
+    }
+
+    .nav-section.disabled .nav-section-title {
+        opacity: 0.5;
+    }
+
+    /* Ensure navbar is completely isolated from club-dashboard styles */
+    /* Use very high specificity to override any conflicting styles */
+    body nav.navbar,
+    body nav.navbar *:not(.club-dashboard-content *) {
+        /* Navbar inherits from base.html only */
+    }
+    
+    /* Force navbar to use base styles - maximum specificity */
+    body .navbar .navbar-content {
+        max-width: 1400px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+    
+    body .navbar .theme-toggle {
+        position: relative !important;
+        width: 40px !important;
+        height: 40px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 50% !important;
+        background: var(--surface-elevated) !important;
+        border: 2px solid var(--border) !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    body .navbar .theme-toggle:hover {
+        background: var(--primary) !important;
+        border-color: var(--primary) !important;
+        transform: scale(1.1) !important;
+    }
+    
+    body .navbar .theme-toggle i {
+        font-size: 18px !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    body .navbar .theme-toggle:hover i {
+        color: white !important;
+    }
+    
+    body .navbar .theme-toggle .theme-icon-dark,
+    body .navbar .theme-toggle .theme-icon-light {
+        position: absolute !important;
+    }
+    
+    /* Light mode icon visibility */
+    body[data-theme="light"] .navbar .theme-toggle .theme-icon-light {
+        opacity: 0 !important;
+        transform: rotate(180deg) scale(0) !important;
+    }
+    
+    body[data-theme="light"] .navbar .theme-toggle .theme-icon-dark {
+        opacity: 1 !important;
+        transform: rotate(0deg) scale(1) !important;
+        color: #64748b !important;
+    }
+    
+    /* Dark mode icon visibility */
+    body[data-theme="dark"] .navbar .theme-toggle .theme-icon-dark {
+        opacity: 0 !important;
+        transform: rotate(-180deg) scale(0) !important;
+    }
+    
+    body[data-theme="dark"] .navbar .theme-toggle .theme-icon-light {
+        opacity: 1 !important;
+        transform: rotate(0deg) scale(1) !important;
+        color: #fbbf24 !important;
+    }
 </style>
 {% endblock %} {% block content %}
 <script src="https://server.fillout.com/embed/v1/"></script>
@@ -192,18 +291,11 @@ endblock %} {% block extra_head %}
                     </div>
                     {% if economy_enabled %}
                     <div
-                        class="club-detail-item balance-display {% if not has_gallery_post %}locked-feature{% endif %}"
-                        title="{% if has_gallery_post %}Club Tokens{% else %}Create a gallery post to unlock tokens{% endif %}"
+                        class="club-detail-item balance-display"
+                        title="Club Tokens"
                     >
-                        <i
-                            class="fas fa-coins{% if not has_gallery_post %} fa-lock{% endif %}"
-                        ></i>
-                        {% if has_gallery_post %} {{ (club.balance|float *
-                        100)|int }} tokens {% else %}
-                        <span style="color: white" class="locked-text"
-                            >Create a gallery post to unlock</span
-                        >
-                        {% endif %}
+                        <i class="fas fa-coins"></i>
+                        {{ (club.balance|float * 100)|int }} tokens
                     </div>
                     {% endif %}
                     <button class="qr-button" onclick="showQRModal()">
@@ -282,17 +374,6 @@ endblock %} {% block extra_head %}
                                     Announcements
                                 </a>
                             </li>
-                            {% if effective_can_manage %}
-                            <li>
-                                <a
-                                    href="#slack"
-                                    class="nav-link"
-                                    data-section="slack"
-                                >
-                                    <i class="fab fa-slack"></i> Slack Channel
-                                </a>
-                            </li>
-                            {% endif %}
                         </ul>
                     </div>
 
@@ -353,13 +434,14 @@ endblock %} {% block extra_head %}
                         </ul>
                     </div>
 
-                    <div class="nav-section">
+                    {% if effective_can_manage %}
+                    <div class="nav-section {% if not is_connected_to_directory and club.sync_immune %}disabled{% endif %}">
                         <h4 class="nav-section-title">Club Promotion</h4>
                         <ul>
                             <li>
                                 <a
                                     href="#advertising"
-                                    class="nav-link"
+                                    class="nav-link {% if not is_connected_to_directory and club.sync_immune %}disabled{% endif %}"
                                     data-section="advertising"
                                 >
                                     <i class="fas fa-bullhorn"></i> Advertising
@@ -367,15 +449,16 @@ endblock %} {% block extra_head %}
                             </li>
                         </ul>
                     </div>
+                    {% endif %}
 
-                    {% if economy_enabled %}
-                    <div class="nav-section">
+                    {% if economy_enabled and effective_can_manage %}
+                    <div class="nav-section {% if not is_connected_to_directory and club.sync_immune %}disabled{% endif %}">
                         <h4 class="nav-section-title">Token Economy</h4>
                         <ul>
                             <li>
                                 <a
                                     href="#quests"
-                                    class="nav-link"
+                                    class="nav-link {% if not is_connected_to_directory and club.sync_immune %}disabled{% endif %}"
                                     data-section="quests"
                                 >
                                     <i class="fas fa-trophy"></i>
@@ -385,8 +468,8 @@ endblock %} {% block extra_head %}
                             <li>
                                 <a
                                     href="{{ url_for('club_shop', club_id=club.id) }}"
-                                    class="nav-link shop-link"
-                                    onclick="window.location.href=this.href; return false;"
+                                    class="nav-link shop-link {% if not is_connected_to_directory and club.sync_immune %}disabled{% endif %}"
+                                    onclick="{% if not is_connected_to_directory and club.sync_immune %}return false;{% else %}window.location.href=this.href; return false;{% endif %}"
                                 >
                                     <i class="fas fa-shopping-cart"></i>
                                     Token Shop
@@ -395,12 +478,11 @@ endblock %} {% block extra_head %}
                             <li>
                                 <a
                                     href="#transactions"
-                                    class="nav-link"
+                                    class="nav-link {% if not is_connected_to_directory and club.sync_immune %}disabled{% endif %}"
                                     data-section="transactions"
                                 >
                                     <i class="fas fa-coins"></i>
-                                    Token {% if effective_can_manage
-                                    %}Transactions{% else %}History{% endif %}
+                                    Token Transactions
                                     <span
                                         id="transactionsNotification"
                                         class="notification-dot"
@@ -412,7 +494,7 @@ endblock %} {% block extra_head %}
                             <li>
                                 <a
                                     href="#piggy-bank"
-                                    class="nav-link"
+                                    class="nav-link {% if not is_connected_to_directory and club.sync_immune %}disabled{% endif %}"
                                     data-section="piggy-bank"
                                 >
                                     <i class="fas fa-piggy-bank"></i>
@@ -423,8 +505,8 @@ endblock %} {% block extra_head %}
                             <li>
                                 <a
                                     href="{{ url_for('club_orders', club_id=club.id) }}"
-                                    class="nav-link orders-link"
-                                    onclick="window.location.href=this.href; return false;"
+                                    class="nav-link orders-link {% if not is_connected_to_directory and club.sync_immune %}disabled{% endif %}"
+                                    onclick="{% if not is_connected_to_directory and club.sync_immune %}return false;{% else %}window.location.href=this.href; return false;{% endif %}"
                                 >
                                     <i class="fas fa-box"></i> My Orders
                                 </a>
@@ -453,32 +535,6 @@ endblock %} {% block extra_head %}
 
             <div class="dashboard-main">
                 <section id="dashboard" class="club-section active fade-in">
-                    <!-- Gallery Post Required Banner -->
-                    {% if economy_enabled and current_user.id == club.leader_id
-                    and not has_gallery_post %}
-                    <div class="alert-card">
-                        <div class="alert-icon">
-                            <i class="fas fa-camera"></i>
-                        </div>
-                        <div class="alert-content">
-                            <h4>
-                                Make a gallery post to start earning/spending
-                                tokens!
-                            </h4>
-                            <p>
-                                Create your first gallery post to unlock the
-                                token system and start earning rewards for your
-                                club activities.
-                            </p>
-                            <a
-                                href="{{ url_for('gallery') }}"
-                                class="alert-btn"
-                            >
-                                <i class="fas fa-plus"></i> Create Gallery Post
-                            </a>
-                        </div>
-                    </div>
-                    {% endif %}
                     {% if not is_connected_to_directory %}
                     <div class="alert-card" style="background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%); border: 2px solid #feb2b2;">
                         <div class="alert-icon" style="background: linear-gradient(135deg, #fc8181, #f56565); color: white;">
@@ -1193,9 +1249,6 @@ console.log('Hello, world!');
                             <h2><i class="fas fa-comments"></i> Chat</h2>
                             <p>
                                 Chat with your club members
-                                <span class="text-muted"
-                                    >(Slack integration coming soon!)</span
-                                >
                             </p>
                         </div>
                     </div>
@@ -1296,6 +1349,7 @@ console.log('Hello, world!');
                     </div>
                 </section>
 
+                {% if effective_can_manage %}
                 <section id="advertising" class="club-section fade-in">
                     <div class="content-header">
                         <div>
@@ -1648,6 +1702,7 @@ console.log('Hello, world!');
                         </div>
                     </div>
                 </section>
+                {% endif %}
 
                 <!-- Color Palette Modal -->
                 <div id="colorPaletteModal" class="modal">
@@ -1784,7 +1839,7 @@ console.log('Hello, world!');
                     </div>
                 </div>
 
-                {% if economy_enabled %}
+                {% if economy_enabled and effective_can_manage %}
                 <section id="transactions" class="club-section fade-in">
                     <div class="content-header">
                         <div>
@@ -1797,18 +1852,12 @@ console.log('Hello, world!');
                             </p>
                         </div>
                         <div class="balance-info">
-                            <div
-                                class="current-balance {% if not has_gallery_post %}locked-feature{% endif %}"
-                            >
+                            <div class="current-balance">
                                 <span class="balance-label"
                                     >Current Balance:</span
                                 >
                                 <span class="balance-amount">
-                                    {% if has_gallery_post %} {{
-                                    (club.balance|float * 100)|int }} tokens {%
-                                    else %}
-                                    <i class="fas fa-lock"></i> Create a gallery
-                                    post to unlock {% endif %}
+                                    {{ (club.balance|float * 100)|int }} tokens
                                 </span>
                             </div>
                         </div>
@@ -1891,15 +1940,10 @@ console.log('Hello, world!');
                         </div>
                     </div>
 
-                    <div
-                        class="current-balance piggy-bank-balance {% if not has_gallery_post %}locked-feature{% endif %}"
-                    >
+                    <div class="current-balance piggy-bank-balance">
                         <span class="balance-label">Piggy Bank Balance:</span>
                         <span class="balance-amount">
-                            {% if has_gallery_post %} {{ club.piggy_bank_tokens
-                            or 0 }} tokens {% else %}
-                            <i class="fas fa-lock"></i> Create a gallery post to
-                            unlock {% endif %}
+                            {{ club.piggy_bank_tokens or 0 }} tokens
                         </span>
                     </div>
 
@@ -2030,7 +2074,7 @@ console.log('Hello, world!');
                         </div>
                     </div>
                 </section>
-                {% endif %} {% if economy_enabled %}
+                {% endif %} {% if economy_enabled and effective_can_manage %}
                 <section id="quests" class="club-section fade-in">
                     <div class="content-header">
                         <div>
@@ -2168,301 +2212,6 @@ console.log('Hello, world!');
                     </div>
                 </section>
                 {% endif %} {% if effective_can_manage %}
-                <section id="slack" class="club-section fade-in">
-                    <div class="content-header">
-                        <div>
-                            <h2><i class="fab fa-slack"></i> Slack Channel</h2>
-                            <p>
-                                Connect your club to a Slack channel and invite
-                                members. Invitees will only have access to this
-                                specific channel unless they complete additional
-                                verification with Hack Club.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="slack-setup-container">
-                        <div class="slack-info-card">
-                            <div class="slack-info-header">
-                                <i class="fab fa-slack slack-logo"></i>
-                                <h3>Set Up Your Club's Slack Channel</h3>
-                            </div>
-                            <div class="slack-info-content">
-                                <p>
-                                    Connect your club to a Slack channel to
-                                    improve communication and collaboration
-                                    among members.
-                                </p>
-
-                                <div class="slack-requirements">
-                                    <h4>
-                                        <i
-                                            class="fas fa-exclamation-triangle"
-                                        ></i>
-                                        Important Requirements:
-                                    </h4>
-                                    <ul>
-                                        <li>
-                                            <strong
-                                                >Channel must be public</strong
-                                            >
-                                            - Private channels won't work with
-                                            our invitation system
-                                        </li>
-                                        <li>
-                                            <strong>Get the Channel ID</strong>
-                                            - Right-click your channel name →
-                                            View channel details → Copy Channel
-                                            ID
-                                        </li>
-                                        <li>
-                                            <strong>Optional:</strong> Set a
-                                            friendly channel name for display
-                                            purposes
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="slack-settings-card">
-                            <div class="card-header">
-                                <h3>Channel Configuration</h3>
-                            </div>
-                            <div class="card-body">
-                                <form id="slackSettingsForm">
-                                    <div class="form-group">
-                                        <label class="form-label"
-                                            >Channel ID *</label
-                                        >
-                                        <input
-                                            type="text"
-                                            class="form-control"
-                                            id="slackChannelId"
-                                            placeholder="C08KBFQ4D54"
-                                            pattern="C[A-Z0-9]+"
-                                            required
-                                        />
-                                        <small class="form-help">
-                                            <i class="fas fa-info-circle"></i>
-                                            Right-click your channel → View
-                                            channel details → Copy Channel ID
-                                        </small>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="form-label"
-                                            >Channel Name (Optional)</label
-                                        >
-                                        <input
-                                            type="text"
-                                            class="form-control"
-                                            id="slackChannelName"
-                                            placeholder="#my-hack-club"
-                                        />
-                                        <small class="form-help"
-                                            >Friendly name for display
-                                            purposes</small
-                                        >
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="form-check">
-                                            <input
-                                                type="checkbox"
-                                                id="slackIsPublic"
-                                                checked
-                                                disabled
-                                            />
-                                            <span class="form-check-label"
-                                                >Channel is public
-                                                (required)</span
-                                            >
-                                        </label>
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        class="btn btn-primary"
-                                    >
-                                        <i class="fas fa-save"></i> Save Channel
-                                        Settings
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div
-                            class="slack-invite-card"
-                            id="slackInviteCard"
-                            style="display: none"
-                        >
-                            <div class="card-header">
-                                <h3>Invite Members</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="invite-options">
-                                    <div class="invite-option">
-                                        <h4>
-                                            <i class="fas fa-users"></i> Invite
-                                            All Members
-                                        </h4>
-                                        <p>
-                                            Automatically invite all current
-                                            club members to your Slack channel.
-                                        </p>
-                                        <button
-                                            class="btn btn-slack"
-                                            onclick="bulkInviteToSlack()"
-                                        >
-                                            <i class="fab fa-slack"></i> Invite
-                                            All Members
-                                        </button>
-                                    </div>
-
-                                    <div class="invite-divider">
-                                        <span>OR</span>
-                                    </div>
-
-                                    <div class="invite-option">
-                                        <h4>
-                                            <i class="fas fa-user-plus"></i>
-                                            Invite Individual
-                                        </h4>
-                                        <div class="individual-invite-form">
-                                            <div style="margin-bottom: 1rem">
-                                                <label class="form-label"
-                                                    >Select Club Member</label
-                                                >
-                                                <div
-                                                    style="
-                                                        display: flex;
-                                                        gap: 10px;
-                                                        align-items: end;
-                                                    "
-                                                >
-                                                    <div style="flex: 1">
-                                                        <select
-                                                            class="form-control"
-                                                            id="individualInviteSelect"
-                                                        >
-                                                            <option value="">
-                                                                Choose a
-                                                                member...
-                                                            </option>
-                                                            <option
-                                                                value="{{ club.leader.email }}"
-                                                            >
-                                                                {{
-                                                                club.leader.username
-                                                                }} (Leader)
-                                                            </option>
-                                                            {% if club.co_leader
-                                                            %}
-                                                            <option
-                                                                value="{{ club.co_leader.email }}"
-                                                            >
-                                                                {{
-                                                                club.co_leader.username
-                                                                }} (Co-Leader)
-                                                            </option>
-                                                            {% endif %} {% for
-                                                            membership in
-                                                            club.members %}
-                                                            <option
-                                                                value="{{ membership.user.email }}"
-                                                            >
-                                                                {{
-                                                                membership.user.username
-                                                                }} (Member)
-                                                            </option>
-                                                            {% endfor %}
-                                                        </select>
-                                                    </div>
-                                                    <button
-                                                        class="btn btn-secondary"
-                                                        onclick="inviteIndividualToSlack()"
-                                                    >
-                                                        <i
-                                                            class="fas fa-paper-plane"
-                                                        ></i>
-                                                        Send Invite
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div class="invite-divider">
-                                                <span>OR</span>
-                                            </div>
-
-                                            <div>
-                                                <label class="form-label"
-                                                    >Invite by Email</label
-                                                >
-                                                <div
-                                                    style="
-                                                        display: flex;
-                                                        gap: 10px;
-                                                        align-items: end;
-                                                    "
-                                                >
-                                                    <div style="flex: 1">
-                                                        <input
-                                                            type="email"
-                                                            class="form-control"
-                                                            id="inviteByEmailInput"
-                                                            placeholder="Enter email address..."
-                                                        />
-                                                    </div>
-                                                    <button
-                                                        class="btn btn-secondary"
-                                                        onclick="inviteByEmailToSlack()"
-                                                    >
-                                                        <i
-                                                            class="fas fa-paper-plane"
-                                                        ></i>
-                                                        Send Invite
-                                                    </button>
-                                                </div>
-                                                <small class="form-help">
-                                                    <i
-                                                        class="fas fa-info-circle"
-                                                    ></i>
-                                                    Invite anyone by email
-                                                    address. They will only have
-                                                    access to this channel.
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="current-channel-info"
-                                    id="currentChannelInfo"
-                                    style="display: none"
-                                >
-                                    <div class="channel-info-box">
-                                        <i class="fab fa-slack"></i>
-                                        <div>
-                                            <strong>Current Channel:</strong>
-                                            <span id="displayChannelName"
-                                                >#channel-name</span
-                                            >
-                                            <br />
-                                            <small
-                                                >Channel ID:
-                                                <code id="displayChannelId"
-                                                    >C08KBFQ4D54</code
-                                                ></small
-                                            >
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
                 {% endif %} {% if current_user.id == club.leader_id %}
                 <section id="settings" class="club-section fade-in">
                     <div class="content-header">
@@ -3084,34 +2833,7 @@ console.log('Hello, world!');
     </div>
 </div>
 
-<div id="confirmModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>
-                <i class="fas fa-exclamation-triangle text-warning"></i> Confirm
-                Action
-            </h3>
-            <button
-                class="close"
-                onclick="document.getElementById('confirmModal').style.display='none'"
-            >
-                &times;
-            </button>
-        </div>
-        <div class="modal-body">
-            <p id="confirmMessage">Are you sure you want to proceed?</p>
-        </div>
-        <div class="modal-footer">
-            <button
-                class="btn btn-secondary"
-                onclick="document.getElementById('confirmModal').style.display='none'"
-            >
-                Cancel
-            </button>
-            <button id="confirmButton" class="btn btn-primary">Confirm</button>
-        </div>
-    </div>
-</div>
+<!-- confirmModal removed - now using UniversalModal -->
 
 <div id="qrModal" class="modal qr-modal">
     <div class="modal-content">
@@ -3540,102 +3262,6 @@ console.log('Hello, world!');
                 disabled
             >
                 <i class="fas fa-exchange-alt"></i> Transfer Leadership
-            </button>
-        </div>
-    </div>
-</div>
-
-<div id="slackBulkInviteModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fab fa-slack"></i> Invite All Members</h3>
-            <button class="close" onclick="closeSlackBulkInviteModal()">
-                &times;
-            </button>
-        </div>
-        <div class="modal-body">
-            <div
-                style="
-                    background: #fff3cd;
-                    border: 1px solid #ffeaa7;
-                    border-radius: 8px;
-                    padding: 1rem;
-                    margin-bottom: 1.5rem;
-                "
-            >
-                <p style="margin: 0; color: #856404; font-size: 0.9rem">
-                    <i
-                        class="fas fa-info-circle"
-                        style="color: #f39c12; margin-right: 0.5rem"
-                    ></i>
-                    This will invite all current club members to the Slack
-                    channel.
-                </p>
-            </div>
-            <p>You are about to invite all members to:</p>
-            <div
-                style="
-                    background: #f3f4f6;
-                    border-radius: 8px;
-                    padding: 1rem;
-                    margin-bottom: 1.5rem;
-                "
-            >
-                <div style="display: flex; align-items: center; gap: 1rem">
-                    <i
-                        class="fab fa-slack"
-                        style="font-size: 1.5rem; color: #4a154b"
-                    ></i>
-                    <div>
-                        <strong id="bulkInviteChannelName"
-                            >#channel-name</strong
-                        >
-                        <br />
-                        <small
-                            >Channel ID:
-                            <code id="bulkInviteChannelId"
-                                >C08KBFQ4D54</code
-                            ></small
-                        >
-                    </div>
-                </div>
-            </div>
-            <p style="color: #6b7280; font-size: 0.9rem">
-                Members will only have access to this specific channel unless
-                they complete additional verification with Hack Club.
-            </p>
-        </div>
-        <div class="modal-footer">
-            <button
-                class="btn btn-secondary"
-                onclick="closeSlackBulkInviteModal()"
-            >
-                Cancel
-            </button>
-            <button class="btn btn-primary" onclick="confirmBulkInvite()">
-                <i class="fab fa-slack"></i> Send Invitations
-            </button>
-        </div>
-    </div>
-</div>
-
-<div id="slackInviteResultModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fab fa-slack"></i> Invitation Result</h3>
-            <button class="close" onclick="closeSlackInviteResultModal()">
-                &times;
-            </button>
-        </div>
-        <div class="modal-body">
-            <div id="slackInviteResultContent"></div>
-        </div>
-        <div class="modal-footer">
-            <button
-                class="btn btn-primary"
-                onclick="closeSlackInviteResultModal()"
-            >
-                OK
             </button>
         </div>
     </div>
@@ -5269,7 +4895,7 @@ console.log('Hello, world!');
         removeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Removing...';
 
         fetch(`/api/clubs/${clubId}/background`, {
-            method: 'PUT',
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -7696,6 +7322,7 @@ console.log('Hello, world!');
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
 
         const clubId = document.querySelector(".club-dashboard").dataset.clubId;
+        const currentUserEmail = "{{ current_user.email }}";
 
         fetch(`/api/clubs/${clubId}/update-email`, {
             method: "POST",
@@ -7703,6 +7330,9 @@ console.log('Hello, world!');
                 "Content-Type": "application/json",
             },
             credentials: "same-origin",
+            body: JSON.stringify({
+                email: currentUserEmail
+            })
         })
             .then((response) => response.json())
             .then((data) => {
@@ -7718,7 +7348,8 @@ console.log('Hello, world!');
                         btn.disabled = false;
                     }, 3000);
                 } else {
-                    throw new Error(data.error || "Failed to update email");
+                    const errorMsg = data.details ? `${data.error}: ${data.details}` : data.error;
+                    throw new Error(errorMsg || "Failed to update email");
                 }
             })
             .catch((error) => {
@@ -8289,35 +7920,14 @@ console.log('Hello, world!');
             type = "primary";
         }
 
-        document.getElementById("confirmModalTitle").textContent = title;
-        document.getElementById("confirmModalMessage").textContent = message;
-
-        const modal = document.getElementById("confirmActionModal");
-        const confirmBtn = document.getElementById("confirmActionButton");
-
-        if (!confirmBtn) {
-            console.error("confirmActionButton not found");
-            return;
-        }
-
-        // Set button style based on type
-        confirmBtn.className = `btn btn-${type === "danger" ? "danger" : "primary"}`;
-
-        // Set up the confirm action with error handling
-        confirmBtn.onclick = function () {
-            if (onConfirm && typeof onConfirm === "function") {
-                try {
-                    onConfirm();
-                } catch (error) {
-                    console.error("Error in confirm callback:", error);
-                }
-            } else {
-                console.error("onConfirm is not a function:", onConfirm);
-            }
-            closeModal("confirmActionModal");
-        };
-
-        modal.style.display = "block";
+        // Use UniversalModal instead of old modal
+        const modalType = type === "danger" ? "warning" : "confirm";
+        UniversalModal.confirm(
+            message,
+            onConfirm,
+            null,
+            title
+        );
     }
 
     // Reports functionality
@@ -9470,38 +9080,7 @@ console.log('Hello, world!');
 </div>
 
 <!-- Confirmation Modal -->
-<div id="confirmActionModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header error">
-            <h3>
-                <i class="fas fa-exclamation-triangle"></i>
-                <span id="confirmModalTitle">Confirm Action</span>
-            </h3>
-            <span class="modal-close" onclick="closeModal('confirmActionModal')"
-                >&times;</span
-            >
-        </div>
-        <div class="modal-body">
-            <p id="confirmModalMessage">Are you sure you want to proceed?</p>
-        </div>
-        <div class="modal-footer">
-            <button
-                type="button"
-                class="btn btn-secondary"
-                onclick="closeModal('confirmActionModal')"
-            >
-                Cancel
-            </button>
-            <button
-                type="button"
-                id="confirmActionButton"
-                class="btn btn-danger"
-            >
-                <i class="fas fa-check"></i> Confirm
-            </button>
-        </div>
-    </div>
-</div>
+<!-- confirmActionModal removed - now using UniversalModal -->
 
 <style>
     /* Enhanced Attendance Management Styles */

@@ -80,11 +80,19 @@ function filterMembers(searchTerm) {
     if (visibleCards.length === 0 && normalizedSearch !== '') {
         const noResultsDiv = document.createElement('div');
         noResultsDiv.className = 'no-search-results empty-state';
-        noResultsDiv.innerHTML = `
-            <i class="fas fa-search"></i>
-            <h3>No members found</h3>
-            <p>No members match your search for "${searchTerm}"</p>
-        `;
+        
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-search';
+        
+        const heading = document.createElement('h3');
+        heading.textContent = 'No members found';
+        
+        const para = document.createElement('p');
+        para.textContent = `No members match your search for "${searchTerm}"`;
+        
+        noResultsDiv.appendChild(icon);
+        noResultsDiv.appendChild(heading);
+        noResultsDiv.appendChild(para);
         membersList.appendChild(noResultsDiv);
     }
 }
@@ -237,9 +245,6 @@ function loadSectionData(section) {
             break;
         case 'quests':
             loadQuests();
-            break;
-        case 'slack':
-            loadSlackSettings();
             break;
         case 'chat':
             initializeChat();
@@ -486,9 +491,12 @@ function loadPosts() {
                     // Add delete button for club leaders
                     if (window.clubData && window.clubData.isLeader) {
                         const deleteBtn = createElement('button', 'btn-icon delete-btn');
-                        deleteBtn.setAttribute('onclick', `deletePost(${post.id}, '${post.content.replace(/'/g, "\\'")}')`)
                         deleteBtn.setAttribute('title', 'Delete Post');
                         deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                        // Use addEventListener instead of inline onclick to avoid escaping issues with markdown content
+                        deleteBtn.addEventListener('click', () => {
+                            deletePost(post.id, post.content);
+                        });
                         postHeader.appendChild(deleteBtn);
                     }
 
@@ -539,16 +547,30 @@ function loadPosts() {
                     errorMessage = error.message || 'Unknown error occurred';
                 }
 
-                postsList.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Error Loading Posts</h3>
-                        <p>${errorMessage}</p>
-                        <button onclick="loadPosts()" class="btn btn-primary" style="margin-top: 1rem;">
-                            <i class="fas fa-refresh"></i> Try Again
-                        </button>
-                    </div>
-                `;
+                postsList.innerHTML = ''; // Clear first
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-exclamation-triangle';
+                
+                const heading = document.createElement('h3');
+                heading.textContent = 'Error Loading Posts';
+                
+                const para = document.createElement('p');
+                para.textContent = errorMessage;
+                
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-primary';
+                btn.style.marginTop = '1rem';
+                btn.onclick = loadPosts;
+                btn.innerHTML = '<i class="fas fa-refresh"></i> Try Again';
+                
+                emptyState.appendChild(icon);
+                emptyState.appendChild(heading);
+                emptyState.appendChild(para);
+                emptyState.appendChild(btn);
+                postsList.appendChild(emptyState);
             }
         });
 }
@@ -683,9 +705,12 @@ function loadAssignments() {
                     // Add delete button for club leaders
                     if (window.clubData && window.clubData.isLeader) {
                         const deleteBtn = createElement('button', 'btn-icon delete-btn');
-                        deleteBtn.setAttribute('onclick', `deleteAssignmentDesktop(${assignment.id}, '${assignment.title.replace(/'/g, "\\'")}')`)
                         deleteBtn.setAttribute('title', 'Delete Assignment');
                         deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                        // Use addEventListener instead of inline onclick to avoid escaping issues
+                        deleteBtn.addEventListener('click', () => {
+                            deleteAssignmentDesktop(assignment.id, assignment.title);
+                        });
                         cardHeader.appendChild(deleteBtn);
                     }
 
@@ -852,9 +877,12 @@ function loadMeetings() {
                     // Add delete button for club leaders
                     if (window.clubData && window.clubData.isLeader) {
                         const deleteBtn = createElement('button', 'btn-icon delete-btn');
-                        deleteBtn.setAttribute('onclick', `deleteMeetingDesktop(${meeting.id}, '${meeting.title.replace(/'/g, "\\'")}')`)
                         deleteBtn.setAttribute('title', 'Delete Meeting');
                         deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                        // Use addEventListener instead of inline onclick to avoid escaping issues
+                        deleteBtn.addEventListener('click', () => {
+                            deleteMeetingDesktop(meeting.id, meeting.title);
+                        });
                         cardHeader.appendChild(deleteBtn);
                     }
 
@@ -1174,7 +1202,7 @@ function addResource() {
         return;
     }
 
-    fetch(`/api/clubs/${clubId}/resources`, {
+    fetch(buildApiUrl(`/api/clubs/${clubId}/resources`), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -1209,7 +1237,7 @@ function loadResources() {
         if (resourcesList) resourcesList.textContent = 'Error: Club information is unavailable to load resources.';
         return;
     }
-    fetch(`/api/clubs/${clubId}/resources`)
+    fetch(buildApiUrl(`/api/clubs/${clubId}/resources`))
         .then(response => {
             if (response.status === 401) {
                 window.location.href = '/login';
@@ -1246,9 +1274,12 @@ function loadResources() {
                     // Add delete button for club leaders
                     if (window.clubData && window.clubData.isLeader) {
                         const deleteBtn = createElement('button', 'btn-icon delete-btn');
-                        deleteBtn.setAttribute('onclick', `deleteResourceDesktop(${resource.id}, '${resource.title.replace(/'/g, "\\'")}')`)
                         deleteBtn.setAttribute('title', 'Delete Resource');
                         deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                        // Use addEventListener instead of inline onclick to avoid escaping issues
+                        deleteBtn.addEventListener('click', () => {
+                            deleteResourceDesktop(resource.id, resource.title);
+                        });
                         cardHeader.appendChild(deleteBtn);
                     }
 
@@ -1367,7 +1398,7 @@ function deleteResource(id, title) {
         `Delete "${title}"?`,
         'This action cannot be undone.',
         () => {
-            fetch(`/api/clubs/${clubId}/resources/${id}`, {
+            fetch(buildApiUrl(`/api/clubs/${clubId}/resources/${id}`), {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
@@ -2337,310 +2368,6 @@ function verifyCodeAndTransferLeadership() {
     });
 }
 
-// Slack Integration Functions
-async function loadSlackSettings() {
-    try {
-        const response = await fetch(buildApiUrl(`/api/club/${clubId}/slack/settings`));
-        const data = await response.json();
-
-        if (data.settings) {
-            // Populate form with existing settings
-            document.getElementById('slackChannelId').value = data.settings.channel_id || '';
-            document.getElementById('slackChannelName').value = data.settings.channel_name || '';
-            document.getElementById('slackIsPublic').checked = data.settings.is_public !== false;
-
-            // Show invite section if channel is configured
-            if (data.settings.channel_id) {
-                document.getElementById('slackInviteCard').style.display = 'block';
-                document.getElementById('currentChannelInfo').style.display = 'block';
-                document.getElementById('displayChannelName').textContent = data.settings.channel_name || '#your-channel';
-                document.getElementById('displayChannelId').textContent = data.settings.channel_id;
-            }
-        }
-    } catch (error) {
-        console.error('Error loading Slack settings:', error);
-    }
-}
-
-async function saveSlackSettings(event) {
-    event.preventDefault();
-
-    const channelId = document.getElementById('slackChannelId').value.trim();
-    const channelName = document.getElementById('slackChannelName').value.trim();
-    const isPublic = document.getElementById('slackIsPublic').checked;
-
-    if (!channelId) {
-        showToast('error', 'Channel ID is required');
-        return;
-    }
-
-    if (!channelId.startsWith('C')) {
-        showToast('error', 'Invalid channel ID format. Should start with "C"');
-        return;
-    }
-
-    try {
-        const response = await fetch(buildApiUrl(`/api/club/${clubId}/slack/settings`), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                channel_id: channelId,
-                channel_name: channelName,
-                is_public: isPublic
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            showToast('success', 'Slack settings saved successfully!');
-
-            // Show invite section
-            document.getElementById('slackInviteCard').style.display = 'block';
-            document.getElementById('currentChannelInfo').style.display = 'block';
-            document.getElementById('displayChannelName').textContent = channelName || '#your-channel';
-            document.getElementById('displayChannelId').textContent = channelId;
-        } else {
-            showToast('error', data.error || 'Failed to save Slack settings');
-        }
-    } catch (error) {
-        console.error('Error saving Slack settings:', error);
-        showToast('error', 'Failed to save Slack settings');
-    }
-}
-
-async function bulkInviteToSlack() {
-    // Get current channel info
-    const channelName = document.getElementById('displayChannelName').textContent;
-    const channelId = document.getElementById('displayChannelId').textContent;
-
-    // Update modal with current channel info
-    document.getElementById('bulkInviteChannelName').textContent = channelName;
-    document.getElementById('bulkInviteChannelId').textContent = channelId;
-
-    // Show confirmation modal
-    document.getElementById('slackBulkInviteModal').style.display = 'block';
-}
-
-async function confirmBulkInvite() {
-    const bulkInviteButton = document.querySelector('#slackBulkInviteModal .btn-primary');
-    const originalContent = bulkInviteButton.innerHTML;
-
-    // Show loading state
-    bulkInviteButton.disabled = true;
-    bulkInviteButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending Invitations...';
-
-    try {
-        const response = await fetch(buildApiUrl(`/api/club/${clubId}/slack/bulk-invite`), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const data = await response.json();
-
-        // Close confirmation modal
-        closeSlackBulkInviteModal();
-
-        if (response.ok) {
-            let resultHtml = `
-                <div style="color: #10b981; margin-bottom: 1rem;">
-                    <i class="fas fa-check-circle"></i> <strong>Success!</strong>
-                </div>
-                <p><strong>${data.success_count}</strong> out of <strong>${data.total_members}</strong> members invited successfully.</p>
-            `;
-
-            if (data.failed_invitations && data.failed_invitations.length > 0) {
-                resultHtml += `
-                    <div style="margin-top: 1rem;">
-                        <p><strong>Failed invitations (${data.failed_invitations.length}):</strong></p>
-                        <ul style="margin: 0; padding-left: 1.5rem;">
-                            ${data.failed_invitations.map(email => `<li>${email}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
-            }
-
-            showSlackInviteResult(resultHtml);
-        } else {
-            showSlackInviteResult(`
-                <div style="color: #ef4444; margin-bottom: 1rem;">
-                    <i class="fas fa-times-circle"></i> <strong>Error</strong>
-                </div>
-                <p>${data.error || 'Failed to send bulk invitations'}</p>
-            `);
-        }
-    } catch (error) {
-        console.error('Error sending bulk invitations:', error);
-        closeSlackBulkInviteModal();
-        showSlackInviteResult(`
-            <div style="color: #ef4444; margin-bottom: 1rem;">
-                <i class="fas fa-times-circle"></i> <strong>Error</strong>
-            </div>
-            <p>Failed to send bulk invitations. Please try again.</p>
-        `);
-    } finally {
-        // Restore button state
-        bulkInviteButton.disabled = false;
-        bulkInviteButton.innerHTML = originalContent;
-    }
-}
-
-function closeSlackBulkInviteModal() {
-    document.getElementById('slackBulkInviteModal').style.display = 'none';
-}
-
-function showSlackInviteResult(content) {
-    document.getElementById('slackInviteResultContent').innerHTML = content;
-    document.getElementById('slackInviteResultModal').style.display = 'block';
-}
-
-function closeSlackInviteResultModal() {
-    document.getElementById('slackInviteResultModal').style.display = 'none';
-}
-
-async function inviteIndividualToSlack() {
-    const selectElement = document.getElementById('individualInviteSelect');
-    const email = selectElement.value.trim();
-    const selectedText = selectElement.options[selectElement.selectedIndex].text;
-    const inviteButton = document.querySelector('button[onclick="inviteIndividualToSlack()"]');
-
-    if (!email) {
-        showSlackInviteResult(`
-            <div style="color: #f59e0b; margin-bottom: 1rem;">
-                <i class="fas fa-exclamation-triangle"></i> <strong>No Selection</strong>
-            </div>
-            <p>Please select a member to invite.</p>
-        `);
-        return;
-    }
-
-    // Show loading state
-    const originalContent = inviteButton.innerHTML;
-    inviteButton.disabled = true;
-    inviteButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-    try {
-        const response = await fetch(buildApiUrl(`/api/club/${clubId}/slack/invite`), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                email: email
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            showSlackInviteResult(`
-                <div style="color: #10b981; margin-bottom: 1rem;">
-                    <i class="fas fa-check-circle"></i> <strong>Success!</strong>
-                </div>
-                <p>Successfully invited <strong>${selectedText}</strong> to the Slack channel.</p>
-            `);
-            selectElement.value = '';
-        } else {
-            showSlackInviteResult(`
-                <div style="color: #ef4444; margin-bottom: 1rem;">
-                    <i class="fas fa-times-circle"></i> <strong>Error</strong>
-                </div>
-                <p>${data.error || 'Failed to send invitation'}</p>
-            `);
-        }
-    } catch (error) {
-        console.error('Error sending individual invitation:', error);
-        showSlackInviteResult(`
-            <div style="color: #ef4444; margin-bottom: 1rem;">
-                <i class="fas fa-times-circle"></i> <strong>Error</strong>
-            </div>
-            <p>Failed to send invitation. Please try again.</p>
-        `);
-    } finally {
-        // Restore button state
-        inviteButton.disabled = false;
-        inviteButton.innerHTML = originalContent;
-    }
-}
-
-async function inviteByEmailToSlack() {
-    const emailInput = document.getElementById('inviteByEmailInput');
-    const email = emailInput.value.trim();
-    const emailInviteButton = document.querySelector('button[onclick="inviteByEmailToSlack()"]');
-
-    if (!email) {
-        showSlackInviteResult(`
-            <div style="color: #f59e0b; margin-bottom: 1rem;">
-                <i class="fas fa-exclamation-triangle"></i> <strong>No Email</strong>
-            </div>
-            <p>Please enter an email address to invite.</p>
-        `);
-        return;
-    }
-
-    if (!email.includes('@')) {
-        showSlackInviteResult(`
-            <div style="color: #f59e0b; margin-bottom: 1rem;">
-                <i class="fas fa-exclamation-triangle"></i> <strong>Invalid Email</strong>
-            </div>
-            <p>Please enter a valid email address.</p>
-        `);
-        return;
-    }
-
-    // Show loading state
-    const originalContent = emailInviteButton.innerHTML;
-    emailInviteButton.disabled = true;
-    emailInviteButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-    try {
-        const response = await fetch(buildApiUrl(`/api/club/${clubId}/slack/invite`), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                email: email
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            showSlackInviteResult(`
-                <div style="color: #10b981; margin-bottom: 1rem;">
-                    <i class="fas fa-check-circle"></i> <strong>Success!</strong>
-                </div>
-                <p>Successfully invited <strong>${email}</strong> to the Slack channel.</p>
-            `);
-            emailInput.value = '';
-        } else {
-            showSlackInviteResult(`
-                <div style="color: #ef4444; margin-bottom: 1rem;">
-                    <i class="fas fa-times-circle"></i> <strong>Error</strong>
-                </div>
-                <p>${data.error || 'Failed to send invitation'}</p>
-            `);
-        }
-    } catch (error) {
-        console.error('Error sending email invitation:', error);
-        showSlackInviteResult(`
-            <div style="color: #ef4444; margin-bottom: 1rem;">
-                <i class="fas fa-times-circle"></i> <strong>Error</strong>
-            </div>
-            <p>Failed to send invitation. Please try again.</p>
-        `);
-    } finally {
-        // Restore button state
-        emailInviteButton.disabled = false;
-        emailInviteButton.innerHTML = originalContent;
-    }
-}
-
 // Co-leader management functions
 function promoteToCoLeader(userId, username) {
     if (!clubId) {
@@ -2708,8 +2435,8 @@ function removeCoLeader(userId, username) {
                     // Reload the page to update the members list
                     window.location.reload();
                 } else if (data.error && data.error.includes('Email verification required')) {
-                    // Show verification modal and send code
-                    showEmailVerificationModalForCoLeader(null, null, 'remove');
+                    // Show verification modal and send code - pass userId and username
+                    showEmailVerificationModalForCoLeader(userId, username, 'remove');
                 } else {
                     showToast('error', data.error || 'Failed to remove co-leader', 'Error');
                 }
@@ -2850,6 +2577,8 @@ function verifyCodeAndManageCoLeader() {
 
             if (action === 'promote') {
                 requestBody.user_id = parseInt(userId);
+            } else if (action === 'remove') {
+                requestBody.user_id = parseInt(userId);
             }
 
             return fetch(`/api/clubs/${clubId}/co-leader`, {
@@ -2963,12 +2692,6 @@ function confirmLeaveClub() {
             });
         }
     );
-}
-
-// Slack form event listener
-const slackForm = document.getElementById('slackSettingsForm');
-if (slackForm) {
-    slackForm.addEventListener('submit', saveSlackSettings);
 }
 
 // Club settings form event listener

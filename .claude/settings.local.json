@@ -5,7 +5,9 @@
       "Bash(find:*)",
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

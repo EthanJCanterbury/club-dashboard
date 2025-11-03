@@ -5,16 +5,16 @@ Handles public API endpoints, admin API, and mobile app endpoints.
 
 import html
 import logging
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, current_app, session
 from extensions import db, limiter
-from app.decorators.auth import api_key_required, oauth_required, admin_required, login_required, reviewer_required
+from app.decorators.auth import api_key_required, oauth_required, admin_required, login_required, reviewer_required, permission_required
 
 logger = logging.getLogger(__name__)
 from app.utils.auth_helpers import get_current_user, is_authenticated
 from app.utils.club_helpers import is_user_co_leader
 from app.utils.sanitization import sanitize_string
 from app.utils.formatting import markdown_to_html
-from app.utils.security import validate_input_with_security
+from app.utils.security import validate_input_with_security, validate_password
 from app.utils.economy_helpers import create_club_transaction, update_quest_progress
 from app.models.user import User, create_audit_log
 from app.models.club import Club, ClubMembership
@@ -197,7 +197,7 @@ def get_user_projects():
 
 @api_bp.route('/admin/users', methods=['GET'])
 @login_required
-@admin_required
+@permission_required('users.view')
 @limiter.limit("100 per minute")
 def admin_get_users():
     """Get all users (admin only)"""
@@ -243,9 +243,65 @@ def admin_get_users():
     })
 
 
+@api_bp.route('/admin/users/<int:user_id>', methods=['GET'])
+@login_required
+@permission_required('users.view')
+@limiter.limit("100 per minute")
+def admin_get_user(user_id):
+    """Get a specific user by ID (for leadership transfer, etc.)"""
+    user = User.query.get_or_404(user_id)
+    
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'is_admin': user.is_admin,
+        'is_suspended': user.is_suspended
+    })
+
+
+@api_bp.route('/admin/users/search', methods=['GET'])
+@login_required
+@permission_required('users.view')
+@limiter.limit("100 per minute")
+def admin_search_users():
+    """Search users by username or email (for leadership transfer, etc.)"""
+    query = request.args.get('q', '').strip()
+    limit = request.args.get('limit', 10, type=int)
+    limit = min(limit, 50)  # Max 50 results
+
+    if not query:
+        return jsonify({'users': []})
+
+    search_term = f"%{query}%"
+    users = User.query.filter(
+        db.or_(
+            User.username.ilike(search_term),
+            User.email.ilike(search_term),
+            User.first_name.ilike(search_term),
+            User.last_name.ilike(search_term)
+        )
+    ).limit(limit).all()
+
+    users_data = [{
+        'id': u.id,
+        'username': u.username,
+        'email': u.email,
+        'first_name': u.first_name,
+        'last_name': u.last_name,
+        'is_admin': u.is_admin,
+        'is_suspended': u.is_suspended,
+        'avatar_url': '/static/assets/heidi-avatar.png'  # Default avatar for all users
+    } for u in users]
+
+    return jsonify({'users': users_data})
+
+
 @api_bp.route('/admin/clubs', methods=['GET'])
 @login_required
-@admin_required
+@permission_required('clubs.view')
 @limiter.limit("100 per minute")
 def admin_get_clubs():
     """Get all clubs (admin only)"""
@@ -448,42 +504,54 @@ def admin_get_permissions():
 
 @api_bp.route('/admin/rbac/users/<int:user_id>/roles', methods=['GET'])
 @login_required
-@admin_required
+@permission_required('users.view', 'system.manage_roles')
 def admin_get_user_roles(user_id):
     """Get a specific user's roles and permissions (admin only)"""
-    from app.models.user import User, UserRole
+    try:
+        from app.models.user import User, UserRole
 
-    user = User.query.get_or_404(user_id)
+        user = User.query.get_or_404(user_id)
 
-    # Get user's roles
-    user_roles = UserRole.query.filter_by(user_id=user_id).all()
-    roles_data = []
-    permissions_data = []
+        # Get user's roles
+        user_roles = UserRole.query.filter_by(user_id=user_id).all()
+        roles_data = []
+        permissions_data = []
 
-    for user_role in user_roles:
-        role = user_role.role
-        roles_data.append({
-            'id': role.id,
-            'name': role.name,
-            'display_name': role.display_name,
-            'description': role.description
+        for user_role in user_roles:
+            role = user_role.role
+            roles_data.append({
+                'id': role.id,
+                'name': role.name,
+                'display_name': role.display_name,
+                'description': role.description
+            })
+
+            # Collect all permissions from this role
+            try:
+                for perm in role.permissions.all():
+                    if perm.name not in [p['name'] for p in permissions_data]:
+                        permissions_data.append({
+                            'id': perm.id,
+                            'name': perm.name,
+                            'display_name': perm.display_name,
+                            'category': perm.category
+                        })
+            except Exception:
+                # RBAC permissions might not be set up
+                pass
+
+        return jsonify({
+            'roles': roles_data,
+            'permissions': permissions_data,
+            'is_root': user.is_root if hasattr(user, 'is_root') else False
         })
-
-        # Collect all permissions from this role
-        for perm in role.permissions.all():
-            if perm.name not in [p['name'] for p in permissions_data]:
-                permissions_data.append({
-                    'id': perm.id,
-                    'name': perm.name,
-                    'display_name': perm.display_name,
-                    'category': perm.category
-                })
-
-    return jsonify({
-        'roles': roles_data,
-        'permissions': permissions_data,
-        'is_root': user.is_root if hasattr(user, 'is_root') else False
-    })
+    except Exception as e:
+        # Return empty data if RBAC is not initialized or there's an error
+        return jsonify({
+            'roles': [],
+            'permissions': [],
+            'is_root': False
+        })
 
 
 @api_bp.route('/admin/apikeys', methods=['GET'])
@@ -582,9 +650,9 @@ def admin_get_audit_logs():
 
 @api_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
 @login_required
-@admin_required
+@permission_required('users.edit')
 def admin_update_user(user_id):
-    """Update user details (admin only)"""
+    """Update user details (requires users.edit permission)"""
     user = User.query.get_or_404(user_id)
     current_user = get_current_user()
 
@@ -648,7 +716,7 @@ def admin_update_user(user_id):
 
 @api_bp.route('/admin/users/<int:user_id>/suspend', methods=['PUT'])
 @login_required
-@admin_required
+@permission_required('users.suspend')
 def admin_suspend_user(user_id):
     """Suspend/unsuspend a user (admin only)"""
     user = User.query.get_or_404(user_id)
@@ -686,7 +754,7 @@ def admin_suspend_user(user_id):
 
 @api_bp.route('/admin/users/<int:user_id>', methods=['DELETE'])
 @login_required
-@admin_required
+@permission_required('users.delete')
 def admin_delete_user(user_id):
     """Delete a user (admin only)"""
     user = User.query.get_or_404(user_id)
@@ -805,7 +873,7 @@ def admin_get_user_ips(user_id):
 
 @api_bp.route('/admin/login-as-user/<int:user_id>', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('users.impersonate', 'admin.login_as_user')
 def admin_login_as_user(user_id):
     """Login as another user (admin only)"""
     from flask import session
@@ -842,7 +910,7 @@ def admin_login_as_user(user_id):
 
 @api_bp.route('/admin/reset-password/<int:user_id>', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('users.edit')
 def admin_reset_password(user_id):
     """Reset a user's password (admin only)"""
     import secrets
@@ -887,9 +955,9 @@ def admin_reset_password(user_id):
 
 @api_bp.route('/admin/clubs/<int:club_id>', methods=['PUT'])
 @login_required
-@admin_required
+@permission_required('clubs.edit')
 def admin_update_club(club_id):
-    """Update club details (admin only)"""
+    """Update club details (requires clubs.edit permission)"""
     club = Club.query.get_or_404(club_id)
     current_user = get_current_user()
 
@@ -940,9 +1008,9 @@ def admin_update_club(club_id):
 
 @api_bp.route('/admin/clubs/<int:club_id>', methods=['DELETE'])
 @login_required
-@admin_required
+@permission_required('clubs.delete')
 def admin_delete_club(club_id):
-    """Delete a club (admin only)"""
+    """Delete a club (requires clubs.delete permission)"""
     club = Club.query.get_or_404(club_id)
     current_user = get_current_user()
 
@@ -972,14 +1040,14 @@ def admin_delete_club(club_id):
 
 @api_bp.route('/admin/clubs/<int:club_id>/sync-immune', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('clubs.edit')
 def admin_sync_club_immune(club_id):
-    """Set club sync immunity status (admin only)"""
+    """Set club sync immunity status (requires clubs.edit permission)"""
     club = Club.query.get_or_404(club_id)
     current_user = get_current_user()
 
     data = request.get_json()
-    immune = data.get('immune', False)
+    immune = data.get('sync_immune', data.get('immune', False))
 
     # Add immune field if it doesn't exist
     if not hasattr(club, 'sync_immune'):
@@ -1008,9 +1076,9 @@ def admin_sync_club_immune(club_id):
 
 @api_bp.route('/admin/clubs/<int:club_id>/transfer-leadership', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('clubs.edit')
 def admin_transfer_club_leadership(club_id):
-    """Transfer club leadership to another user (admin only)"""
+    """Transfer club leadership to another user (requires clubs.edit permission)"""
     club = Club.query.get_or_404(club_id)
     current_user = get_current_user()
 
@@ -1136,7 +1204,7 @@ def admin_delete_pizza_grant(grant_id):
 
 @api_bp.route('/admin/apikeys', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('admin.manage_api_keys')
 def admin_create_api_key():
     """Create a new API key (admin only)"""
     from app.models.auth import APIKey
@@ -1232,7 +1300,7 @@ def admin_update_api_key(key_id):
 
 @api_bp.route('/admin/api-keys/<int:key_id>', methods=['DELETE'])
 @login_required
-@admin_required
+@permission_required('admin.manage_api_keys')
 def admin_delete_api_key(key_id):
     """Delete an API key (admin only)"""
     from app.models.auth import APIKey
@@ -1403,7 +1471,7 @@ def admin_delete_oauth_app(app_id):
 
 @api_bp.route('/admin/rbac/users/<int:user_id>/roles', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('users.assign_roles', 'system.manage_roles')
 def admin_assign_role_to_user(user_id):
     """Assign a role to a user (admin only)"""
     from app.models.user import Role
@@ -1447,7 +1515,7 @@ def admin_assign_role_to_user(user_id):
 
 @api_bp.route('/admin/rbac/users/<int:user_id>/roles/<string:role_name>', methods=['DELETE'])
 @login_required
-@admin_required
+@permission_required('users.assign_roles')
 def admin_remove_role_from_user(user_id, role_name):
     """Remove a role from a user (admin only)"""
     user = User.query.get_or_404(user_id)
@@ -1512,7 +1580,7 @@ def admin_initialize_rbac():
 
 @api_bp.route('/admin/rbac/roles', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('system.manage_roles')
 def admin_create_role():
     """Create a new role (admin only)"""
     from app.models.user import Role, Permission
@@ -1573,7 +1641,7 @@ def admin_create_role():
 
 @api_bp.route('/admin/rbac/roles/<int:role_id>', methods=['PUT'])
 @login_required
-@admin_required
+@permission_required('system.manage_roles')
 def admin_update_role(role_id):
     """Update a role (admin only)"""
     from app.models.user import Role, Permission, RolePermission
@@ -1620,9 +1688,44 @@ def admin_update_role(role_id):
     })
 
 
-@api_bp.route('/admin/rbac/roles/<int:role_id>', methods=['DELETE'])
+@api_bp.route('/admin/rbac/roles/<int:role_id>/users', methods=['GET'])
 @login_required
 @admin_required
+def admin_get_role_users(role_id):
+    """Get all users assigned to a specific role"""
+    from app.models.user import Role, User
+    
+    role = Role.query.get_or_404(role_id)
+    
+    # Get all users with this role
+    users = User.query.join(User.roles).filter(Role.id == role_id).all()
+    
+    # Helper function to get user avatar (use heidi-avatar as default)
+    def get_user_avatar(user):
+        # Could be extended to use Slack avatars or Gravatar in the future
+        return '/static/assets/heidi-avatar.png'
+    
+    return jsonify({
+        'success': True,
+        'role': {
+            'id': role.id,
+            'name': role.name,
+            'display_name': role.display_name
+        },
+        'users': [{
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'avatar_url': get_user_avatar(user)
+        } for user in users]
+    })
+
+
+@api_bp.route('/admin/rbac/roles/<int:role_id>', methods=['DELETE'])
+@login_required
+@permission_required('system.manage_roles')
 def admin_delete_role(role_id):
     """Delete a role (admin only)"""
     from app.models.user import Role, UserRole
@@ -1761,7 +1864,7 @@ def admin_get_orders():
 
 @api_bp.route('/admin/orders/<string:order_id>/status', methods=['PATCH'])
 @login_required
-@admin_required
+@permission_required('orders.approve')
 def admin_update_order_status(order_id):
     """Update order status in Airtable (admin only)"""
     from app.services.airtable import AirtableService
@@ -2164,7 +2267,7 @@ def get_user_me():
     })
 
 
-@api_bp.route('/user/update', methods=['POST'])
+@api_bp.route('/user/update', methods=['POST', 'PUT'])
 @login_required
 @limiter.limit("20 per hour")
 def update_user():
@@ -2182,11 +2285,49 @@ def update_user():
     if 'last_name' in data:
         user.last_name = sanitize_string(data['last_name'], max_length=50)
 
+    if 'username' in data:
+        new_username = sanitize_string(data['username'], max_length=30).strip()
+        # Check if username is already taken by another user
+        if new_username != user.username:
+            existing_user = User.query.filter_by(username=new_username).first()
+            if existing_user:
+                return jsonify({'error': 'Username already taken'}), 400
+        user.username = new_username
+
+    if 'email' in data:
+        new_email = sanitize_string(data['email'], max_length=120).strip().lower()
+        # Check if email is already taken by another user
+        if new_email != user.email:
+            existing_user = User.query.filter_by(email=new_email).first()
+            if existing_user:
+                return jsonify({'error': 'Email already taken'}), 400
+        user.email = new_email
+
+    if 'birthday' in data:
+        user.birthday = data['birthday'] if data['birthday'] else None
+
     if 'hackatime_api_key' in data:
         user.hackatime_api_key = sanitize_string(data['hackatime_api_key'], max_length=500)
 
     if 'avatar_url' in data:
         user.avatar_url = sanitize_string(data['avatar_url'], max_length=500)
+
+    # Handle password change
+    if 'current_password' in data and 'new_password' in data:
+        current_password = data['current_password']
+        new_password = data['new_password']
+
+        # Verify current password
+        if not user.check_password(current_password):
+            return jsonify({'error': 'Current password is incorrect'}), 400
+
+        # Validate new password
+        is_valid, validation_message = validate_password(new_password)
+        if not is_valid:
+            return jsonify({'error': validation_message}), 400
+
+        # Set new password
+        user.set_password(new_password)
 
     db.session.commit()
 
@@ -2205,33 +2346,6 @@ def update_user():
     })
 
 
-@api_bp.route('/user/unlink-slack', methods=['POST'])
-@login_required
-def unlink_slack():
-    """Unlink Slack account from user"""
-    user = get_current_user()
-    if not user:
-        return jsonify({'error': 'Not authenticated'}), 401
-
-    # Clear Slack-related fields
-    user.slack_user_id = None
-    db.session.commit()
-
-    create_audit_log(
-        action_type='slack_unlink',
-        description=f'User {user.username} unlinked their Slack account',
-        user=user,
-        target_type='user',
-        target_id=user.id,
-        category='user'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'Slack account unlinked successfully'
-    })
-
-
 # ============================================================================
 # Identity/OAuth API Endpoints
 # ============================================================================
@@ -2245,27 +2359,61 @@ def identity_status():
         return jsonify({'error': 'Not authenticated'}), 401
 
     # Check if user has Hack Club identity linked
-    has_identity = bool(user.slack_user_id)  # Simplified check
+    has_identity = bool(user.identity_token and user.identity_verified)
+    slack_id = user.slack_user_id if user.slack_user_id else None
 
     return jsonify({
         'linked': has_identity,
-        'slack_user_id': user.slack_user_id if has_identity else None
+        'verified': user.identity_verified,
+        'slack_id': slack_id,
+        'status': 'verified' if has_identity else 'unverified'
     })
 
 
-@api_bp.route('/identity/authorize', methods=['POST'])
+@api_bp.route('/identity/authorize', methods=['GET', 'POST'])
 @login_required
 def identity_authorize():
     """Start Hack Club identity authorization flow"""
+    import os
+    import secrets
+    from app.services.identity import HackClubIdentityService, init_service
+    
     user = get_current_user()
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # TODO: Implement actual Hack Club identity OAuth flow
+    # Get OAuth credentials
+    client_id = os.getenv('HACKCLUB_IDENTITY_CLIENT_ID')
+    client_secret = os.getenv('HACKCLUB_IDENTITY_CLIENT_SECRET')
+    identity_url = os.getenv('HACKCLUB_IDENTITY_URL', 'https://identity.hackclub.com')
+    
+    if not client_id or not client_secret:
+        return jsonify({
+            'error': 'Identity provider not configured',
+            'message': 'Hack Club Identity OAuth is not configured on this server'
+        }), 503
+
+    # Initialize service
+    init_service(current_app._get_current_object(), identity_url, client_id, client_secret)
+    identity_service = HackClubIdentityService()
+
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    session['hackclub_identity_state'] = state
+    
+    # Get redirect URI
+    redirect_uri = request.url_root.rstrip('/') + '/auth/identity/callback'
+    if request.url_root.startswith('http://'):
+        # Force HTTPS for production
+        redirect_uri = redirect_uri.replace('http://', 'https://', 1)
+    
+    # Build authorization URL
+    auth_url = identity_service.get_auth_url(redirect_uri, state)
+    
     return jsonify({
-        'error': 'Identity authorization not yet implemented',
-        'message': 'This feature is coming soon'
-    }), 501
+        'url': auth_url,
+        'state': state
+    })
 
 
 # ============================================================================
@@ -3369,6 +3517,125 @@ def delete_club_meeting(club_id, meeting_id):
     db.session.commit()
 
     return jsonify({'message': 'Meeting deleted successfully'})
+
+
+@api_bp.route('/clubs/<int:club_id>/resources', methods=['GET', 'POST'])
+@login_required
+@limiter.limit("500 per hour")
+def club_resources(club_id):
+    """Get or create club resources"""
+    from app.models.club_content import ClubResource
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_co_leader = is_user_co_leader(club, current_user)
+    is_member = ClubMembership.query.filter_by(club_id=club_id, user_id=current_user.id).first()
+
+    if not is_leader and not is_co_leader and not is_member:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if request.method == 'POST':
+        # Only leaders and co-leaders can create resources
+        if not is_leader and not is_co_leader:
+            return jsonify({'error': 'Only club leaders can create resources'}), 403
+
+        data = request.get_json()
+        title = data.get('title')
+        url = data.get('url')
+        description = data.get('description')
+        icon = data.get('icon', 'book')
+
+        if not title or not url:
+            return jsonify({'error': 'Title and URL are required'}), 400
+
+        # Validate inputs
+        from app.utils.security import validate_input_with_security
+        from flask import current_app
+        
+        valid, result = validate_input_with_security(title, "resource_title", current_user, max_length=200, app=current_app)
+        if not valid:
+            return jsonify({'error': result}), 403
+        title = result
+
+        valid, result = validate_input_with_security(url, "resource_url", current_user, max_length=500, app=current_app)
+        if not valid:
+            return jsonify({'error': result}), 403
+        url = result
+
+        if description:
+            valid, result = validate_input_with_security(description, "resource_description", current_user, max_length=2000, app=current_app)
+            if not valid:
+                return jsonify({'error': result}), 403
+            description = result
+
+        resource = ClubResource(
+            club_id=club_id,
+            title=title,
+            url=url,
+            description=description,
+            icon=icon
+        )
+        db.session.add(resource)
+        db.session.commit()
+
+        create_audit_log(
+            action_type='create_resource',
+            description=f"User {current_user.username} created resource '{title}' in {club.name}",
+            user=current_user,
+            target_type='club',
+            target_id=club_id,
+            category='club'
+        )
+
+        return jsonify({'message': 'Resource created successfully', 'resource_id': resource.id})
+
+    # GET request
+    resources = ClubResource.query.filter_by(club_id=club_id).order_by(ClubResource.created_at.desc()).all()
+    resources_data = [{
+        'id': r.id,
+        'title': r.title,
+        'url': r.url,
+        'description': r.description,
+        'icon': r.icon,
+        'created_at': r.created_at.isoformat() if r.created_at else None
+    } for r in resources]
+
+    return jsonify({'resources': resources_data})
+
+
+@api_bp.route('/clubs/<int:club_id>/resources/<int:resource_id>', methods=['DELETE'])
+@login_required
+@limiter.limit("100 per hour")
+def delete_club_resource(club_id, resource_id):
+    """Delete a club resource"""
+    from app.models.club_content import ClubResource
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+    resource = ClubResource.query.get_or_404(resource_id)
+
+    if resource.club_id != club_id:
+        return jsonify({'error': 'Resource not found in this club'}), 404
+
+    is_leader = club.leader_id == current_user.id
+    is_co_leader = is_user_co_leader(club, current_user)
+
+    if not is_leader and not is_co_leader and not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    db.session.delete(resource)
+    db.session.commit()
+
+    create_audit_log(
+        action_type='delete_resource',
+        description=f"User {current_user.username} deleted resource '{resource.title}' in {club.name}",
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        category='club'
+    )
+
+    return jsonify({'message': 'Resource deleted successfully'})
 
 
 @api_bp.route('/clubs/<int:club_id>/transactions', methods=['GET'])

@@ -905,6 +905,30 @@ endblock %} {% block extra_head %}
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deletePostModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i> Confirm Delete</h3>
+            <button class="close-btn" onclick="closeDeleteModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this post? This action cannot be undone.</p>
+            <input type="hidden" id="deletePostId" value="">
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">
+                Cancel
+            </button>
+            <button class="btn btn-danger" onclick="confirmDeletePost()" style="background: #dc3545; color: white;">
+                <i class="fas fa-trash" style="color: white;"></i> Delete Post
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     let selectedFiles = [];
     let posts = [];
@@ -1537,9 +1561,22 @@ endblock %} {% block extra_head %}
     }
 
     function deletePost(postId) {
-        if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
-            return;
-        }
+        // Show delete confirmation modal
+        document.getElementById('deletePostId').value = postId;
+        document.getElementById('deletePostModal').style.display = 'block';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deletePostModal').style.display = 'none';
+        document.getElementById('deletePostId').value = '';
+    }
+
+    function confirmDeletePost() {
+        const postId = document.getElementById('deletePostId').value;
+        if (!postId) return;
+
+        // Close modal first
+        closeDeleteModal();
 
         fetch(`/api/gallery/posts/${postId}`, {
             method: 'DELETE',
@@ -1589,6 +1626,7 @@ endblock %} {% block extra_head %}
         if (e.target.classList.contains('modal')) {
             if (e.target.id === 'createPostModal') closeCreatePostModal();
             if (e.target.id === 'postDetailModal') closePostDetailModal();
+            if (e.target.id === 'deletePostModal') closeDeleteModal();
         }
     });
 
@@ -1603,8 +1641,11 @@ endblock %} {% block extra_head %}
 
             const createModal = document.getElementById('createPostModal');
             const detailModal = document.getElementById('postDetailModal');
+            const deleteModal = document.getElementById('deletePostModal');
 
-            if (createModal && createModal.style.display === 'block') {
+            if (deleteModal && deleteModal.style.display === 'block') {
+                closeDeleteModal();
+            } else if (createModal && createModal.style.display === 'block') {
                 closeCreatePostModal();
             } else if (detailModal && detailModal.style.display === 'block') {
                 closePostDetailModal();

@@ -437,6 +437,17 @@ def export_attendance(club_id):
         AttendanceSession.session_date.desc()
     ).all()
 
+    # Helper function to sanitize CSV cells (prevent formula injection)
+    def sanitize_csv_cell(value):
+        """Prevent CSV formula injection by escaping dangerous characters"""
+        if not value:
+            return ''
+        value_str = str(value)
+        # If the cell starts with =, +, -, @, or tab/carriage return, prefix with single quote
+        if value_str and value_str[0] in ('=', '+', '-', '@', '\t', '\r'):
+            return "'" + value_str
+        return value_str
+
     # Create CSV
     output = StringIO()
     writer = csv.writer(output)
@@ -451,9 +462,9 @@ def export_attendance(club_id):
         for record in records:
             writer.writerow([
                 session.session_date.strftime('%Y-%m-%d') if session.session_date else '',
-                session.title,
-                f"{record.user.first_name} {record.user.last_name}".strip() or record.user.username,
-                record.user.email,
+                sanitize_csv_cell(session.title),
+                sanitize_csv_cell(f"{record.user.first_name} {record.user.last_name}".strip() or record.user.username),
+                sanitize_csv_cell(record.user.email),
                 'Member',
                 record.checked_in_at.strftime('%Y-%m-%d %H:%M:%S') if record.checked_in_at else ''
             ])
@@ -463,9 +474,9 @@ def export_attendance(club_id):
         for guest in guests:
             writer.writerow([
                 session.session_date.strftime('%Y-%m-%d') if session.session_date else '',
-                session.title,
-                guest.name,
-                guest.email or '',
+                sanitize_csv_cell(session.title),
+                sanitize_csv_cell(guest.name),
+                sanitize_csv_cell(guest.email or ''),
                 'Guest',
                 guest.checked_in_at.strftime('%Y-%m-%d %H:%M:%S') if guest.checked_in_at else ''
             ])

@@ -70,8 +70,8 @@ def status_page():
 @status_bp.route('/api/status', methods=['GET'])
 def api_status():
     """API endpoint for status"""
-    incidents = StatusIncident.query.filter_by(
-        is_resolved=False
+    incidents = StatusIncident.query.filter(
+        StatusIncident.status != 'resolved'
     ).order_by(StatusIncident.created_at.desc()).all()
 
     incidents_data = []
@@ -84,8 +84,8 @@ def api_status():
             'id': incident.id,
             'title': incident.title,
             'description': incident.description,
-            'severity': incident.severity,
-            'affected_components': incident.affected_components,
+            'impact': incident.impact,
+            'affected_services': incident.get_affected_services(),
             'created_at': incident.created_at.isoformat() if incident.created_at else None,
             'updates': [{
                 'id': update.id,
@@ -96,9 +96,9 @@ def api_status():
         })
 
     # Determine overall status
-    if any(inc['severity'] in ['critical', 'major'] for inc in incidents_data):
+    if any(inc['impact'] in ['critical', 'major'] for inc in incidents_data):
         overall_status = 'degraded'
-    elif any(inc['severity'] == 'minor' for inc in incidents_data):
+    elif any(inc['impact'] == 'minor' for inc in incidents_data):
         overall_status = 'minor_issues'
     else:
         overall_status = 'operational'
@@ -126,9 +126,9 @@ def admin_incidents():
                 'id': incident.id,
                 'title': incident.title,
                 'description': incident.description,
-                'severity': incident.severity,
-                'affected_components': incident.affected_components,
-                'is_resolved': incident.is_resolved,
+                'status': incident.status,
+                'impact': incident.impact,
+                'affected_services': incident.get_affected_services(),
                 'created_at': incident.created_at.isoformat() if incident.created_at else None,
                 'resolved_at': incident.resolved_at.isoformat() if incident.resolved_at else None
             })
@@ -143,22 +143,22 @@ def admin_incidents():
 
         title = sanitize_string(data.get('title', ''), max_length=200)
         description = sanitize_string(data.get('description', ''), max_length=2000)
-        severity = data.get('severity', 'minor')
-        affected_components = data.get('affected_components', [])
+        impact = data.get('impact', 'minor')
+        affected_services = data.get('affected_services', [])
 
         if not title:
             return jsonify({'error': 'Title is required'}), 400
 
-        if severity not in ['minor', 'major', 'critical']:
-            return jsonify({'error': 'Invalid severity'}), 400
+        if impact not in ['minor', 'major', 'critical']:
+            return jsonify({'error': 'Invalid impact level'}), 400
 
         incident = StatusIncident(
             title=title,
             description=description,
-            severity=severity,
-            affected_components=affected_components,
+            impact=impact,
             created_by=get_current_user().id
         )
+        incident.set_affected_services(affected_services)
 
         db.session.add(incident)
         db.session.commit()
@@ -168,7 +168,7 @@ def admin_incidents():
             'incident': {
                 'id': incident.id,
                 'title': incident.title,
-                'severity': incident.severity
+                'impact': incident.impact
             }
         }), 201
 
@@ -215,7 +215,7 @@ def resolve_incident(incident_id):
     """Resolve an incident"""
     incident = StatusIncident.query.get_or_404(incident_id)
 
-    incident.is_resolved = True
+    incident.status = 'resolved'
     incident.resolved_at = datetime.now(timezone.utc)
 
     db.session.commit()

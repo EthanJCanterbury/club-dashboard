@@ -1065,31 +1065,36 @@
             const proceedButton = document.getElementById('proceedButton');
             const fraudAgreement = document.getElementById('fraudAgreement');
             const projectForm = document.getElementById('projectForm');
-            
+
+            // Check if elements exist before adding event listeners
+            if (!agreementCheckbox || !proceedButton) {
+                return; // Elements don't exist, skip initialization
+            }
+
             // Enable/disable proceed button based on checkbox
             agreementCheckbox.addEventListener('change', function() {
                 proceedButton.disabled = !this.checked;
-                
+
                 if (this.checked) {
                     proceedButton.classList.remove('disabled');
                 } else {
                     proceedButton.classList.add('disabled');
                 }
             });
-            
+
             // Handle proceed button click
             proceedButton.addEventListener('click', function() {
                 if (!agreementCheckbox.checked) {
                     alert('You must agree to the terms before proceeding.');
                     return;
                 }
-                
+
                 // Hide agreement and show form
-                fraudAgreement.style.display = 'none';
-                projectForm.style.display = 'block';
-                
-                // Scroll to top of form
-                projectForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (fraudAgreement) fraudAgreement.style.display = 'none';
+                if (projectForm) {
+                    projectForm.style.display = 'block';
+                    projectForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             });
         }
 

@@ -935,6 +935,44 @@ class AirtableService:
             logger.error(f"Exception checking email code: {str(e)}")
             return False
 
+    def check_recent_verification(self, email, max_age_minutes=5):
+        """Check if there's a recent verified email verification for this email"""
+        if not self.api_token:
+            logger.error("Airtable API token not configured for email verification")
+            return False
+
+        try:
+            from datetime import datetime, timedelta
+            
+            # Calculate cutoff time (5 minutes ago by default)
+            cutoff_time = datetime.utcnow() - timedelta(minutes=max_age_minutes)
+            cutoff_time_iso = cutoff_time.isoformat() + 'Z'
+            
+            # Find recent verified records
+            filter_params = {
+                'filterByFormula': f'AND({{Email}} = "{email}", {{Status}} = "Verified", IS_AFTER({{Modified}}, "{cutoff_time_iso}"))'
+            }
+
+            response = self._safe_request('GET', self.email_verification_url, headers=self.headers, params=filter_params, timeout=90)
+
+            if response.status_code == 200:
+                data = response.json()
+                records = data.get('records', [])
+
+                if records:
+                    logger.info(f"Recent verification found for {email}")
+                    return True
+                else:
+                    logger.warning(f"No recent verification found for {email}")
+                    return False
+            else:
+                logger.error(f"Error checking recent verification: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception checking recent verification: {str(e)}")
+            return False
+
     def sync_all_clubs_with_airtable(self):
         """Sync all clubs with Airtable data"""
         try:

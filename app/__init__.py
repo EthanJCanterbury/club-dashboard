@@ -23,7 +23,9 @@ def create_app(config_class=Config):
         Configured Flask application instance
     """
     # Create Flask app
-    app = Flask(__name__, template_folder='../templates', static_folder='../static')
+    app = Flask(__name__,
+                template_folder='../templates',
+                static_folder='../static')
 
     # Load configuration
     app.config.from_object(config_class)
@@ -31,8 +33,7 @@ def create_app(config_class=Config):
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     # Initialize profanity filter
     profanity.load_censor_words()
@@ -81,12 +82,13 @@ def register_blueprints(app):
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(clubs_bp)
-    app.register_blueprint(admin_bp)      # Prefix: /admin
-    app.register_blueprint(api_bp)        # Prefix: /api
-    app.register_blueprint(chat_bp)       # Routes: /api/club/<id>/chat/*
-    app.register_blueprint(attendance_bp) # Routes: /api/clubs/<id>/attendance/*
-    app.register_blueprint(status_bp)     # Routes: /status, /admin/status/*
-    app.register_blueprint(oauth_bp)      # Prefix: /oauth
+    app.register_blueprint(admin_bp)  # Prefix: /admin
+    app.register_blueprint(api_bp)  # Prefix: /api
+    app.register_blueprint(chat_bp)  # Routes: /api/club/<id>/chat/*
+    app.register_blueprint(
+        attendance_bp)  # Routes: /api/clubs/<id>/attendance/*
+    app.register_blueprint(status_bp)  # Routes: /status, /admin/status/*
+    app.register_blueprint(oauth_bp)  # Prefix: /oauth
 
 
 def register_error_handlers(app):
@@ -98,57 +100,148 @@ def register_error_handlers(app):
         if request.path.startswith('/api/'):
             return jsonify({'error': 'Bad request', 'message': str(e)}), 400
         try:
-            return render_template('error.html', error_code=400, error_message='Bad Request'), 400
+            return render_template(
+                'errors/400.html',
+                error_code=400,
+                error_title='Bad Request',
+                error_message=
+                'The request could not be understood by the server.'), 400
         except:
             return '<h1>400 Bad Request</h1>', 400
 
     @app.errorhandler(403)
     def forbidden(e):
         if request.path.startswith('/api/'):
-            return jsonify({'error': 'Forbidden', 'message': 'You do not have permission to access this resource'}), 403
+            return jsonify({
+                'error':
+                'Forbidden',
+                'message':
+                'You do not have permission to access this resource'
+            }), 403
         try:
-            return render_template('error.html', error_code=403, error_message='Forbidden'), 403
+            return render_template(
+                'errors/403.html',
+                error_code=403,
+                error_title='Forbidden',
+                error_message=
+                'You do not have permission to access this resource.'), 403
         except:
             return '<h1>403 Forbidden</h1>', 403
 
     @app.errorhandler(404)
     def not_found(e):
         if request.path.startswith('/api/'):
-            return jsonify({'error': 'Not found', 'message': 'The requested resource was not found'}), 404
+            return jsonify({
+                'error': 'Not found',
+                'message': 'The requested resource was not found'
+            }), 404
         try:
-            return render_template('error.html', error_code=404, error_message='Page Not Found'), 404
+            return render_template(
+                'errors/404.html',
+                error_code=404,
+                error_title='Page Not Found',
+                error_message='The page you are looking for does not exist.'
+            ), 404
         except:
             return '<h1>404 Page Not Found</h1>', 404
 
     @app.errorhandler(429)
     def ratelimit_handler(e):
         if request.path.startswith('/api/'):
-            return jsonify({'error': 'Too many requests', 'message': 'Rate limit exceeded'}), 429
+            return jsonify({
+                'error': 'Too many requests',
+                'message': 'Rate limit exceeded'
+            }), 429
         try:
-            return render_template('error.html', error_code=429, error_message='Too Many Requests'), 429
+            return render_template(
+                'errors/429.html',
+                error_code=429,
+                error_title='Too Many Requests',
+                error_message=
+                'You have made too many requests. Please try again later.'
+            ), 429
         except:
             return '<h1>429 Too Many Requests</h1>', 429
+
+    @app.errorhandler(401)
+    def unauthorized(e):
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'error': 'Unauthorized',
+                'message': 'Authentication is required'
+            }), 401
+        try:
+            return render_template(
+                'errors/401.html',
+                error_code=401,
+                error_title='Unauthorized',
+                error_message='You need to be logged in to access this page.'
+            ), 401
+        except:
+            return '<h1>401 Unauthorized</h1>', 401
+
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'error':
+                'Method not allowed',
+                'message':
+                'The request method is not supported for this resource'
+            }), 405
+        try:
+            return render_template(
+                'errors/405.html',
+                error_code=405,
+                error_title='Method Not Allowed',
+                error_message=
+                'The request method is not supported for this resource.'), 405
+        except:
+            return '<h1>405 Method Not Allowed</h1>', 405
 
     @app.errorhandler(500)
     def internal_error(e):
         app.logger.error(f'Internal server error: {str(e)}')
         if request.path.startswith('/api/'):
-            return jsonify({'error': 'Internal server error', 'message': 'An unexpected error occurred'}), 500
+            return jsonify({
+                'error': 'Internal server error',
+                'message': 'An unexpected error occurred'
+            }), 500
         try:
-            return render_template('error.html', error_code=500, error_message='Internal Server Error'), 500
+            return render_template(
+                'errors/500.html',
+                error_code=500,
+                error_title='Internal Server Error',
+                error_message=
+                'An unexpected error occurred. We have been notified and are working to fix it.'
+            ), 500
         except:
             return '<h1>500 Internal Server Error</h1>', 500
+
+    @app.errorhandler(503)
+    def service_unavailable(e):
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'error': 'Service unavailable',
+                'message': 'The service is temporarily unavailable'
+            }), 503
+        try:
+            return render_template(
+                'errors/503.html',
+                error_code=503,
+                error_title='Service Unavailable',
+                error_message=
+                'The service is temporarily unavailable. Please try again later.'
+            ), 503
+        except:
+            return '<h1>503 Service Unavailable</h1>', 503
 
 
 def register_template_helpers(app):
     """Register Jinja2 template filters and context processors"""
-    from app.utils.sanitization import (
-        markdown_to_html,
-        sanitize_css_color,
-        sanitize_css_value,
-        sanitize_html_attribute,
-        sanitize_url
-    )
+    from app.utils.sanitization import (markdown_to_html, sanitize_css_color,
+                                        sanitize_css_value,
+                                        sanitize_html_attribute, sanitize_url)
     from app.utils.auth_helpers import get_current_user
     from app.models.system import SystemSettings
 
@@ -172,9 +265,10 @@ def register_template_helpers(app):
             is_maintenance_mode=SystemSettings.is_maintenance_mode(),
             is_economy_enabled=SystemSettings.is_economy_enabled(),
             is_mobile_enabled=SystemSettings.is_mobile_enabled(),
-            economy_enabled=SystemSettings.is_economy_enabled()  # Legacy compatibility
+            economy_enabled=SystemSettings.is_economy_enabled(
+            )  # Legacy compatibility
         )
-    
+
     # Context processor for cosmetics functions
     @app.context_processor
     def inject_cosmetics_functions():
@@ -183,15 +277,13 @@ def register_template_helpers(app):
         from app.utils.sanitization import sanitize_html_attribute
         from app.models.club import MemberCosmetic
         from app.models.user import User
-        
+
         def get_member_cosmetics(club_id, user_id):
             """Get cosmetic effects for a club member"""
-            cosmetic = MemberCosmetic.query.filter_by(
-                club_id=club_id,
-                user_id=user_id
-            ).first()
+            cosmetic = MemberCosmetic.query.filter_by(club_id=club_id,
+                                                      user_id=user_id).first()
             return cosmetic.cosmetic_type if cosmetic else None
-        
+
         def get_cosmetic_css_class(effects):
             """Convert cosmetic effects to CSS class"""
             if not effects:
@@ -204,17 +296,17 @@ def register_template_helpers(app):
                 'fire': 'fire-text'
             }
             return effect_classes.get(effects, '')
-        
+
         def apply_member_cosmetics(club_id, user_id, username):
             """Apply cosmetic effects to a member's username"""
             user = User.query.get(user_id)
             escaped_username = html.escape(username) if username else ''
             result = escaped_username
-            
+
             # Check if user is admin and add lightning bolt
             if user and user.is_admin:
                 result = f'{escaped_username} <i class="fas fa-bolt" style="color: #fbbf24; margin-left: 4px;" title="Admin"></i>'
-            
+
             # Apply cosmetic effects
             effects = get_member_cosmetics(club_id, user_id)
             if effects:
@@ -222,24 +314,25 @@ def register_template_helpers(app):
                 if css_class:
                     safe_css_class = sanitize_html_attribute(css_class)
                     result = f'<span class="{safe_css_class}">{result}</span>'
-            
+
             return result
-        
-        return dict(
-            get_member_cosmetics=get_member_cosmetics,
-            get_cosmetic_css_class=get_cosmetic_css_class,
-            apply_member_cosmetics=apply_member_cosmetics
-        )
-    
+
+        return dict(get_member_cosmetics=get_member_cosmetics,
+                    get_cosmetic_css_class=get_cosmetic_css_class,
+                    apply_member_cosmetics=apply_member_cosmetics)
+
     # Override url_for to provide backward compatibility for templates
     from flask import url_for as flask_url_for
-    
+
     @app.context_processor
     def override_url_for():
         """Provide backward compatibility for old endpoint names"""
+
         def url_for_compat(endpoint, **values):
             # Map old endpoint names to new blueprint names
             endpoint_map = {
+                # Static files
+                'static': 'static',
                 # Main routes
                 'index': 'main.index',
                 'dashboard': 'main.dashboard',
@@ -256,18 +349,14 @@ def register_template_helpers(app):
                 'reset_password': 'auth.reset_password',
                 'verify_email': 'auth.verify_email',
                 'verify_reset_code': 'auth.verify_reset_code',
-                'slack_login': 'auth.slack_login',
-                'auth_slack': 'auth.slack_login',
-                'auth_slack_callback': 'auth.slack_callback',
-                'complete_slack_signup': 'auth.complete_slack_signup',
                 'verify_leader': 'auth.verify_leader',
+                'setup_hackatime': 'auth.setup_hackatime',
                 # Club routes
                 'club_dashboard': 'main.club_dashboard',
                 'club_shop': 'clubs.club_shop',
                 'club_orders': 'clubs.club_orders',
                 'poster_editor': 'clubs.poster_editor',
                 'project_submission': 'clubs.project_submission',
-                'setup_hackatime': 'clubs.setup_hackatime',
                 # Blog routes
                 'blog': 'blog.blog_index',
                 'blog_list': 'blog.blog_index',
@@ -283,12 +372,12 @@ def register_template_helpers(app):
                 'admin_clubs': 'admin.admin_clubs',
                 'admin_settings': 'admin.admin_settings',
             }
-            
+
             # If endpoint is in map, use the new name, otherwise keep as-is
             endpoint = endpoint_map.get(endpoint, endpoint)
-            
+
             return flask_url_for(endpoint, **values)
-        
+
         return dict(url_for=url_for_compat)
 
 
@@ -330,8 +419,6 @@ def initialize_services(app):
     from app.services.airtable import AirtableService
     from app.services.hackatime import HackatimeService
     from app.services.identity import HackClubIdentityService
-    from app.services.slack_oauth import SlackOAuthService
-
     # Initialize services with app context
     # Services will be accessible via their respective modules
     with app.app_context():

@@ -48,6 +48,7 @@ class OAuthApplication(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = db.Column(db.Boolean, default=True)
     scopes = db.Column(db.Text)  # JSON array of allowed scopes
+    requires_identity_verification = db.Column(db.Boolean, default=False)
 
     # Relationships
     tokens = db.relationship(

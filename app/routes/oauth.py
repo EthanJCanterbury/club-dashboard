@@ -82,6 +82,22 @@ def approve_authorization():
     if not app:
         return jsonify({'error': 'invalid_client'}), 401
 
+    # Check if identity verification is required
+    if app.requires_identity_verification and not user.identity_verified:
+        # Store OAuth params and redirect to identity verification
+        session['pending_oauth'] = {
+            'application_id': app.id,
+            'client_id': client_id,
+            'redirect_uri': redirect_uri,
+            'scope': scope,
+            'state': state
+        }
+        
+        # Redirect to identity setup
+        from flask import flash
+        flash('This application requires identity verification', 'info')
+        return redirect(url_for('main.account'))
+
     # Generate authorization code
     code = secrets.token_urlsafe(32)
 
@@ -272,38 +288,6 @@ def oauth_consent():
     if not app:
         return jsonify({'error': 'Unknown client'}), 404
 
-    # Check if mobile
-    user_agent = request.headers.get('User-Agent', '').lower()
-    is_mobile = any(mobile in user_agent for mobile in ['mobile', 'android', 'iphone', 'ipad'])
-
-    if is_mobile:
-        return render_template('oauth_consent_mobile.html',
-                             app=app,
-                             oauth_params=oauth_params)
-
     return render_template('oauth_consent.html',
-                         app=app,
-                         oauth_params=oauth_params)
-
-
-@oauth_bp.route('/consent-mobile')
-@login_required
-def oauth_consent_mobile():
-    """OAuth consent page (mobile version)"""
-    user = get_current_user()
-
-    # Get OAuth parameters from session or query string
-    oauth_params = session.get('oauth_params', {})
-    client_id = oauth_params.get('client_id') or request.args.get('client_id')
-
-    if not client_id:
-        return jsonify({'error': 'Missing client_id'}), 400
-
-    # Get OAuth application
-    app = OAuthApplication.query.filter_by(client_id=client_id).first()
-    if not app:
-        return jsonify({'error': 'Unknown client'}), 404
-
-    return render_template('oauth_consent_mobile.html',
                          app=app,
                          oauth_params=oauth_params)

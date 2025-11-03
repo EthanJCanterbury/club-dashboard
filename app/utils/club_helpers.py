@@ -37,11 +37,3 @@ def verify_club_leadership(club, user, require_leader_only=False):
         return is_authorized, role
 
 
-def club_has_gallery_post(club_id):
-    """
-    Check if a club has made at least one gallery post.
-    Returns True if the club has at least one gallery post, False otherwise.
-    NOTE: Gallery post requirement has been disabled - always returns True.
-    """
-    # Gallery post requirement disabled - always return True to allow shop access
-    return True

@@ -459,7 +459,7 @@ def add_security_headers(response):
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
             "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://r2cdn.perplexity.ai; "
             "img-src 'self' data: https:; "
-            "connect-src 'self' https://api.hackclub.com https://ai.hackclub.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+            "connect-src 'self' https://api.hackclub.com https://ai.hackclub.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://server.fillout.com; "
             "frame-src 'self' https://forms.hackclub.com https://server.fillout.com; "
             "object-src 'none'; "
             "base-uri 'self'"

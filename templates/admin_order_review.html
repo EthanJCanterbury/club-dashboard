@@ -677,50 +677,7 @@
 </div>
 
 <!-- Success Modal -->
-<div id="successModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header success">
-            <h3><i class="fas fa-check-circle"></i> Success</h3>
-        </div>
-        <div class="modal-body">
-            <p id="successMessage">Operation completed successfully!</p>
-        </div>
-        <div class="modal-footer">
-            <button onclick="closeModal('successModal')" class="btn-modal btn-success">OK</button>
-        </div>
-    </div>
-</div>
-
-<!-- Error Modal -->
-<div id="errorModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header error">
-            <h3><i class="fas fa-exclamation-triangle"></i> Error</h3>
-        </div>
-        <div class="modal-body">
-            <p id="errorMessage">An error occurred!</p>
-        </div>
-        <div class="modal-footer">
-            <button onclick="closeModal('errorModal')" class="btn-modal btn-error">OK</button>
-        </div>
-    </div>
-</div>
-
-<!-- Confirmation Modal -->
-<div id="confirmModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header warning">
-            <h3><i class="fas fa-exclamation-triangle"></i> Confirm Action</h3>
-        </div>
-        <div class="modal-body">
-            <p id="confirmMessage">Are you sure you want to perform this action?</p>
-        </div>
-        <div class="modal-footer">
-            <button onclick="closeModal('confirmModal')" class="btn-modal btn-secondary">Cancel</button>
-            <button id="confirmButton" class="btn-modal btn-danger">Confirm</button>
-        </div>
-    </div>
-</div>
+<!-- successModal, errorModal, confirmModal removed - now using UniversalModal -->
 
 <script>
 let allOrders = [];
@@ -729,32 +686,25 @@ let shopItems = {}; // Cache for shop items
 const IS_ADMIN = {{ 'true' if current_user.is_admin else 'false' }};
 const CAN_APPROVE_ORDERS = {{ 'true' if current_user.has_permission('orders.approve') else 'false' }};
 
-// Modal helper functions
+// Modal helper functions - now using UniversalModal
 function showModal(modalId) {
-    document.getElementById(modalId).style.display = 'flex';
+    // Deprecated - use UniversalModal instead
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    // Deprecated - use UniversalModal.hide() instead
 }
 
 function showSuccessModal(message) {
-    document.getElementById('successMessage').textContent = message;
-    showModal('successModal');
+    UniversalModal.success(message);
 }
 
 function showErrorModal(message) {
-    document.getElementById('errorMessage').textContent = message;
-    showModal('errorModal');
+    UniversalModal.error(message);
 }
 
 function showConfirmModal(message, onConfirm) {
-    document.getElementById('confirmMessage').textContent = message;
-    document.getElementById('confirmButton').onclick = function() {
-        closeModal('confirmModal');
-        onConfirm();
-    };
-    showModal('confirmModal');
+    UniversalModal.confirm(message, onConfirm, null, 'Confirm Action');
 }
 
 // Close modals when clicking outside

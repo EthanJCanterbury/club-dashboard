@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- CRITICAL: Load theme BEFORE anything else to prevent flash -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Hack Club Dashboard{% endblock %}</title>
@@ -32,7 +42,13 @@
     {% block extra_styles %}{% endblock %}
 
     <style>
+        /* ============================================
+           LIGHT & DARK THEME SYSTEM
+           Beautiful themes with smooth transitions
+           ============================================ */
+        
         :root {
+            /* Brand Colors (same in both themes) */
             --primary: #ec3750;
             --primary-dark: #d63146;
             --primary-light: #ff5e73;
@@ -41,15 +57,53 @@
             --warning: #f59e0b;
             --error: #ef4444;
             --info: #3b82f6;
+            
+            /* Light Theme Colors */
             --background: #f8f9fa;
+            --background-secondary: #f3f4f6;
             --surface: #ffffff;
+            --surface-elevated: #ffffff;
             --text: #1f2937;
             --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
             --border: #e5e7eb;
+            --border-light: #f3f4f6;
             --shadow: 0 1px 3px rgba(0,0,0,0.1);
-            --shadow-hover: 0 4px 12px rgba(0,0,0,0.15);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+            --overlay: rgba(0, 0, 0, 0.5);
+            
+            /* UI Elements */
             --border-radius: 8px;
             --transition: all 0.2s ease;
+            --backdrop-blur: blur(8px);
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --background: #0f172a;
+            --background-secondary: #1e293b;
+            --surface: #1e293b;
+            --surface-elevated: #334155;
+            --text: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-tertiary: #94a3b8;
+            --border: #334155;
+            --border-light: #475569;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+            --shadow-xl: 0 20px 25px rgba(0,0,0,0.6);
+            --overlay: rgba(0, 0, 0, 0.8);
+        }
+        
+        /* Smooth theme transitions */
+        * {
+            transition: background-color 0.3s ease, 
+                        color 0.3s ease, 
+                        border-color 0.3s ease,
+                        box-shadow 0.3s ease;
         }
 
         * {
@@ -67,15 +121,16 @@
 
         .navbar {
             background: var(--surface);
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-md);
             padding: 0.75rem 0;
             position: sticky;
             top: 0;
             z-index: 10000;
+            border-bottom: 1px solid var(--border);
         }
 
         .navbar-content {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
@@ -100,7 +155,7 @@
         }
 
         .nav-link {
-            color: #64748b;
+            color: var(--text-secondary);
             text-decoration: none;
             font-weight: 500;
             padding: 0.5rem 1rem;
@@ -115,8 +170,64 @@
         }
 
         .nav-link:hover {
-            color: #ec3750;
+            color: var(--primary);
             background: rgba(236, 55, 80, 0.1);
+        }
+        
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--surface-elevated);
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: scale(1.1);
+        }
+        
+        .theme-toggle:hover i {
+            color: white;
+        }
+        
+        .theme-icon-dark,
+        .theme-icon-light {
+            position: absolute;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+        
+        /* Show moon in light mode, sun in dark mode */
+        [data-theme="light"] .theme-icon-light {
+            opacity: 0;
+            transform: rotate(180deg) scale(0);
+        }
+        
+        [data-theme="light"] .theme-icon-dark {
+            opacity: 1;
+            transform: rotate(0deg) scale(1);
+            color: #64748b;
+        }
+        
+        [data-theme="dark"] .theme-icon-dark {
+            opacity: 0;
+            transform: rotate(-180deg) scale(0);
+        }
+        
+        [data-theme="dark"] .theme-icon-light {
+            opacity: 1;
+            transform: rotate(0deg) scale(1);
+            color: #fbbf24;
         }
 
         .dropdown {
@@ -128,18 +239,18 @@
         .dropdown-content {
             display: none;
             position: absolute;
-            background-color: white;
+            background-color: var(--surface);
             min-width: 180px;
-            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            box-shadow: var(--shadow-lg);
             border-radius: 8px;
             z-index: 2147483647 !important;
             top: 100%;
             left: 0;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border);
         }
 
         .dropdown-content a {
-            color: #374151;
+            color: var(--text);
             padding: 12px 16px;
             text-decoration: none;
             display: block;
@@ -149,8 +260,8 @@
         }
 
         .dropdown-content a:hover {
-            background-color: #f3f4f6;
-            color: #ec3750;
+            background-color: var(--background);
+            color: var(--primary);
         }
 
         .dropdown-content a:first-child {
@@ -719,6 +830,15 @@
             z-index: 10000;
         }
 
+        /* Ensure ALL modals appear above navbar - CRITICAL FIX */
+        .modal {
+            z-index: 150000 !important;
+        }
+
+        .modal-content {
+            z-index: 150001 !important;
+        }
+
         /* Mobile responsive banner */
         @media (max-width: 768px) {
             .incident-banner-content {
@@ -821,7 +941,7 @@
                     </a>
                     {% endif %}
 
-                    {% if current_user.is_admin or current_user.is_reviewer or current_user.has_permission('orders.view') %}
+                    {% if current_user.is_admin or current_user.is_reviewer or current_user.has_permission('orders.view') or current_user.has_permission('reviews.view') or current_user.has_permission('admin.access_dashboard') %}
                     <div class="dropdown">
                         <a href="#" class="nav-link dropdown-toggle" style="border: 2px dotted #3b82f6; border-radius: 6px;">
                             <i class="fas fa-tools"></i> Staff Tools
@@ -837,7 +957,7 @@
                                 <i class="fas fa-box-open"></i> Review Orders
                             </a>
                             {% endif %}
-                            {% if current_user.is_admin %}
+                            {% if current_user.is_admin or current_user.has_permission('admin.access_dashboard') %}
                             <a href="{{ url_for('admin.dashboard') }}" style="border: 2px dotted #ff8c37; border-radius: 6px; margin: 2px;">
                                 <i class="fas fa-crown"></i> Admin
                             </a>
@@ -859,6 +979,12 @@
                             </a>
                         </div>
                     </div>
+
+                    <!-- Theme Toggle Button -->
+                    <button id="themeToggle" class="nav-link theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                        <i class="fas fa-moon theme-icon-dark"></i>
+                        <i class="fas fa-sun theme-icon-light"></i>
+                    </button>
                 {% else %}
                     {% if economy_enabled %}
                     <a href="{{ url_for('gallery') }}" class="nav-link">
@@ -870,7 +996,14 @@
                         <i class="fas fa-trophy"></i> Leaderboard
                     </a>
                     {% endif %}
+                    
                     <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+                    
+                    <!-- Theme Toggle Button -->
+                    <button id="themeToggle" class="nav-link theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                        <i class="fas fa-moon theme-icon-dark"></i>
+                        <i class="fas fa-sun theme-icon-light"></i>
+                    </button>
                     {% if user_registration_enabled %}
                     <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm">Sign Up</a>
                     {% endif %}
@@ -1186,6 +1319,15 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalSlideUp 0.3s ease;
         }
+        
+        /* Wider modal support */
+        .universal-modal-content.modal-wide {
+            max-width: 800px;
+        }
+        
+        .universal-modal-content.modal-large {
+            max-width: 1000px;
+        }
 
         .universal-modal-header {
             padding: 2rem 2rem 1rem 2rem;
@@ -1308,19 +1450,213 @@
                 min-width: auto;
             }
         }
+
+        /* ===================================================================
+           UNIVERSAL MODAL STYLING FOR ALL EXISTING MODALS
+           Apply UniversalModal look to ALL .modal elements
+           =================================================================== */
+        
+        .modal:not(.universal-modal) {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 999998;
+            align-items: center;
+            justify-content: center;
+            animation: modalFadeIn 0.2s ease-out;
+        }
+
+        .modal:not(.universal-modal) .modal-content {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalSlideUp 0.3s ease-out;
+        }
+
+        .modal .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+            border-radius: 16px 16px 0 0;
+        }
+
+        .modal .modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .modal .modal-close,
+        .modal .close,
+        .modal button.close {
+            background: none !important;
+            border: none !important;
+            font-size: 1.5rem !important;
+            cursor: pointer !important;
+            color: #9ca3af !important;
+            width: 32px !important;
+            height: 32px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 8px !important;
+            transition: all 0.2s !important;
+            padding: 0 !important;
+        }
+
+        .modal .modal-close:hover,
+        .modal .close:hover {
+            background: #f3f4f6 !important;
+            color: #111827 !important;
+        }
+
+        .modal .modal-body {
+            padding: 2rem;
+        }
+
+        .modal .modal-footer {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            background: #f9fafb;
+            border-radius: 0 0 16px 16px;
+        }
+
+        /* Button styling */
+        .modal .btn,
+        .modal .btn-modal,
+        .modal button[class*="btn"] {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .modal .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .modal .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .modal .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .modal .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .modal .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .modal .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .modal .btn-success:hover {
+            background: #059669;
+        }
+
+        /* Forms */
+        .modal .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .modal .form-label,
+        .modal label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.9375rem;
+        }
+
+        .modal .form-control,
+        .modal input[type="text"],
+        .modal input[type="email"],
+        .modal input[type="password"],
+        .modal input[type="number"],
+        .modal input[type="url"],
+        .modal input[type="date"],
+        .modal input[type="time"],
+        .modal input[type="datetime-local"],
+        .modal select,
+        .modal textarea {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            transition: all 0.2s;
+        }
+
+        .modal input:focus,
+        .modal select:focus,
+        .modal textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
     </style>
 
     <script>
         // Universal Modal System
         const UniversalModal = {
+            currentCallback: null,
+            
             show: function(options) {
                 const modal = document.getElementById('universalModal');
+                const modalContent = modal.querySelector('.universal-modal-content');
                 const icon = document.getElementById('modalIcon');
                 const title = document.getElementById('modalTitle');
                 const body = document.getElementById('modalBody');
                 const footer = document.getElementById('modalFooter');
+                
+                // Reset modal content classes
+                modalContent.className = 'universal-modal-content';
+                if (options.size === 'wide') {
+                    modalContent.classList.add('modal-wide');
+                } else if (options.size === 'large') {
+                    modalContent.classList.add('modal-large');
+                }
 
-                // Set type (info, success, warning, error, confirm)
+                // Set type (info, success, warning, error, confirm, custom)
                 const type = options.type || 'info';
                 icon.className = `universal-modal-icon ${type}`;
                 
@@ -1330,68 +1666,111 @@
                     success: '<i class="fas fa-check-circle"></i>',
                     warning: '<i class="fas fa-exclamation-triangle"></i>',
                     error: '<i class="fas fa-times-circle"></i>',
-                    confirm: '<i class="fas fa-question-circle"></i>'
+                    confirm: '<i class="fas fa-question-circle"></i>',
+                    custom: options.customIcon || '<i class="fas fa-info-circle"></i>'
                 };
                 icon.innerHTML = icons[type] || icons.info;
+                
+                // Hide icon if requested
+                if (options.hideIcon) {
+                    icon.style.display = 'none';
+                } else {
+                    icon.style.display = 'flex';
+                }
 
                 // Set title and body
                 title.textContent = options.title || 'Alert';
-                body.innerHTML = options.message || '';
+                
+                // Support both string and HTML content
+                if (options.html) {
+                    body.innerHTML = options.html;
+                } else {
+                    body.innerHTML = options.message || '';
+                }
+                
+                // Support custom body class
+                if (options.bodyClass) {
+                    body.className = 'universal-modal-body ' + options.bodyClass;
+                } else {
+                    body.className = 'universal-modal-body';
+                }
 
                 // Set buttons
                 footer.innerHTML = '';
-                if (options.confirmText) {
-                    const confirmBtn = document.createElement('button');
-                    confirmBtn.className = 'modal-btn modal-btn-primary';
-                    confirmBtn.textContent = options.confirmText || 'OK';
-                    confirmBtn.onclick = () => {
-                        this.hide();
-                        if (options.onConfirm) options.onConfirm();
-                    };
-                    footer.appendChild(confirmBtn);
-                }
                 
-                if (options.cancelText) {
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.className = 'modal-btn modal-btn-secondary';
-                    cancelBtn.textContent = options.cancelText || 'Cancel';
-                    cancelBtn.onclick = () => {
-                        this.hide();
-                        if (options.onCancel) options.onCancel();
-                    };
-                    footer.appendChild(cancelBtn);
-                }
+                // Custom footer content
+                if (options.customFooter) {
+                    footer.innerHTML = options.customFooter;
+                } else {
+                    if (options.confirmText) {
+                        const confirmBtn = document.createElement('button');
+                        confirmBtn.className = 'modal-btn modal-btn-primary';
+                        confirmBtn.textContent = options.confirmText || 'OK';
+                        confirmBtn.onclick = () => {
+                            this.hide();
+                            if (options.onConfirm) options.onConfirm();
+                        };
+                        footer.appendChild(confirmBtn);
+                    }
+                    
+                    if (options.cancelText) {
+                        const cancelBtn = document.createElement('button');
+                        cancelBtn.className = 'modal-btn modal-btn-secondary';
+                        cancelBtn.textContent = options.cancelText || 'Cancel';
+                        cancelBtn.onclick = () => {
+                            this.hide();
+                            if (options.onCancel) options.onCancel();
+                        };
+                        footer.appendChild(cancelBtn);
+                    }
 
-                if (!options.confirmText && !options.cancelText) {
-                    const okBtn = document.createElement('button');
-                    okBtn.className = 'modal-btn modal-btn-primary';
-                    okBtn.textContent = 'OK';
-                    okBtn.onclick = () => this.hide();
-                    footer.appendChild(okBtn);
+                    if (!options.confirmText && !options.cancelText) {
+                        const okBtn = document.createElement('button');
+                        okBtn.className = 'modal-btn modal-btn-primary';
+                        okBtn.textContent = 'OK';
+                        okBtn.onclick = () => this.hide();
+                        footer.appendChild(okBtn);
+                    }
                 }
 
                 // Show modal
                 modal.style.display = 'flex';
 
-                // Close on overlay click
-                modal.querySelector('.universal-modal-overlay').onclick = () => {
-                    this.hide();
-                    if (options.onCancel) options.onCancel();
-                };
-
-                // Close on Escape key
-                const escapeHandler = (e) => {
-                    if (e.key === 'Escape') {
+                // Close on overlay click (unless disabled)
+                if (!options.disableOverlayClose) {
+                    modal.querySelector('.universal-modal-overlay').onclick = () => {
                         this.hide();
                         if (options.onCancel) options.onCancel();
-                        document.removeEventListener('keydown', escapeHandler);
-                    }
-                };
-                document.addEventListener('keydown', escapeHandler);
+                    };
+                } else {
+                    modal.querySelector('.universal-modal-overlay').onclick = null;
+                }
+
+                // Close on Escape key (unless disabled)
+                if (!options.disableEscape) {
+                    const escapeHandler = (e) => {
+                        if (e.key === 'Escape') {
+                            this.hide();
+                            if (options.onCancel) options.onCancel();
+                            document.removeEventListener('keydown', escapeHandler);
+                        }
+                    };
+                    document.addEventListener('keydown', escapeHandler);
+                }
+                
+                // Store current callback for external access
+                this.currentCallback = options.onConfirm;
+                
+                // Auto-focus first input if present
+                setTimeout(() => {
+                    const firstInput = body.querySelector('input, textarea, select');
+                    if (firstInput) firstInput.focus();
+                }, 100);
             },
 
             hide: function() {
                 document.getElementById('universalModal').style.display = 'none';
+                this.currentCallback = null;
             },
 
             alert: function(message, title = 'Alert', type = 'info') {
@@ -1440,11 +1819,73 @@
                     onConfirm: onConfirm,
                     onCancel: onCancel
                 });
+            },
+            
+            // Custom modal with full control
+            custom: function(options) {
+                this.show(options);
+            }
+        };
+
+        // Global modal helper functions to make ALL modals use UniversalModal styling
+        window.openModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) {
+                console.error('Modal not found:', modalId);
+                return;
+            }
+            
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // Add ESC key handler
+            const escHandler = function(e) {
+                if (e.key === 'Escape') {
+                    closeModal(modalId);
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+            modal._escHandler = escHandler;
+            
+            // Add click outside to close
+            setTimeout(() => {
+                const clickHandler = function(e) {
+                    if (e.target === modal) {
+                        closeModal(modalId);
+                        modal.removeEventListener('click', clickHandler);
+                    }
+                };
+                modal.addEventListener('click', clickHandler);
+                modal._clickHandler = clickHandler;
+            }, 100);
+        };
+
+        window.closeModal = function(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            
+            // Remove event listeners
+            if (modal._escHandler) {
+                document.removeEventListener('keydown', modal._escHandler);
+                delete modal._escHandler;
+            }
+            if (modal._clickHandler) {
+                modal.removeEventListener('click', modal._clickHandler);
+                delete modal._clickHandler;
             }
         };
 
         // Make it globally available
         window.UniversalModal = UniversalModal;
+        
+        // Add global showUniversalModal helper function
+        window.showUniversalModal = function(options) {
+            UniversalModal.show(options);
+        };
 
         // Override native alert and confirm
         window.alert = function(message) {
@@ -1460,6 +1901,177 @@
                 );
             });
         };
+    </script>
+
+    <script>
+        // Force modal z-index above navbar on page load and when modals open
+        document.addEventListener('DOMContentLoaded', function() {
+            // Apply z-index to all existing modals
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                modal.style.zIndex = '150000';
+                const content = modal.querySelector('.modal-content');
+                if (content) {
+                    content.style.zIndex = '150001';
+                }
+            });
+
+            // Watch for modal display changes
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.target.classList.contains('modal') && mutation.target.style.display === 'block') {
+                        mutation.target.style.zIndex = '150000';
+                        const content = mutation.target.querySelector('.modal-content');
+                        if (content) {
+                            content.style.zIndex = '150001';
+                        }
+                    }
+                });
+            });
+
+            modals.forEach(modal => {
+                observer.observe(modal, { attributes: true, attributeFilter: ['style'] });
+            });
+        });
+    </script>
+
+    <!-- Dark Reader Library -->
+    <script src="{{ url_for('static', filename='js/darkreader.min.js') }}"></script>
+    
+    <!-- Dark Reader Theme System -->
+    <script>
+        // ============================================
+        //  DARK READER THEME IMPLEMENTATION
+        // ============================================
+        
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            
+            if (savedTheme === 'dark') {
+                DarkReader.enable({
+                    brightness: 100,
+                    contrast: 100,
+                    sepia: 0,
+                    darkSchemeBackgroundColor: '#0f172a',
+                    darkSchemeForegroundColor: '#f1f5f9',
+                    darkSchemeTextColor: '#e2e8f0'
+                });
+            }
+            
+            console.log('Dark Reader theme initialized:', savedTheme);
+        }
+        
+        function toggleTheme() {
+            const currentTheme = DarkReader.isEnabled() ? 'dark' : 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            console.log('Toggling theme from', currentTheme, 'to', newTheme);
+            
+            if (newTheme === 'dark') {
+                // Show beta warning unless user checked "Don't show again"
+                const dontShowAgain = localStorage.getItem('darkThemeBetaDontShow') === 'true';
+                if (!dontShowAgain) {
+                    showDarkThemeBetaModal();
+                } else {
+                    enableDarkTheme();
+                }
+            } else {
+                DarkReader.disable();
+                localStorage.setItem('theme', 'light');
+                animateThemeButton();
+            }
+            
+            console.log('Theme changed to:', newTheme);
+        }
+        
+        function showDarkThemeBetaModal() {
+            const modal = document.createElement('div');
+            modal.className = 'universal-modal';
+            modal.style.display = 'flex';
+            modal.innerHTML = `
+                <div class="universal-modal-overlay"></div>
+                <div class="universal-modal-content">
+                    <div class="universal-modal-header">
+                        <div class="universal-modal-icon warning">
+                            <i class="fas fa-moon"></i>
+                        </div>
+                        <h3>Dark Theme Beta</h3>
+                    </div>
+                    <div class="universal-modal-body">
+                        <p>Dark theme is currently in beta! Some elements may look a bit off while we fine-tune the experience. Your feedback helps us improve! 🌙</p>
+                        <div style="margin-top: 15px; padding: 12px; background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; border-radius: 4px;">
+                            <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                                <input type="checkbox" id="dontShowDarkThemeWarning" style="margin-right: 8px; cursor: pointer; width: 16px; height: 16px;">
+                                <span style="font-size: 14px; color: #64748b;">Don't show this again</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="universal-modal-footer">
+                        <button class="modal-btn modal-btn-primary" onclick="confirmDarkThemeEnable()">
+                            <i class="fas fa-check"></i> Enable Dark Theme
+                        </button>
+                        <button class="modal-btn modal-btn-secondary" onclick="closeDarkThemeModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Add click listener to overlay
+            modal.querySelector('.universal-modal-overlay').addEventListener('click', closeDarkThemeModal);
+        }
+        
+        function confirmDarkThemeEnable() {
+            const checkbox = document.getElementById('dontShowDarkThemeWarning');
+            if (checkbox && checkbox.checked) {
+                localStorage.setItem('darkThemeBetaDontShow', 'true');
+            }
+            closeDarkThemeModal();
+            enableDarkTheme();
+        }
+        
+        function closeDarkThemeModal() {
+            const modal = document.querySelector('.universal-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function enableDarkTheme() {
+            DarkReader.enable({
+                brightness: 100,
+                contrast: 100,
+                sepia: 0,
+                darkSchemeBackgroundColor: '#0f172a',
+                darkSchemeForegroundColor: '#f1f5f9',
+                darkSchemeTextColor: '#e2e8f0'
+            });
+            localStorage.setItem('theme', 'dark');
+            animateThemeButton();
+        }
+        
+        function animateThemeButton() {
+            const toggle = document.getElementById('themeToggle');
+            if (toggle) {
+                toggle.style.transform = 'rotate(360deg) scale(1.2)';
+                setTimeout(() => {
+                    toggle.style.transform = 'rotate(0deg) scale(1)';
+                }, 300);
+            }
+        }
+        
+        // Initialize immediately
+        initTheme();
+        
+        // Make available globally
+        window.toggleTheme = toggleTheme;
+        
+        // Debug: Check if button exists
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('themeToggle');
+            console.log('Theme toggle button found:', btn !== null);
+        });
     </script>
 
     {% block extra_scripts %}{% endblock %}
