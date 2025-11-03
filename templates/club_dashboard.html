@@ -160,7 +160,7 @@ endblock %} {% block extra_head %}
     body nav.navbar *:not(.club-dashboard-content *) {
         /* Navbar inherits from base.html only */
     }
-    
+
     /* Force navbar to use base styles - maximum specificity */
     body .navbar .navbar-content {
         max-width: 1400px !important;
@@ -168,7 +168,7 @@ endblock %} {% block extra_head %}
         justify-content: space-between !important;
         align-items: center !important;
     }
-    
+
     body .navbar .theme-toggle {
         position: relative !important;
         width: 40px !important;
@@ -183,45 +183,45 @@ endblock %} {% block extra_head %}
         cursor: pointer !important;
         transition: all 0.3s ease !important;
     }
-    
+
     body .navbar .theme-toggle:hover {
         background: var(--primary) !important;
         border-color: var(--primary) !important;
         transform: scale(1.1) !important;
     }
-    
+
     body .navbar .theme-toggle i {
         font-size: 18px !important;
         transition: all 0.3s ease !important;
     }
-    
+
     body .navbar .theme-toggle:hover i {
         color: white !important;
     }
-    
+
     body .navbar .theme-toggle .theme-icon-dark,
     body .navbar .theme-toggle .theme-icon-light {
         position: absolute !important;
     }
-    
+
     /* Light mode icon visibility */
     body[data-theme="light"] .navbar .theme-toggle .theme-icon-light {
         opacity: 0 !important;
         transform: rotate(180deg) scale(0) !important;
     }
-    
+
     body[data-theme="light"] .navbar .theme-toggle .theme-icon-dark {
         opacity: 1 !important;
         transform: rotate(0deg) scale(1) !important;
         color: #64748b !important;
     }
-    
+
     /* Dark mode icon visibility */
     body[data-theme="dark"] .navbar .theme-toggle .theme-icon-dark {
         opacity: 0 !important;
         transform: rotate(-180deg) scale(0) !important;
     }
-    
+
     body[data-theme="dark"] .navbar .theme-toggle .theme-icon-light {
         opacity: 1 !important;
         transform: rotate(0deg) scale(1) !important;
@@ -872,7 +872,7 @@ endblock %} {% block extra_head %}
                             <div class="markdown-editor">
                                 <textarea
                                     id="postContent"
-                                    placeholder="Write your announcement in **Markdown**! 
+                                    placeholder="Write your announcement in **Markdown**!
 
 ## Features you can use:
 - **Bold text** with **asterisks**
@@ -5729,7 +5729,7 @@ console.log('Hello, world!');
     function closePosterCreator() {
         document.getElementById("posterCreatorModal").style.display = "none";
     }
-    
+
     function scrollToSection(sectionId) {
         // This function can be used to highlight advanced features
         setTimeout(() => {
@@ -5737,7 +5737,7 @@ console.log('Hello, world!');
             if (advancedSections.length > 6) {
                 // Scroll to the advanced features (starting from 7th section)
                 advancedSections[6].scrollIntoView({ behavior: 'smooth', block: 'start' });
-                
+
                 // Briefly highlight the new sections
                 for (let i = 6; i < advancedSections.length; i++) {
                     advancedSections[i].style.transition = 'all 0.3s';
@@ -5745,7 +5745,7 @@ console.log('Hello, world!');
                     advancedSections[i].style.borderRadius = '8px';
                     advancedSections[i].style.padding = '1rem';
                 }
-                
+
                 // Remove highlight after 2 seconds
                 setTimeout(() => {
                     for (let i = 6; i < advancedSections.length; i++) {
@@ -5836,7 +5836,7 @@ console.log('Hello, world!');
             ">
                 <i class="${posterData.customIcon || template.icon}"></i>
             </div>
-            
+
             <h1 style="
                 color: ${posterData.textColor};
                 font-size: ${posterData.titleSize}px;
@@ -5844,14 +5844,14 @@ console.log('Hello, world!');
                 margin: 0 0 1rem 0;
                 line-height: 1.2;
             ">${posterData.mainTitle}</h1>
-            
+
             <h2 style="
                 color: ${posterData.primaryColor};
                 font-size: 1.5rem;
                 font-weight: 600;
                 margin: 0 0 1.5rem 0;
             ">${posterData.subtitle}</h2>
-            
+
             <p style="
                 color: ${posterData.textColor};
                 font-size: 1rem;
@@ -5859,7 +5859,7 @@ console.log('Hello, world!');
                 margin: 0 0 2rem 0;
                 max-width: 300px;
             ">${posterData.description}</p>
-            
+
             <div style="
                 border-top: 2px solid ${posterData.primaryColor};
                 padding-top: 1rem;
@@ -5875,7 +5875,7 @@ console.log('Hello, world!');
                 ${posterData.clubLocation ? `<div style="color: #666; font-size: 0.8rem; margin-top: 0.25rem;"><i class="fas fa-map-marker-alt"></i> ${posterData.clubLocation}</div>` : ""}
                 ${posterData.contactInfo ? `<div style="color: #666; font-size: 0.8rem; margin-top: 0.25rem;">${posterData.contactInfo}</div>` : ""}
             </div>
-            
+
             <!-- Hack Club Logo -->
             <img src="{{ url_for('static', filename='assets/flag-standalone.png') }}" class="hack-club-logo" alt="Hack Club">
         </div>
@@ -6521,7 +6521,7 @@ console.log('Hello, world!');
     }
 
     // NEW: Enhanced Features Functions
-    
+
     function updatePoster() {
         updatePosterPreview();
     }
@@ -6580,7 +6580,7 @@ console.log('Hello, world!');
             document.getElementById('blurEffect').value = 0;
             document.getElementById('brightness').value = 100;
             document.getElementById('contrast').value = 100;
-            
+
             posterData = {
                 bgColor: "#ffffff",
                 primaryColor: "#ec3750",
@@ -6603,7 +6603,7 @@ console.log('Hello, world!');
                 qrCodeSize: 80,
                 showQrCode: true,
             };
-            
+
             updatePosterPreview();
         }
     }
@@ -6625,12 +6625,12 @@ console.log('Hello, world!');
                     textAlign: document.getElementById('textAlign')?.value || 'center'
                 }
             };
-            
+
             // Save to localStorage
             const saved = JSON.parse(localStorage.getItem('posterTemplates') || '[]');
             saved.push(template);
             localStorage.setItem('posterTemplates', JSON.stringify(saved));
-            
+
             alert(`Template "${templateName}" saved successfully!`);
         }
     }
@@ -6641,18 +6641,18 @@ console.log('Hello, world!');
             alert('No saved templates found!');
             return;
         }
-        
+
         const templateList = saved.map((t, i) => `${i + 1}. ${t.name}`).join('\\n');
         const selection = prompt(`Select a template (enter number):\\n${templateList}`);
-        
+
         if (selection) {
             const index = parseInt(selection) - 1;
             if (index >= 0 && index < saved.length) {
                 const template = saved[index];
-                
+
                 // Load poster data
                 posterData = { ...template.data };
-                
+
                 // Load settings
                 if (template.settings) {
                     if (document.getElementById('fontFamily')) document.getElementById('fontFamily').value = template.settings.fontFamily;
@@ -6664,7 +6664,7 @@ console.log('Hello, world!');
                     if (document.getElementById('posterSize')) document.getElementById('posterSize').value = template.settings.posterSize;
                     if (document.getElementById('textAlign')) document.getElementById('textAlign').value = template.settings.textAlign;
                 }
-                
+
                 // Update UI
                 document.getElementById('mainTitle').value = posterData.mainTitle;
                 document.getElementById('subtitle').value = posterData.subtitle;
@@ -6672,7 +6672,7 @@ console.log('Hello, world!');
                 document.getElementById('bgColor').value = posterData.bgColor;
                 document.getElementById('primaryColor').value = posterData.primaryColor;
                 document.getElementById('textColor').value = posterData.textColor;
-                
+
                 updatePosterPreview();
                 alert(`Template "${template.name}" loaded successfully!`);
             }
@@ -6688,7 +6688,7 @@ console.log('Hello, world!');
                 document.getElementById('letterSpacingValue').textContent = this.value + 'px';
             });
         }
-        
+
         // Blur effect
         const blurEffect = document.getElementById('blurEffect');
         if (blurEffect) {
@@ -6696,7 +6696,7 @@ console.log('Hello, world!');
                 document.getElementById('blurValue').textContent = this.value + 'px';
             });
         }
-        
+
         // Brightness
         const brightness = document.getElementById('brightness');
         if (brightness) {
@@ -6704,7 +6704,7 @@ console.log('Hello, world!');
                 document.getElementById('brightnessValue').textContent = this.value + '%';
             });
         }
-        
+
         // Contrast
         const contrast = document.getElementById('contrast');
         if (contrast) {
@@ -6712,7 +6712,7 @@ console.log('Hello, world!');
                 document.getElementById('contrastValue').textContent = this.value + '%';
             });
         }
-        
+
         // Image opacity
         const bgImageOpacity = document.getElementById('bgImageOpacity');
         if (bgImageOpacity) {
@@ -6720,7 +6720,7 @@ console.log('Hello, world!');
                 document.getElementById('bgImageOpacityValue').textContent = this.value + '%';
             });
         }
-        
+
         // Gradient checkbox toggle
         const useGradient = document.getElementById('useGradient');
         if (useGradient) {
@@ -6736,7 +6736,7 @@ console.log('Hello, world!');
                 }
             });
         }
-        
+
         // Gradient color value display
         const gradientColor = document.getElementById('gradientColor');
         if (gradientColor) {
@@ -7409,7 +7409,7 @@ console.log('Hello, world!');
             const isToday = date.toDateString() === new Date().toDateString();
 
             calendarHTML += `
-                <div class="calendar-day ${hasSession ? "has-session" : ""} ${isToday ? "today" : ""}" 
+                <div class="calendar-day ${hasSession ? "has-session" : ""} ${isToday ? "today" : ""}"
                      onclick="selectDate('${dateStr}')">
                     <span class="day-number">${day}</span>
                     ${hasSession ? '<div class="session-indicator"></div>' : ""}
@@ -7705,7 +7705,7 @@ console.log('Hello, world!');
                         <div class="member-email">${record.user_email}</div>
                     </div>
                     <div class="attendance-toggle">
-                        <button class="btn ${record.status === "present" ? "btn-success" : "btn-secondary"}" 
+                        <button class="btn ${record.status === "present" ? "btn-success" : "btn-secondary"}"
                                 onclick="toggleAttendance(${record.user_id}, '${record.status === "present" ? "absent" : "present"}')">
                             <i class="fas fa-${record.status === "present" ? "check" : "times"}"></i>
                             ${record.status === "present" ? "Present" : "Mark Present"}
@@ -7987,7 +7987,7 @@ console.log('Hello, world!');
                             <p>Avg Attendance</p>
                         </div>
                     </div>
-                    
+
                     <div class="member-stats-section">
                         <h3>Member Attendance Statistics</h3>
                         <div class="member-stats-table">
@@ -8032,7 +8032,7 @@ console.log('Hello, world!');
                             </table>
                         </div>
                     </div>
-                    
+
                     <div class="session-types-section">
                         <h3>Session Types</h3>
                         <div class="session-types-chart">
@@ -8510,11 +8510,11 @@ console.log('Hello, world!');
                 }
             });
         });
-        
+
         // Load meetings count for this month
         loadMeetingsCount();
     });
-    
+
     // Function to load and count meetings scheduled this month
     function loadMeetingsCount() {
         const clubId = {{ club.id }};
@@ -8527,23 +8527,23 @@ console.log('Hello, world!');
                     const now = new Date();
                     const currentMonth = now.getMonth(); // getMonth() returns 0-11
                     const currentYear = now.getFullYear();
-                    
+
                     console.log(`Current month: ${currentMonth + 1}/${currentYear}`);
-                    
+
                     // Filter meetings for this month
                     const meetingsThisMonth = data.meetings.filter(meeting => {
                         // Parse the date string (format: YYYY-MM-DD)
                         const meetingDate = new Date(meeting.meeting_date + 'T00:00:00');
                         const meetingMonth = meetingDate.getMonth();
                         const meetingYear = meetingDate.getFullYear();
-                        
+
                         console.log(`Meeting: ${meeting.title} - ${meeting.meeting_date} - Month: ${meetingMonth + 1}, Year: ${meetingYear}`);
-                        
+
                         return meetingMonth === currentMonth && meetingYear === currentYear;
                     });
-                    
+
                     console.log(`Meetings this month: ${meetingsThisMonth.length}`);
-                    
+
                     // Update the count
                     const countElement = document.getElementById('meetingsCount');
                     if (countElement) {

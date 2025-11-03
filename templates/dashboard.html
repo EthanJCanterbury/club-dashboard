@@ -372,9 +372,9 @@
                     </div>
                 </div>
                 {% endfor %}
-                
+
                 {# Show other memberships, excluding duplicates #}
-                {% for membership in memberships %} 
+                {% for membership in memberships %}
                 {% if membership.club.id not in all_club_ids %}
                 <div
                     class="club-card"

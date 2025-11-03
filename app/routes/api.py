@@ -32,12 +32,7 @@ def api_documentation():
     """API documentation page"""
     from flask import render_template
     return render_template('api_docs.html')
-
-
-# ============================================================================
 # Public API Endpoints (require API key or OAuth)
-# ============================================================================
-
 @api_bp.route('/user', methods=['GET'])
 @oauth_required(scopes=['user:read'])
 def get_user():
@@ -189,12 +184,7 @@ def get_user_projects():
         'projects': projects_data,
         'total': len(projects_data)
     })
-
-
-# ============================================================================
 # Admin API Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/users', methods=['GET'])
 @login_required
 @permission_required('users.view')
@@ -250,7 +240,7 @@ def admin_get_users():
 def admin_get_user(user_id):
     """Get a specific user by ID (for leadership transfer, etc.)"""
     user = User.query.get_or_404(user_id)
-    
+
     return jsonify({
         'id': user.id,
         'username': user.username,
@@ -642,12 +632,7 @@ def admin_get_audit_logs():
         'per_page': per_page,
         'pages': logs_pagination.pages
     })
-
-
-# ============================================================================
 # Admin User Management Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
 @login_required
 @permission_required('users.edit')
@@ -947,12 +932,7 @@ def admin_reset_password(user_id):
             'email': user.email
         }
     })
-
-
-# ============================================================================
 # Admin Club Management Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/clubs/<int:club_id>', methods=['PUT'])
 @login_required
 @permission_required('clubs.edit')
@@ -1110,12 +1090,7 @@ def admin_transfer_club_leadership(club_id):
         'success': True,
         'message': f'Leadership transferred to {new_leader.username}'
     })
-
-
-# ============================================================================
 # Admin Pizza Grants Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/pizza-grants', methods=['GET'])
 @login_required
 @admin_required
@@ -1196,12 +1171,7 @@ def admin_delete_pizza_grant(grant_id):
     except Exception as e:
         current_app.logger.error(f'Error deleting pizza grant: {str(e)}')
         return jsonify({'error': 'Failed to delete grant'}), 500
-
-
-# ============================================================================
 # Admin API Keys & OAuth Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/apikeys', methods=['POST'])
 @login_required
 @permission_required('admin.manage_api_keys')
@@ -1463,12 +1433,7 @@ def admin_delete_oauth_app(app_id):
         'success': True,
         'message': 'OAuth application deleted'
     })
-
-
-# ============================================================================
 # Admin RBAC Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/rbac/users/<int:user_id>/roles', methods=['POST'])
 @login_required
 @permission_required('users.assign_roles', 'system.manage_roles')
@@ -1694,17 +1659,17 @@ def admin_update_role(role_id):
 def admin_get_role_users(role_id):
     """Get all users assigned to a specific role"""
     from app.models.user import Role, User
-    
+
     role = Role.query.get_or_404(role_id)
-    
+
     # Get all users with this role
     users = User.query.join(User.roles).filter(Role.id == role_id).all()
-    
+
     # Helper function to get user avatar (use heidi-avatar as default)
     def get_user_avatar(user):
         # Could be extended to use Slack avatars or Gravatar in the future
         return '/static/assets/heidi-avatar.png'
-    
+
     return jsonify({
         'success': True,
         'role': {
@@ -1765,12 +1730,7 @@ def admin_delete_role(role_id):
         'success': True,
         'message': 'Role deleted successfully'
     })
-
-
-# ============================================================================
 # Admin Banner Settings Endpoint
-# ============================================================================
-
 @api_bp.route('/admin/banner-settings', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -1816,12 +1776,7 @@ def admin_banner_settings():
             'success': True,
             'message': 'Banner settings updated'
         })
-
-
-# ============================================================================
 # Admin Order Management Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/orders', methods=['GET'])
 @login_required
 @admin_required
@@ -1831,19 +1786,19 @@ def admin_get_orders():
     from app.services.airtable import AirtableService
 
     airtable_service = AirtableService()
-    
+
     try:
         all_orders = airtable_service.get_all_orders()
-        
+
         # Apply filters if provided
         status_filter = request.args.get('status')
         search = request.args.get('search')
-        
+
         filtered_orders = all_orders
-        
+
         if status_filter:
             filtered_orders = [o for o in filtered_orders if o.get('shipment_status', '').lower() == status_filter.lower()]
-        
+
         if search:
             search_lower = search.lower()
             filtered_orders = [
@@ -1853,7 +1808,7 @@ def admin_get_orders():
                    search_lower in o.get('leader_first_name', '').lower() or
                    search_lower in o.get('leader_last_name', '').lower()
             ]
-        
+
         return jsonify({
             'orders': filtered_orders,
             'total': len(filtered_orders)
@@ -1997,12 +1952,7 @@ def admin_refund_order(order_id):
         })
     else:
         return jsonify({'error': 'Failed to refund order'}), 500
-
-
-# ============================================================================
 # Admin Shop Items Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/shop-items', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -2139,12 +2089,7 @@ def admin_shop_item(item_id):
             'success': True,
             'message': 'Shop item deleted'
         })
-
-
-# ============================================================================
 # Admin Leaderboard Endpoints
-# ============================================================================
-
 @api_bp.route('/admin/leaderboard/exclusions', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -2241,12 +2186,7 @@ def admin_delete_leaderboard_exclusion(exclusion_id):
         'success': True,
         'message': 'Leaderboard exclusion removed'
     })
-
-
-# ============================================================================
 # User API Endpoints
-# ============================================================================
-
 @api_bp.route('/user/me', methods=['GET'])
 @login_required
 def get_user_me():
@@ -2344,12 +2284,7 @@ def update_user():
         'success': True,
         'message': 'Profile updated successfully'
     })
-
-
-# ============================================================================
 # Identity/OAuth API Endpoints
-# ============================================================================
-
 @api_bp.route('/identity/status', methods=['GET'])
 @login_required
 def identity_status():
@@ -2377,7 +2312,7 @@ def identity_authorize():
     import os
     import secrets
     from app.services.identity import HackClubIdentityService, init_service
-    
+
     user = get_current_user()
     if not user:
         return jsonify({'error': 'Not authenticated'}), 401
@@ -2386,40 +2321,34 @@ def identity_authorize():
     client_id = os.getenv('HACKCLUB_IDENTITY_CLIENT_ID')
     client_secret = os.getenv('HACKCLUB_IDENTITY_CLIENT_SECRET')
     identity_url = os.getenv('HACKCLUB_IDENTITY_URL', 'https://identity.hackclub.com')
-    
+
     if not client_id or not client_secret:
         return jsonify({
             'error': 'Identity provider not configured',
             'message': 'Hack Club Identity OAuth is not configured on this server'
         }), 503
 
-    # Initialize service
     init_service(current_app._get_current_object(), identity_url, client_id, client_secret)
     identity_service = HackClubIdentityService()
 
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     session['hackclub_identity_state'] = state
-    
+
     # Get redirect URI
     redirect_uri = request.url_root.rstrip('/') + '/auth/identity/callback'
     if request.url_root.startswith('http://'):
         # Force HTTPS for production
         redirect_uri = redirect_uri.replace('http://', 'https://', 1)
-    
+
     # Build authorization URL
     auth_url = identity_service.get_auth_url(redirect_uri, state)
-    
+
     return jsonify({
         'url': auth_url,
         'state': state
     })
-
-
-# ============================================================================
 # Status API Endpoints
-# ============================================================================
-
 @api_bp.route('/status/banner', methods=['GET'])
 def status_banner():
     """Get public banner settings"""
@@ -2653,12 +2582,7 @@ def admin_create_status_update(incident_id):
         'message': 'Status update added',
         'update': update.to_dict()
     })
-
-
-# ============================================================================
 # Project Review API Endpoints
-# ============================================================================
-
 @api_bp.route('/user/projects/pending', methods=['GET'])
 @login_required
 def get_projects_for_review():
@@ -2709,11 +2633,11 @@ def get_projects_for_review():
 def api_get_project_submissions():
     """Get all YSWS project submissions for review"""
     from app.services.airtable import AirtableService
-    
+
     try:
         airtable_service = AirtableService()
         submissions = airtable_service.get_ysws_project_submissions()
-        
+
         return jsonify({
             'success': True,
             'projects': submissions
@@ -2733,7 +2657,7 @@ def api_get_project_submissions():
 def api_update_project_review(project_id):
     """Update the review status of a YSWS project submission"""
     from app.services.airtable import AirtableService
-    
+
     try:
         data = request.get_json()
         if not data:
@@ -2742,11 +2666,10 @@ def api_update_project_review(project_id):
         # Validate required fields
         new_status = data.get('status')
         decision_reason = data.get('decisionReason')
-        
+
         if not new_status or not decision_reason:
             return jsonify({'error': 'Status and decision reason are required'}), 400
 
-        # Validate status
         valid_statuses = ['Pending', 'Approved', 'Rejected', 'Flagged']
         if new_status not in valid_statuses:
             return jsonify({'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
@@ -2754,18 +2677,18 @@ def api_update_project_review(project_id):
         # Update in Airtable
         airtable_service = AirtableService()
         current_user = get_current_user()
-        
+
         # Prepare update fields
         update_fields = {
             'Status': new_status,
             'Decision Reason': decision_reason
         }
-        
+
         success = airtable_service.update_ysws_project_submission(project_id, update_fields)
-        
+
         if not success:
             return jsonify({'error': 'Failed to update project status in Airtable'}), 500
-        
+
         # Log audit
         create_audit_log(
             action_type='project_review',
@@ -2778,12 +2701,12 @@ def api_update_project_review(project_id):
             admin_action=True,
             category='admin'
         )
-        
+
         return jsonify({
             'success': True,
             'message': f'Project {new_status.lower()} successfully'
         })
-        
+
     except Exception as e:
         logger.error(f"Error updating project review: {str(e)}")
         return jsonify({'error': 'Failed to update project review'}), 500
@@ -2927,12 +2850,7 @@ def grant_override_project(project_id):
         })
     else:
         return jsonify({'error': 'Failed to update grant override'}), 500
-
-
-# ============================================================================
 # Public Status Incidents API Endpoints
-# ============================================================================
-
 @api_bp.route('/status/incidents', methods=['GET'])
 def get_public_status_incidents():
     """Get public status incidents (no auth required)"""
@@ -2966,12 +2884,7 @@ def get_public_status_incident(incident_id):
     return jsonify({
         'incident': incident.to_dict()
     })
-
-
-# ============================================================================
 # OAuth v1 API Endpoints (for external apps)
-# ============================================================================
-
 @api_bp.route('/v1/users/<int:user_id>', methods=['GET'])
 @limiter.limit("100 per minute")
 def oauth_get_user(user_id):
@@ -3055,12 +2968,7 @@ def oauth_get_club_projects(club_id):
         'projects': projects_data,
         'total': len(projects_data)
     })
-
-
-# ============================================================================
 # Image Upload API Endpoint
-# ============================================================================
-
 @api_bp.route('/upload-images', methods=['POST'])
 @login_required
 @limiter.limit("10 per hour")
@@ -3158,28 +3066,17 @@ def upload_images():
         'message': f'{len(cdn_urls)} images uploaded successfully',
         'urls': cdn_urls
     })
-
-
-# ============================================================================
 # Analytics API Endpoints (for OAuth debug)
-# ============================================================================
-
 @api_bp.route('/v1/analytics/overview', methods=['GET'])
 @login_required
 def analytics_overview():
     """Get analytics overview - PLACEHOLDER"""
-    # TODO: Implement analytics system
     return jsonify({
         'views': 0,
         'unique_visitors': 0,
         'message': 'Analytics not yet implemented'
     })
-
-
-# ============================================================================
 # Club Content API Endpoints
-# ============================================================================
-
 @api_bp.route('/clubs/<int:club_id>/posts', methods=['GET', 'POST'])
 @login_required
 @limiter.limit("500 per hour")
@@ -3195,7 +3092,7 @@ def club_posts(club_id):
 
     if not is_leader and not is_co_leader and not is_member and not is_admin_access:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     # Give admins leader privileges
     if is_admin_access:
         is_leader = True
@@ -3204,7 +3101,7 @@ def club_posts(club_id):
         # Only leaders and co-leaders can create posts
         if not is_leader and not is_co_leader:
             return jsonify({'error': 'Only club leaders and co-leaders can create posts'}), 403
-            
+
         data = request.get_json()
         content = data.get('content')
 
@@ -3260,7 +3157,7 @@ def club_posts(club_id):
     # GET request
     posts = ClubPost.query.filter_by(club_id=club_id).order_by(ClubPost.created_at.desc()).all()
     posts_data = []
-    
+
     for post in posts:
         try:
             # Handle content_html field safely (might be NULL for some posts)
@@ -3268,7 +3165,7 @@ def club_posts(club_id):
             if not content_html:
                 # For posts without HTML content, escape and convert newlines
                 content_html = html.escape(post.content).replace('\n', '<br>')
-            
+
             post_data = {
                 'id': post.id,
                 'content': post.content,  # Raw markdown content
@@ -3283,7 +3180,7 @@ def club_posts(club_id):
         except Exception as e:
             current_app.logger.error(f"Error processing post {post.id}: {e}")
             continue
-    
+
     return jsonify({'posts': posts_data})
 
 
@@ -3351,7 +3248,6 @@ def club_assignments(club_id):
         if not title or not description:
             return jsonify({'error': 'Title and description are required'}), 400
 
-        # Validate inputs
         valid, result = validate_input_with_security(title, "assignment_title", current_user, max_length=200, app=current_app)
         if not valid:
             return jsonify({'error': result}), 403
@@ -3448,7 +3344,6 @@ def club_meetings(club_id):
         if not title:
             return jsonify({'error': 'Title is required'}), 400
 
-        # Validate inputs
         valid, result = validate_input_with_security(title, "meeting_title", current_user, max_length=200, app=current_app)
         if not valid:
             return jsonify({'error': result}), 403
@@ -3549,10 +3444,9 @@ def club_resources(club_id):
         if not title or not url:
             return jsonify({'error': 'Title and URL are required'}), 400
 
-        # Validate inputs
         from app.utils.security import validate_input_with_security
         from flask import current_app
-        
+
         valid, result = validate_input_with_security(title, "resource_title", current_user, max_length=200, app=current_app)
         if not valid:
             return jsonify({'error': result}), 403
@@ -3709,12 +3603,7 @@ def club_quests(club_id):
     } for q in quests]
 
     return jsonify({'quests': quests_data})
-
-
-# ============================================================================
 # Gallery API Endpoints
-# ============================================================================
-
 @api_bp.route('/gallery/posts', methods=['GET', 'POST'])
 @limiter.limit("100 per hour")
 def gallery_posts():
@@ -3722,42 +3611,42 @@ def gallery_posts():
     if request.method == 'POST':
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
-        
+
         current_user = get_current_user()
         data = request.get_json()
-        
+
         club_id = data.get('club_id')
         title = data.get('title')
         description = data.get('description')
         images = data.get('images', [])
         custom_club_name = data.get('custom_club_name')  # Admin override for club name
-        
+
         if not club_id or not title or not description:
             return jsonify({'error': 'Club ID, title, and description are required'}), 400
-        
+
         # Limit to 50 images max
         if len(images) > 50:
             images = images[:50]
-        
+
         # Verify user is leader or co-leader of the club
         club = Club.query.get_or_404(club_id)
         is_leader = club.leader_id == current_user.id
         is_co_leader = is_user_co_leader(club, current_user)
-        
+
         if not is_leader and not is_co_leader:
             return jsonify({'error': 'Only club leaders can create gallery posts'}), 403
-        
+
         # Security validation
         valid, result = validate_input_with_security(title, "gallery_title", current_user, max_length=200, app=current_app)
         if not valid:
             return jsonify({'error': result}), 403
         title = result
-        
+
         valid, result = validate_input_with_security(description, "gallery_description", current_user, max_length=2000, app=current_app)
         if not valid:
             return jsonify({'error': result}), 403
         description = result
-        
+
         # Create gallery post
         post = GalleryPost(
             club_id=club_id,
@@ -3766,10 +3655,10 @@ def gallery_posts():
             description=description
         )
         post.set_images(images)
-        
+
         # Update quest progress for gallery post
         update_quest_progress(club_id, 'gallery_post', 1)
-        
+
         # Admin can override club name display
         if current_user.is_admin and custom_club_name:
             valid, result = validate_input_with_security(custom_club_name, "custom_club_name", current_user, max_length=100, app=current_app)
@@ -3777,12 +3666,12 @@ def gallery_posts():
                 return jsonify({'error': result}), 403
             # Store custom club name in a new field or use description field with a prefix
             post.description = f"[CUSTOM_CLUB:{result}] {description}"
-        
+
         db.session.add(post)
         db.session.commit()
-        
+
         current_app.logger.info(f"Gallery post created: ID={post.id}, title='{title}', club_id={club_id}, images={len(images)}")
-        
+
         # Log gallery post to Airtable
         try:
             airtable_success = airtable_service.log_gallery_post(
@@ -3798,7 +3687,7 @@ def gallery_posts():
                 current_app.logger.warning(f"Failed to log gallery post {post.id} to Airtable")
         except Exception as e:
             current_app.logger.error(f"Exception logging gallery post {post.id} to Airtable: {str(e)}")
-        
+
         # Create audit log for gallery post creation
         create_audit_log(
             action_type='gallery_post_create',
@@ -3816,30 +3705,30 @@ def gallery_posts():
             admin_action=current_user.is_admin and custom_club_name,
             category='gallery'
         )
-        
+
         return jsonify({'message': 'Gallery post created successfully', 'post_id': post.id})
-    
+
     # GET request - return all gallery posts
     try:
         posts = GalleryPost.query.order_by(GalleryPost.created_at.desc()).all()
         posts_data = []
-        
+
         current_app.logger.info(f"Retrieved {len(posts)} gallery posts from database")
-        
+
         for post in posts:
             try:
                 # Get club and user info safely
                 club = Club.query.get(post.club_id)
                 user = User.query.get(post.user_id)
-                
+
                 if not club or not user:
                     current_app.logger.warning(f"Skipping post {post.id}: missing club ({club}) or user ({user})")
                     continue
-                
+
                 # Check for admin custom club name override
                 display_club_name = club.name
                 display_description = post.description
-                
+
                 if post.description.startswith('[CUSTOM_CLUB:'):
                     # Extract custom club name and actual description
                     try:
@@ -3850,7 +3739,7 @@ def gallery_posts():
                             display_description = post.description[end_idx + 2:]  # Skip '] '
                     except:
                         pass  # Fall back to original if parsing fails
-                
+
                 post_data = {
                     'id': post.id,
                     'title': post.title,
@@ -3871,14 +3760,14 @@ def gallery_posts():
                 }
                 posts_data.append(post_data)
                 current_app.logger.debug(f"Gallery post {post.id}: '{post.title}' by {user.username} from {club.name}, {len(post.get_images())} images")
-                
+
             except Exception as e:
                 current_app.logger.error(f"Error processing gallery post {post.id}: {str(e)}")
                 continue
-        
+
         current_app.logger.info(f"Returning {len(posts_data)} gallery posts to frontend")
         return jsonify({'posts': posts_data})
-        
+
     except Exception as e:
         current_app.logger.error(f"Error fetching gallery posts: {str(e)}")
         db.session.rollback()
@@ -3891,13 +3780,13 @@ def gallery_posts():
 def delete_gallery_post(post_id):
     """Delete a gallery post"""
     current_user = get_current_user()
-    
+
     # Only admins can delete gallery posts
     if not current_user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    
+
     post = GalleryPost.query.get_or_404(post_id)
-    
+
     try:
         # Get images and related data before deletion
         images = post.get_images()
@@ -3905,7 +3794,7 @@ def delete_gallery_post(post_id):
         post_author_name = post.user.username if post.user else 'Unknown'
         club_name = post.club.name if post.club else 'Unknown'
         club = post.club
-        
+
         # Deduct 100 tokens from the club if it has enough tokens
         if club and club.tokens >= 100:
             success, error_msg = create_club_transaction(
@@ -3918,14 +3807,14 @@ def delete_gallery_post(post_id):
                 reference_id=post_id,
                 created_by=current_user.id
             )
-            
+
             if not success:
                 current_app.logger.warning(f"Failed to deduct tokens for gallery post deletion: {error_msg}")
-        
+
         # Delete the post
         db.session.delete(post)
         db.session.commit()
-        
+
         create_audit_log(
             action_type='gallery_post_delete',
             description=f"Admin {current_user.username} deleted gallery post '{post_title}' by {post_author_name}",
@@ -3943,10 +3832,10 @@ def delete_gallery_post(post_id):
             admin_action=True,
             category='gallery'
         )
-        
+
         current_app.logger.info(f"Gallery post {post_id} deleted by admin {current_user.username}")
         return jsonify({'message': 'Gallery post deleted successfully'})
-        
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error deleting gallery post {post_id}: {str(e)}")

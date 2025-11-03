@@ -121,7 +121,6 @@ def update_quest_progress(club_id, quest_type, increment=1):
             )
             db.session.add(progress_record)
 
-        # Update progress
         progress_record.progress += increment
         progress_record.updated_at = datetime.utcnow()
 

@@ -10,7 +10,7 @@
             }
         })();
     </script>
-    
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Hack Club Dashboard{% endblock %}</title>
@@ -46,7 +46,7 @@
            LIGHT & DARK THEME SYSTEM
            Beautiful themes with smooth transitions
            ============================================ */
-        
+
         :root {
             /* Brand Colors (same in both themes) */
             --primary: #ec3750;
@@ -57,7 +57,7 @@
             --warning: #f59e0b;
             --error: #ef4444;
             --info: #3b82f6;
-            
+
             /* Light Theme Colors */
             --background: #f8f9fa;
             --background-secondary: #f3f4f6;
@@ -73,7 +73,7 @@
             --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
             --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
             --overlay: rgba(0, 0, 0, 0.5);
-            
+
             /* UI Elements */
             --border-radius: 8px;
             --transition: all 0.2s ease;
@@ -97,11 +97,11 @@
             --shadow-xl: 0 20px 25px rgba(0,0,0,0.6);
             --overlay: rgba(0, 0, 0, 0.8);
         }
-        
+
         /* Smooth theme transitions */
         * {
-            transition: background-color 0.3s ease, 
-                        color 0.3s ease, 
+            transition: background-color 0.3s ease,
+                        color 0.3s ease,
                         border-color 0.3s ease,
                         box-shadow 0.3s ease;
         }
@@ -173,7 +173,7 @@
             color: var(--primary);
             background: rgba(236, 55, 80, 0.1);
         }
-        
+
         /* Theme Toggle Button */
         .theme-toggle {
             position: relative;
@@ -189,41 +189,41 @@
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
+
         .theme-toggle:hover {
             background: var(--primary);
             border-color: var(--primary);
             transform: scale(1.1);
         }
-        
+
         .theme-toggle:hover i {
             color: white;
         }
-        
+
         .theme-icon-dark,
         .theme-icon-light {
             position: absolute;
             font-size: 18px;
             transition: all 0.3s ease;
         }
-        
+
         /* Show moon in light mode, sun in dark mode */
         [data-theme="light"] .theme-icon-light {
             opacity: 0;
             transform: rotate(180deg) scale(0);
         }
-        
+
         [data-theme="light"] .theme-icon-dark {
             opacity: 1;
             transform: rotate(0deg) scale(1);
             color: #64748b;
         }
-        
+
         [data-theme="dark"] .theme-icon-dark {
             opacity: 0;
             transform: rotate(-180deg) scale(0);
         }
-        
+
         [data-theme="dark"] .theme-icon-light {
             opacity: 1;
             transform: rotate(0deg) scale(1);
@@ -996,9 +996,9 @@
                         <i class="fas fa-trophy"></i> Leaderboard
                     </a>
                     {% endif %}
-                    
+
                     <a href="{{ url_for('login') }}" class="nav-link">Login</a>
-                    
+
                     <!-- Theme Toggle Button -->
                     <button id="themeToggle" class="nav-link theme-toggle" onclick="toggleTheme()" title="Toggle theme">
                         <i class="fas fa-moon theme-icon-dark"></i>
@@ -1319,12 +1319,12 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalSlideUp 0.3s ease;
         }
-        
+
         /* Wider modal support */
         .universal-modal-content.modal-wide {
             max-width: 800px;
         }
-        
+
         .universal-modal-content.modal-large {
             max-width: 1000px;
         }
@@ -1455,7 +1455,7 @@
            UNIVERSAL MODAL STYLING FOR ALL EXISTING MODALS
            Apply UniversalModal look to ALL .modal elements
            =================================================================== */
-        
+
         .modal:not(.universal-modal) {
             display: none;
             position: fixed;
@@ -1639,7 +1639,7 @@
         // Universal Modal System
         const UniversalModal = {
             currentCallback: null,
-            
+
             show: function(options) {
                 const modal = document.getElementById('universalModal');
                 const modalContent = modal.querySelector('.universal-modal-content');
@@ -1647,7 +1647,7 @@
                 const title = document.getElementById('modalTitle');
                 const body = document.getElementById('modalBody');
                 const footer = document.getElementById('modalFooter');
-                
+
                 // Reset modal content classes
                 modalContent.className = 'universal-modal-content';
                 if (options.size === 'wide') {
@@ -1659,7 +1659,7 @@
                 // Set type (info, success, warning, error, confirm, custom)
                 const type = options.type || 'info';
                 icon.className = `universal-modal-icon ${type}`;
-                
+
                 // Set icon
                 const icons = {
                     info: '<i class="fas fa-info-circle"></i>',
@@ -1670,7 +1670,7 @@
                     custom: options.customIcon || '<i class="fas fa-info-circle"></i>'
                 };
                 icon.innerHTML = icons[type] || icons.info;
-                
+
                 // Hide icon if requested
                 if (options.hideIcon) {
                     icon.style.display = 'none';
@@ -1680,14 +1680,14 @@
 
                 // Set title and body
                 title.textContent = options.title || 'Alert';
-                
+
                 // Support both string and HTML content
                 if (options.html) {
                     body.innerHTML = options.html;
                 } else {
                     body.innerHTML = options.message || '';
                 }
-                
+
                 // Support custom body class
                 if (options.bodyClass) {
                     body.className = 'universal-modal-body ' + options.bodyClass;
@@ -1697,7 +1697,7 @@
 
                 // Set buttons
                 footer.innerHTML = '';
-                
+
                 // Custom footer content
                 if (options.customFooter) {
                     footer.innerHTML = options.customFooter;
@@ -1712,7 +1712,7 @@
                         };
                         footer.appendChild(confirmBtn);
                     }
-                    
+
                     if (options.cancelText) {
                         const cancelBtn = document.createElement('button');
                         cancelBtn.className = 'modal-btn modal-btn-secondary';
@@ -1757,10 +1757,10 @@
                     };
                     document.addEventListener('keydown', escapeHandler);
                 }
-                
+
                 // Store current callback for external access
                 this.currentCallback = options.onConfirm;
-                
+
                 // Auto-focus first input if present
                 setTimeout(() => {
                     const firstInput = body.querySelector('input, textarea, select');
@@ -1820,7 +1820,7 @@
                     onCancel: onCancel
                 });
             },
-            
+
             // Custom modal with full control
             custom: function(options) {
                 this.show(options);
@@ -1834,10 +1834,10 @@
                 console.error('Modal not found:', modalId);
                 return;
             }
-            
+
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
-            
+
             // Add ESC key handler
             const escHandler = function(e) {
                 if (e.key === 'Escape') {
@@ -1847,7 +1847,7 @@
             };
             document.addEventListener('keydown', escHandler);
             modal._escHandler = escHandler;
-            
+
             // Add click outside to close
             setTimeout(() => {
                 const clickHandler = function(e) {
@@ -1864,10 +1864,10 @@
         window.closeModal = function(modalId) {
             const modal = document.getElementById(modalId);
             if (!modal) return;
-            
+
             modal.style.display = 'none';
             document.body.style.overflow = '';
-            
+
             // Remove event listeners
             if (modal._escHandler) {
                 document.removeEventListener('keydown', modal._escHandler);
@@ -1881,7 +1881,7 @@
 
         // Make it globally available
         window.UniversalModal = UniversalModal;
-        
+
         // Add global showUniversalModal helper function
         window.showUniversalModal = function(options) {
             UniversalModal.show(options);
@@ -1937,16 +1937,16 @@
 
     <!-- Dark Reader Library -->
     <script src="{{ url_for('static', filename='js/darkreader.min.js') }}"></script>
-    
+
     <!-- Dark Reader Theme System -->
     <script>
         // ============================================
         //  DARK READER THEME IMPLEMENTATION
         // ============================================
-        
+
         function initTheme() {
             const savedTheme = localStorage.getItem('theme') || 'light';
-            
+
             if (savedTheme === 'dark') {
                 DarkReader.enable({
                     brightness: 100,
@@ -1957,16 +1957,16 @@
                     darkSchemeTextColor: '#e2e8f0'
                 });
             }
-            
+
             console.log('Dark Reader theme initialized:', savedTheme);
         }
-        
+
         function toggleTheme() {
             const currentTheme = DarkReader.isEnabled() ? 'dark' : 'light';
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            
+
             console.log('Toggling theme from', currentTheme, 'to', newTheme);
-            
+
             if (newTheme === 'dark') {
                 // Show beta warning unless user checked "Don't show again"
                 const dontShowAgain = localStorage.getItem('darkThemeBetaDontShow') === 'true';
@@ -1980,10 +1980,10 @@
                 localStorage.setItem('theme', 'light');
                 animateThemeButton();
             }
-            
+
             console.log('Theme changed to:', newTheme);
         }
-        
+
         function showDarkThemeBetaModal() {
             const modal = document.createElement('div');
             modal.className = 'universal-modal';
@@ -2017,11 +2017,11 @@
                 </div>
             `;
             document.body.appendChild(modal);
-            
+
             // Add click listener to overlay
             modal.querySelector('.universal-modal-overlay').addEventListener('click', closeDarkThemeModal);
         }
-        
+
         function confirmDarkThemeEnable() {
             const checkbox = document.getElementById('dontShowDarkThemeWarning');
             if (checkbox && checkbox.checked) {
@@ -2030,14 +2030,14 @@
             closeDarkThemeModal();
             enableDarkTheme();
         }
-        
+
         function closeDarkThemeModal() {
             const modal = document.querySelector('.universal-modal');
             if (modal) {
                 modal.remove();
             }
         }
-        
+
         function enableDarkTheme() {
             DarkReader.enable({
                 brightness: 100,
@@ -2050,7 +2050,7 @@
             localStorage.setItem('theme', 'dark');
             animateThemeButton();
         }
-        
+
         function animateThemeButton() {
             const toggle = document.getElementById('themeToggle');
             if (toggle) {
@@ -2060,13 +2060,13 @@
                 }, 300);
             }
         }
-        
+
         // Initialize immediately
         initTheme();
-        
+
         // Make available globally
         window.toggleTheme = toggleTheme;
-        
+
         // Debug: Check if button exists
         document.addEventListener('DOMContentLoaded', function() {
             const btn = document.getElementById('themeToggle');

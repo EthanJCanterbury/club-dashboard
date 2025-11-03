@@ -152,26 +152,26 @@ def markdown_to_html(markdown_content):
     """Convert markdown to safe HTML for club posts"""
     if not markdown_content:
         return ""
-    
+
     # Configure markdown with safe extensions
-    md = markdown.Markdown(extensions=['extra', 'codehilite', 'nl2br'], 
+    md = markdown.Markdown(extensions=['extra', 'codehilite', 'nl2br'],
                           extension_configs={
                               'codehilite': {
                                   'css_class': 'highlight',
                                   'use_pygments': False
                               }
                           })
-    
+
     # Convert markdown to HTML
     html_content = md.convert(markdown_content)
-    
+
     # Define allowed HTML tags and attributes for club posts
     allowed_tags = [
         'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img',
         'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr', 'del', 'ins'
     ]
-    
+
     allowed_attributes = {
         'a': ['href', 'title'],
         'img': ['src', 'alt', 'title', 'width', 'height'],
@@ -180,11 +180,11 @@ def markdown_to_html(markdown_content):
         'th': ['align'],
         'td': ['align']
     }
-    
+
     # Clean HTML with bleach to prevent XSS
-    clean_html = bleach.clean(html_content, 
-                             tags=allowed_tags, 
+    clean_html = bleach.clean(html_content,
+                             tags=allowed_tags,
                              attributes=allowed_attributes,
                              protocols=['http', 'https', 'mailto'])
-    
+
     return clean_html

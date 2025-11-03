@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container" style="padding: 2rem 0;">
     <h1>Pending Project Submissions</h1>
-    
+
     <div style="background: white; padding: 2rem; border-radius: 10px; margin-top: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         {% if projects %}
         <table style="width: 100%; border-collapse: collapse;">
@@ -38,7 +38,7 @@
         <p>No pending project submissions.</p>
         {% endif %}
     </div>
-    
+
     <div style="margin-top: 2rem;">
         <a href="{{ url_for('admin.dashboard') }}" style="color: #3b82f6;">← Back to Dashboard</a>
     </div>

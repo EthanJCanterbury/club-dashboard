@@ -38,7 +38,6 @@ def chat_messages(club_id):
         return jsonify({'error': 'Not authorized'}), 403
 
     if request.method == 'GET':
-        # Get messages
         limit = request.args.get('limit', 50, type=int)
         limit = min(limit, 100)  # Max 100 messages
 
@@ -190,7 +189,6 @@ def chat_message_operations(club_id, message_id):
         })
 
     elif request.method == 'DELETE':
-        # Delete message
         db.session.delete(message)
         db.session.commit()
 

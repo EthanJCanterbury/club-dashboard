@@ -57,7 +57,6 @@ def attendance_sessions(club_id):
         })
 
     elif request.method == 'POST':
-        # Create a new session
         data = request.get_json()
 
         title = sanitize_string(data.get('title', ''), max_length=200)
@@ -162,7 +161,6 @@ def attendance_session_operations(club_id, session_id):
         })
 
     elif request.method == 'PUT':
-        # Update session
         data = request.get_json()
 
         if 'title' in data:

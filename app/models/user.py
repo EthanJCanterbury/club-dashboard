@@ -352,7 +352,6 @@ class AuditLog(db.Model):
 def create_audit_log(action_type, description, user=None, target_type=None, target_id=None,
                     details=None, severity='info', admin_action=False, category=None):
     """Create an audit log entry"""
-    # Import app here to avoid circular import
     from flask import current_app as app
 
     try:

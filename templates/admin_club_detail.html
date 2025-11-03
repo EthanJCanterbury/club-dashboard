@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container" style="padding: 2rem 0;">
     <h1>Club Details: {{ club.name }}</h1>
-    
+
     <div style="background: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <h2>Club Information</h2>
         <p><strong>ID:</strong> {{ club.id }}</p>
@@ -19,7 +19,7 @@
         <p><strong>Leader:</strong> <a href="{{ url_for('admin.user_detail', user_id=leader.id) }}">{{ leader.username }}</a></p>
         {% endif %}
     </div>
-    
+
     <div style="background: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <h2>Members ({{ members|length }})</h2>
         {% if members %}
@@ -37,7 +37,7 @@
         <p>No members</p>
         {% endif %}
     </div>
-    
+
     <div style="margin-top: 2rem;">
         <a href="{{ url_for('admin.clubs') }}" style="color: #3b82f6;">← Back to Clubs List</a>
     </div>

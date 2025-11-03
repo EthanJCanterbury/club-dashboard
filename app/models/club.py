@@ -49,7 +49,7 @@ class Club(db.Model):
     def set_airtable_data(self, data):
         """Set Airtable data as JSON"""
         self.airtable_data = json.dumps(data)
-    
+
     @property
     def total_tokens(self):
         """Alias for tokens field for template compatibility"""

@@ -104,7 +104,6 @@ def signup():
         first_name = sanitize_string(request.form.get('first_name', ''), max_length=50).strip()
         last_name = sanitize_string(request.form.get('last_name', ''), max_length=50).strip()
 
-        # Validate inputs
         valid_username, username_or_error = validate_username(username)
         if not valid_username:
             flash(username_or_error, 'error')
@@ -129,7 +128,6 @@ def signup():
             flash('Email already registered', 'error')
             return render_template('signup.html')
 
-        # Create new user
         user = User(
             username=username,
             email=email,
@@ -167,7 +165,6 @@ def forgot_password():
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             return jsonify({'success': False, 'message': 'Invalid email format'}), 400
 
-        # TODO: Implement email sending for password reset
         # For now, just return success
         return jsonify({'success': True, 'message': 'If an account exists with this email, you will receive reset instructions.'})
 
@@ -178,7 +175,6 @@ def forgot_password():
 @limiter.limit("10 per minute")
 def reset_password():
     """Reset password with code"""
-    # TODO: Implement password reset functionality
     return render_template('reset_password.html')
 
 
@@ -186,9 +182,7 @@ def reset_password():
 @limiter.limit("10 per minute")
 def verify_reset_code():
     """Verify password reset code"""
-    # TODO: Implement reset code verification
     return jsonify({'success': False, 'message': 'Not implemented'}), 501
-
 
 
 @auth_bp.route('/identity/callback')
@@ -198,82 +192,82 @@ def hackclub_identity_callback():
     import os
     from app.services.identity import HackClubIdentityService, init_service
     from app.utils.auth_helpers import get_current_user
-    
+
     # Verify state for CSRF protection
     stored_state = session.get('hackclub_identity_state')
     received_state = request.args.get('state')
-    
+
     if not stored_state or received_state != stored_state:
         flash('Invalid state parameter - possible CSRF attack', 'error')
         return redirect(url_for('main.account'))
-    
+
     session.pop('hackclub_identity_state', None)
-    
+
     # Check for errors
     error = request.args.get('error')
     if error:
         flash(f'Identity verification failed: {error}', 'error')
         return redirect(url_for('main.account'))
-    
+
     # Get authorization code
     code = request.args.get('code')
     if not code:
         flash('No authorization code received', 'error')
         return redirect(url_for('main.account'))
-    
+
     # Verify user is logged in
     user = get_current_user()
     if not user:
         flash('Please log in to complete identity verification', 'error')
         return redirect(url_for('auth.login'))
-    
+
     # Initialize identity service
     client_id = HACKCLUB_IDENTITY_CLIENT_ID
     client_secret = HACKCLUB_IDENTITY_CLIENT_SECRET
     identity_url = os.getenv('HACKCLUB_IDENTITY_URL', 'https://identity.hackclub.com')
-    
+
     init_service(current_app._get_current_object(), identity_url, client_id, client_secret)
     identity_service = HackClubIdentityService()
-    
+
     # Get redirect URI
     redirect_uri = request.url_root.rstrip('/') + '/auth/identity/callback'
     if request.url_root.startswith('http://'):
         redirect_uri = redirect_uri.replace('http://', 'https://', 1)
-    
+
     # Exchange code for access token
     token_data = identity_service.exchange_code(code, redirect_uri)
-    
+
     if 'error' in token_data:
         flash(f'Token exchange failed: {token_data.get("error", "Unknown error")}', 'error')
         return redirect(url_for('main.account'))
-    
+
     # Store access token
     access_token = token_data.get('access_token')
     if not access_token:
         flash('No access token received', 'error')
         return redirect(url_for('main.account'))
-    
+
     user.identity_token = access_token
-    
+
     # Get user identity information
     identity_info = identity_service.get_user_identity(access_token)
-    
+
     if identity_info and 'identity' in identity_info:
         verification_status = identity_info['identity'].get('verification_status', 'unverified')
         user.identity_verified = (verification_status == 'verified')
-        
+
         # Get Slack ID if available
         if 'slack_id' in identity_info['identity']:
             user.slack_user_id = identity_info['identity']['slack_id']
-        
+
         db.session.commit()
-        
+
         # Check for pending OAuth flow
         pending_oauth = session.get('pending_oauth')
         if pending_oauth and user.identity_verified:
             # OAuth flow was waiting for identity verification
             session.pop('pending_oauth', None)
-            
+
             # Generate authorization code
             from app.models.auth import OAuthAuthorizationCode
             auth_code = OAuthAuthorizationCode(
@@ -283,18 +277,18 @@ def hackclub_identity_callback():
                 scope=pending_oauth['scope']
             )
             auth_code.generate_code()
-            
+
             db.session.add(auth_code)
             db.session.commit()
-            
+
             # Redirect back to client with code
             separator = '&' if '?' in pending_oauth['redirect_uri'] else '?'
             callback_url = f"{pending_oauth['redirect_uri']}{separator}code={auth_code.code}"
             if pending_oauth.get('state'):
                 callback_url += f"&state={pending_oauth['state']}"
-            
+
             return redirect(callback_url)
-        
+
         # Create audit log
         from app.models.user import create_audit_log
         create_audit_log(
@@ -308,7 +302,7 @@ def hackclub_identity_callback():
                 'has_slack': bool(user.slack_user_id)
             }
         )
-        
+
         if verification_status == 'verified':
             flash('🎉 Successfully verified your Hack Club identity!', 'success')
         elif verification_status == 'pending':
@@ -317,7 +311,7 @@ def hackclub_identity_callback():
             flash('Identity linked, but not yet verified.', 'info')
     else:
         flash('Failed to retrieve identity information', 'error')
-    
+
     return redirect(url_for('main.account'))
 
 
@@ -326,21 +320,21 @@ def hackclub_identity_callback():
 def disconnect_identity():
     """Disconnect Hack Club identity from account"""
     from app.utils.auth_helpers import get_current_user
-    
+
     user = get_current_user()
     if not user:
         return jsonify({'success': False, 'message': 'Not authenticated'}), 401
-    
+
     if not user.identity_verified:
         return jsonify({'success': False, 'message': 'No identity connected'}), 400
-    
+
     # Clear identity information
     user.identity_token = None
     user.identity_verified = False
     user.slack_user_id = None
-    
+
     db.session.commit()
-    
+
     # Create audit log
     from app.models.user import create_audit_log
     create_audit_log(
@@ -350,7 +344,7 @@ def disconnect_identity():
         category='auth',
         severity='info'
     )
-    
+
     return jsonify({'success': True, 'message': 'Identity disconnected successfully'})
 
 
@@ -358,7 +352,6 @@ def disconnect_identity():
 @limiter.limit("10 per minute")
 def verify_leader():
     """Verify club leader with Airtable"""
-    # TODO: Implement leader verification
     return render_template('verify_leader.html')
 
 
@@ -366,7 +359,6 @@ def verify_leader():
 @login_required
 def complete_leader_signup():
     """Complete signup for verified leaders"""
-    # TODO: Implement leader signup completion
     flash('Leader signup completion is not yet implemented', 'warning')
     return redirect(url_for('main.dashboard'))
 
@@ -375,7 +367,6 @@ def complete_leader_signup():
 @login_required
 def setup_hackatime():
     """Setup Hackatime integration"""
-    # TODO: Implement Hackatime setup
     return render_template('setup_hackatime.html')
 
 

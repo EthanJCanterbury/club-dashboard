@@ -13,12 +13,12 @@
             --warning: #f59e0b;
             --error: #ef4444;
             --info: #3b82f6;
-            
+
             --operational: #10b981;
             --degraded: #f59e0b;
             --partial-outage: #f59e0b;
             --major-outage: #ef4444;
-            
+
             --bg-primary: #ffffff;
             --bg-secondary: #f8fafc;
             --bg-card: #ffffff;
@@ -27,12 +27,12 @@
             --text-muted: #9ca3af;
             --border: #e5e7eb;
             --border-light: #f3f4f6;
-            
+
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            
+
             --radius: 12px;
             --radius-lg: 16px;
         }
@@ -885,7 +885,7 @@
                     <i class="fas fa-exclamation-triangle"></i>
                     Incident History
                 </h2>
-                
+
                 <div class="incident-tabs">
                     <button class="incident-tab active" data-filter="active" onclick="switchIncidentTab('active', this)">
                         Active Incidents
@@ -937,12 +937,12 @@
                             <label for="incidentTitle">Title *</label>
                             <input type="text" id="incidentTitle" required placeholder="Brief description of the issue">
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="incidentDescription">Description *</label>
                             <textarea id="incidentDescription" required rows="4" placeholder="Detailed description of the issue and its impact"></textarea>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="incidentImpact">Impact Level *</label>
@@ -953,7 +953,7 @@
                                     <option value="critical">Critical - Severe disruption</option>
                                 </select>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="incidentStatus">Status</label>
                                 <select id="incidentStatus">
@@ -963,7 +963,7 @@
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="affectedServices">Affected Services</label>
                             <div class="checkbox-group">
@@ -1005,7 +1005,7 @@
                 </div>
                 <div class="modal-body">
                     <div id="incidentDetails"></div>
-                    
+
                     <div class="incident-actions" id="incidentActions">
                         <button class="btn btn-warning" onclick="editIncident()">
                             <i class="fas fa-edit"></i> Edit
@@ -1020,7 +1020,7 @@
                             <i class="fas fa-trash"></i> Delete
                         </button>
                     </div>
-                    
+
                     <!-- Status Updates -->
                     <div id="incidentUpdates" class="incident-updates-section">
                         <h4><i class="fas fa-history"></i> Status Updates</h4>
@@ -1041,17 +1041,17 @@
                 <div class="modal-body">
                     <form id="editIncidentForm">
                         <input type="hidden" id="editIncidentId">
-                        
+
                         <div class="form-group">
                             <label for="editIncidentTitle">Title *</label>
                             <input type="text" id="editIncidentTitle" required>
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="editIncidentDescription">Description *</label>
                             <textarea id="editIncidentDescription" required rows="4"></textarea>
                         </div>
-                        
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="editIncidentImpact">Impact Level *</label>
@@ -1061,7 +1061,7 @@
                                     <option value="critical">Critical</option>
                                 </select>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label for="editIncidentStatus">Status</label>
                                 <select id="editIncidentStatus">
@@ -1072,7 +1072,7 @@
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="editAffectedServices">Affected Services</label>
                             <div class="checkbox-group" id="editAffectedServices">
@@ -1115,12 +1115,12 @@
                 <div class="modal-body">
                     <form id="addUpdateForm">
                         <input type="hidden" id="updateIncidentId">
-                        
+
                         <div class="form-group">
                             <label for="updateMessage">Update Message *</label>
                             <textarea id="updateMessage" required rows="4" placeholder="Describe what's happening with this incident..."></textarea>
                         </div>
-                        
+
                         <div class="form-group">
                             <label for="updateStatus">New Status</label>
                             <select id="updateStatus">
@@ -1153,7 +1153,7 @@
             loadStatusSummary();
             loadIncidents();
             checkAdminStatus();
-            
+
             // Auto-refresh every 30 seconds
             setInterval(() => {
                 loadStatusSummary();
@@ -1167,13 +1167,13 @@
                 console.log('checkAdminStatus: Checking admin status...');
                 const response = await fetch('/api/user/me');
                 console.log(`checkAdminStatus: Response status: ${response.status}`);
-                
+
                 if (response.ok) {
                     const user = await response.json();
                     console.log('checkAdminStatus: User data:', user);
                     isAdmin = user.is_admin || false;
                     console.log(`checkAdminStatus: isAdmin = ${isAdmin}`);
-                    
+
                     if (isAdmin) {
                         console.log('checkAdminStatus: Showing admin panel');
                         document.getElementById('adminPanel').style.display = 'block';
@@ -1194,7 +1194,7 @@
             try {
                 const response = await fetch('/api/status/summary');
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     renderStatusOverview(data);
                     renderServices(data.services);
@@ -1211,11 +1211,11 @@
         function renderStatusOverview(data) {
             const statusOverview = document.getElementById('statusOverview');
             const statusClass = data.overall_status.replace('_', '-');
-            
+
             let iconClass = 'fa-check-circle';
             if (data.overall_status === 'degraded') iconClass = 'fa-exclamation-triangle';
             else if (data.overall_status.includes('outage')) iconClass = 'fa-times-circle';
-            
+
             statusOverview.className = `status-overview fade-in ${statusClass}`;
             statusOverview.innerHTML = `
                 <div class="status-icon">
@@ -1223,7 +1223,7 @@
                 </div>
                 <h2 class="status-title">${data.status_message}</h2>
                 <p class="status-description">
-                    ${data.active_incidents_count > 0 
+                    ${data.active_incidents_count > 0
                         ? `${data.active_incidents_count} active incident${data.active_incidents_count !== 1 ? 's' : ''} being monitored`
                         : 'All systems are running smoothly'
                     }
@@ -1237,12 +1237,12 @@
         // Render services status
         function renderServices(services) {
             const servicesGrid = document.getElementById('servicesGrid');
-            
+
             if (services.length === 0) {
                 servicesGrid.innerHTML = '<div class="no-incidents"><p>No services configured</p></div>';
                 return;
             }
-            
+
             servicesGrid.innerHTML = services.map(service => {
                 let iconClass = 'fa-server';
                 if (service.name === 'API') iconClass = 'fa-code';
@@ -1250,10 +1250,10 @@
                 else if (service.name === 'CDN') iconClass = 'fa-cloud';
                 else if (service.name === 'Database') iconClass = 'fa-database';
                 else if (service.name === 'Economy') iconClass = 'fa-coins';
-                
+
                 const statusClass = service.status.replace('_', '-');
                 const statusText = service.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                
+
                 return `
                     <div class="service-item">
                         <div class="service-name">
@@ -1274,7 +1274,7 @@
             try {
                 const response = await fetch(`/api/status/incidents?status=${currentIncidentFilter}&limit=20`);
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     allIncidents = data.incidents;
                     renderIncidents(data.incidents);
@@ -1290,9 +1290,9 @@
         // Render incidents list
         function renderIncidents(incidents) {
             const incidentsList = document.getElementById('incidentsList');
-            
+
             if (incidents.length === 0) {
-                const filterText = currentIncidentFilter === 'active' ? 'active incidents' : 
+                const filterText = currentIncidentFilter === 'active' ? 'active incidents' :
                                  currentIncidentFilter === 'resolved' ? 'resolved incidents' : 'incidents';
                 incidentsList.innerHTML = `
                     <div class="no-incidents">
@@ -1302,7 +1302,7 @@
                 `;
                 return;
             }
-            
+
             incidentsList.innerHTML = incidents.map(incident => `
                 <div class="incident-item" onclick="${isAdmin ? `manageIncident(${incident.id})` : `viewIncidentDetails(${incident.id})`}">
                     <div class="incident-header">
@@ -1334,11 +1334,11 @@
         // Switch incident tab
         function switchIncidentTab(filter, element) {
             currentIncidentFilter = filter;
-            
+
             // Update tab states
             document.querySelectorAll('.incident-tab').forEach(tab => tab.classList.remove('active'));
             element.classList.add('active');
-            
+
             // Show loading
             document.getElementById('incidentsList').innerHTML = `
                 <div class="loading">
@@ -1346,7 +1346,7 @@
                     <p>Loading incidents...</p>
                 </div>
             `;
-            
+
             // Load incidents with new filter
             loadIncidents();
         }
@@ -1359,19 +1359,19 @@
         // Edit incident functions
         function editIncident() {
             if (!currentIncident) return;
-            
+
             // Populate edit form with current incident data
             document.getElementById('editIncidentId').value = currentIncident.id;
             document.getElementById('editIncidentTitle').value = currentIncident.title;
             document.getElementById('editIncidentDescription').value = currentIncident.description;
             document.getElementById('editIncidentImpact').value = currentIncident.impact;
             document.getElementById('editIncidentStatus').value = currentIncident.status;
-            
+
             // Set affected services checkboxes
             document.querySelectorAll('#editAffectedServices input[type="checkbox"]').forEach(cb => {
                 cb.checked = currentIncident.affected_services && currentIncident.affected_services.includes(cb.value);
             });
-            
+
             showModal('editIncidentModal');
         }
 
@@ -1381,17 +1381,17 @@
             const description = document.getElementById('editIncidentDescription').value.trim();
             const impact = document.getElementById('editIncidentImpact').value;
             const status = document.getElementById('editIncidentStatus').value;
-            
+
             // Validate required fields
             if (!title || !description || !impact) {
                 showNotification('Please fill in all required fields', 'error');
                 return;
             }
-            
+
             // Get affected services
             const affectedServices = Array.from(document.querySelectorAll('#editAffectedServices input[type="checkbox"]:checked'))
                 .map(cb => cb.value);
-            
+
             const updateData = {
                 title,
                 description,
@@ -1399,10 +1399,10 @@
                 status,
                 affected_services: affectedServices
             };
-            
+
             try {
                 console.log('Updating incident:', updateData);
-                
+
                 const response = await fetch(`/api/admin/status/incidents/${incidentId}`, {
                     method: 'PUT',
                     headers: {
@@ -1410,9 +1410,9 @@
                     },
                     body: JSON.stringify(updateData)
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     showNotification('Incident updated successfully!', 'success');
                     closeModal();
@@ -1434,11 +1434,11 @@
         // Resolve incident function
         async function resolveIncident() {
             if (!currentIncident) return;
-            
+
             if (!confirm(`Are you sure you want to mark "${currentIncident.title}" as resolved?`)) {
                 return;
             }
-            
+
             try {
                 const response = await fetch(`/api/admin/status/incidents/${currentIncident.id}`, {
                     method: 'PUT',
@@ -1447,9 +1447,9 @@
                     },
                     body: JSON.stringify({ status: 'resolved' })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     showNotification('Incident marked as resolved!', 'success');
                     closeModal();
@@ -1467,18 +1467,18 @@
         // Delete incident function
         async function deleteIncident() {
             if (!currentIncident) return;
-            
+
             if (!confirm(`Are you sure you want to permanently delete "${currentIncident.title}"? This cannot be undone.`)) {
                 return;
             }
-            
+
             try {
                 const response = await fetch(`/api/admin/status/incidents/${currentIncident.id}`, {
                     method: 'DELETE'
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     showNotification('Incident deleted successfully!', 'success');
                     closeModal();
@@ -1496,10 +1496,10 @@
         // Add status update functions
         function addStatusUpdate() {
             if (!currentIncident) return;
-            
+
             document.getElementById('updateIncidentId').value = currentIncident.id;
             document.getElementById('updateStatus').value = currentIncident.status; // Default to current status
-            
+
             showModal('addUpdateModal');
         }
 
@@ -1507,20 +1507,20 @@
             const incidentId = document.getElementById('updateIncidentId').value;
             const message = document.getElementById('updateMessage').value.trim();
             const status = document.getElementById('updateStatus').value;
-            
+
             if (!message) {
                 showNotification('Please enter an update message', 'error');
                 return;
             }
-            
+
             const updateData = {
                 message,
                 status
             };
-            
+
             try {
                 console.log('Adding status update:', updateData);
-                
+
                 const response = await fetch(`/api/admin/status/incidents/${incidentId}/updates`, {
                     method: 'POST',
                     headers: {
@@ -1528,9 +1528,9 @@
                     },
                     body: JSON.stringify(updateData)
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     showNotification('Status update added successfully!', 'success');
                     closeModal();
@@ -1556,7 +1556,7 @@
                 <i class="fas ${type === 'success' ? 'fa-check' : type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
                 ${message}
             `;
-            
+
             // Add notification styles if not already present
             if (!document.querySelector('#notificationStyles')) {
                 const style = document.createElement('style');
@@ -1590,9 +1590,9 @@
                 `;
                 document.head.appendChild(style);
             }
-            
+
             document.body.appendChild(notification);
-            
+
             // Remove after 3 seconds
             setTimeout(() => {
                 notification.remove();
@@ -1615,23 +1615,23 @@
         function submitCreateIncident() {
             const form = document.getElementById('createIncidentForm');
             const formData = new FormData(form);
-            
+
             // Get form values
             const title = document.getElementById('incidentTitle').value.trim();
             const description = document.getElementById('incidentDescription').value.trim();
             const impact = document.getElementById('incidentImpact').value;
             const status = document.getElementById('incidentStatus').value;
-            
+
             // Validate required fields
             if (!title || !description || !impact) {
                 showNotification('Please fill in all required fields', 'error');
                 return;
             }
-            
+
             // Get affected services
             const affectedServices = Array.from(document.querySelectorAll('#affectedServices input[type="checkbox"]:checked'))
                 .map(cb => cb.value);
-            
+
             const incidentData = {
                 title,
                 description,
@@ -1639,14 +1639,14 @@
                 status,
                 affected_services: affectedServices
             };
-            
+
             createIncidentAPI(incidentData);
         }
 
         async function createIncidentAPI(incidentData) {
             try {
                 console.log('Creating incident:', incidentData);
-                
+
                 const response = await fetch('/api/admin/status/incidents', {
                     method: 'POST',
                     headers: {
@@ -1654,10 +1654,10 @@
                     },
                     body: JSON.stringify(incidentData)
                 });
-                
+
                 const result = await response.json();
                 console.log('Create incident response:', result);
-                
+
                 if (response.ok) {
                     showNotification('Incident created successfully!', 'success');
                     closeModal();
@@ -1684,7 +1684,7 @@
             document.querySelectorAll('.modal').forEach(modal => {
                 modal.style.display = 'none';
             });
-            
+
             // Show the requested modal
             document.getElementById(modalId).style.display = 'block';
             document.getElementById('modalOverlay').classList.add('show');
@@ -1710,10 +1710,10 @@
         async function manageIncident(incidentId) {
             try {
                 console.log(`Loading incident details for ID: ${incidentId}`);
-                
+
                 const response = await fetch(`/api/status/incidents/${incidentId}`);
                 const incident = await response.json();
-                
+
                 if (response.ok) {
                     currentIncident = incident;
                     displayIncidentDetails(incident);
@@ -1748,7 +1748,7 @@
                     ` : ''}
                 </div>
             `;
-            
+
             // Show/hide admin actions based on user role
             const actionsContainer = document.getElementById('incidentActions');
             if (isAdmin) {
@@ -1763,7 +1763,7 @@
             } else {
                 actionsContainer.style.display = 'none';
             }
-            
+
             // Display status updates
             const updatesList = document.getElementById('updatesList');
             if (incident.updates && incident.updates.length > 0) {
@@ -1789,7 +1789,7 @@
             const diffMs = now - date;
             const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
             const diffDays = Math.floor(diffHours / 24);
-            
+
             if (diffHours < 1) {
                 const diffMins = Math.floor(diffMs / (1000 * 60));
                 return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
@@ -1811,7 +1811,7 @@
         document.addEventListener('click', function(event) {
             const adminPanel = document.getElementById('adminPanel');
             const adminMenu = document.getElementById('adminMenu');
-            
+
             if (adminPanel && !adminPanel.contains(event.target)) {
                 adminMenu.classList.remove('show');
             }

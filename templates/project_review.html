@@ -544,16 +544,16 @@
         .projects-grid {
             grid-template-columns: 1fr;
         }
-        
+
         .review-controls {
             flex-direction: column;
             align-items: stretch;
         }
-        
+
         .filter-section {
             justify-content: space-between;
         }
-        
+
         .search-container {
             max-width: none;
         }
@@ -598,7 +598,7 @@
                         <option value="Flagged">Flagged</option>
                     </select>
                 </div>
-                
+
                 <div class="filter-group">
                     <label class="filter-label">Auto Review</label>
                     <select id="autoReviewFilter" class="filter-select">
@@ -655,7 +655,7 @@
         <div class="modal-body">
             <form id="reviewForm">
                 <input type="hidden" id="projectId" />
-                
+
                 <div class="form-group">
                     <label class="form-label">Status</label>
                     <select class="form-control" id="newStatus" required>
@@ -669,9 +669,9 @@
 
                 <div class="form-group">
                     <label class="form-label">Decision Reason</label>
-                    <textarea 
-                        class="form-control" 
-                        id="decisionReason" 
+                    <textarea
+                        class="form-control"
+                        id="decisionReason"
                         rows="4"
                         placeholder="Explain your decision..."
                         required
@@ -716,7 +716,7 @@
         <div class="modal-body">
             <form id="grantOverrideForm">
                 <input type="hidden" id="overrideProjectId" />
-                
+
                 <div class="form-group">
                     <label class="form-label">Current Grant Amount (Calculated by Airtable)</label>
                     <div id="currentGrantAmount" style="font-size: 1.2rem; font-weight: 600; color: #10b981; padding: 0.75rem; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
@@ -726,10 +726,10 @@
 
                 <div class="form-group">
                     <label class="form-label">Override Amount (USD)</label>
-                    <input 
-                        type="number" 
-                        class="form-control" 
-                        id="overrideGrantAmount" 
+                    <input
+                        type="number"
+                        class="form-control"
+                        id="overrideGrantAmount"
                         placeholder="Enter override amount"
                         min="0"
                         step="0.01"
@@ -743,9 +743,9 @@
 
                 <div class="form-group">
                     <label class="form-label">Override Reason</label>
-                    <textarea 
-                        class="form-control" 
-                        id="overrideReason" 
+                    <textarea
+                        class="form-control"
+                        id="overrideReason"
                         rows="3"
                         placeholder="Explain why you're overriding the calculated amount..."
                         required
@@ -774,7 +774,7 @@
         </div>
         <div class="modal-body">
             <input type="hidden" id="deleteProjectId" />
-            
+
             <div style="text-align: center; padding: 1rem 0;">
                 <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc2626; margin-bottom: 1rem;"></i>
                 <h3 style="color: #1f2937; margin-bottom: 1rem;">Are you sure?</h3>
@@ -823,7 +823,7 @@
 
         try {
             const response = await fetch('/api/projects/review');
-            
+
             if (response.ok) {
                 const data = await response.json();
                 projects = data.projects || [];
@@ -860,9 +860,9 @@
 
         filteredProjects = projects.filter(project => {
             const matchesStatus = !statusFilter || project.status === statusFilter;
-            const matchesAutoReview = !autoReviewFilter || 
+            const matchesAutoReview = !autoReviewFilter ||
                 (project.autoReviewStatus && project.autoReviewStatus.includes(autoReviewFilter));
-            const matchesSearch = !searchQuery || 
+            const matchesSearch = !searchQuery ||
                 (project.firstName && project.firstName.toLowerCase().includes(searchQuery)) ||
                 (project.lastName && project.lastName.toLowerCase().includes(searchQuery)) ||
                 (project.email && project.email.toLowerCase().includes(searchQuery)) ||
@@ -888,8 +888,8 @@
         emptyState.style.display = 'none';
 
         projectsContainer.innerHTML = filteredProjects.map(project => {
-            const autoReviewFlags = Array.isArray(project.autoReviewStatus) 
-                ? project.autoReviewStatus 
+            const autoReviewFlags = Array.isArray(project.autoReviewStatus)
+                ? project.autoReviewStatus
                 : (project.autoReviewStatus ? [project.autoReviewStatus] : []);
 
             return `
@@ -1001,7 +1001,7 @@
         document.getElementById('projectId').value = projectId;
         document.getElementById('newStatus').value = suggestedStatus;
         document.getElementById('decisionReason').value = project.decisionReason || '';
-        
+
         document.getElementById('reviewModalTitle').textContent = `Review: ${project.firstName} ${project.lastName}`;
         document.getElementById('reviewModal').style.display = 'block';
         document.body.style.overflow = 'hidden';
@@ -1065,7 +1065,7 @@
         if (!project) return;
 
         document.getElementById('projectDetailTitle').textContent = `${project.firstName} ${project.lastName} - Project Details`;
-        
+
         const content = `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                 <div>
@@ -1122,8 +1122,8 @@
             ${project.screenshot ? `
                 <h4 style="color: #1a202c; margin: 2rem 0 1rem 0;">Screenshot</h4>
                 <div style="display: flex; justify-content: center; margin: 1rem 0;">
-                    <img src="${project.screenshot}" alt="Project screenshot" 
-                         style="max-width: 100%; max-height: 400px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer; object-fit: contain;" 
+                    <img src="${project.screenshot}" alt="Project screenshot"
+                         style="max-width: 100%; max-height: 400px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer; object-fit: contain;"
                          onclick="openImageZoom('${project.screenshot}')">
                 </div>
             ` : ''}
@@ -1166,15 +1166,15 @@
 
         document.getElementById('overrideProjectId').value = projectId;
         document.getElementById('grantOverrideTitle').textContent = `Grant Override: ${project.firstName} ${project.lastName}`;
-        
+
         // Display current grant amount
         const currentAmount = project.grantAmount ? `${Math.round(parseFloat(project.grantAmount) * 100)} tokens ($${parseFloat(project.grantAmount).toFixed(2)} USD)` : 'Not calculated yet';
         document.getElementById('currentGrantAmount').textContent = currentAmount;
-        
+
         // Clear override fields
         document.getElementById('overrideGrantAmount').value = '';
         document.getElementById('overrideReason').value = '';
-        
+
         document.getElementById('grantOverrideModal').style.display = 'block';
         document.body.style.overflow = 'hidden';
     }
@@ -1237,14 +1237,14 @@
         if (!project) return;
 
         document.getElementById('deleteProjectId').value = projectId;
-        
+
         // Display project info
         document.getElementById('deleteProjectInfo').innerHTML = `
             <strong>${project.firstName} ${project.lastName}</strong><br>
             <small>${project.email}</small><br>
             <small>Club: ${project.clubName || 'N/A'}</small>
         `;
-        
+
         document.getElementById('deleteModal').style.display = 'block';
         document.body.style.overflow = 'hidden';
     }

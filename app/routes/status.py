@@ -22,7 +22,7 @@ def status_banner():
         StatusIncident.status != 'resolved',
         StatusIncident.impact.in_(['major', 'critical'])
     ).order_by(StatusIncident.created_at.desc()).limit(1).all()
-    
+
     if incidents:
         incident = incidents[0]
         return jsonify({
@@ -32,7 +32,7 @@ def status_banner():
             'status': incident.status,
             'link': '/status'
         })
-    
+
     return jsonify({'show': False})
 
 

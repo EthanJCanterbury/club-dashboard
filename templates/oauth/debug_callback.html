@@ -59,7 +59,7 @@
 <body>
     <div class="container">
         <h1>OAuth Debug Callback</h1>
-        
+
         {% if error %}
             <div class="error">
                 <strong>Error:</strong> {{ error }}
@@ -68,21 +68,21 @@
             <div class="success">
                 OAuth callback received successfully!
             </div>
-            
+
             {% if code %}
             <div class="info">
                 <div class="label">Authorization Code:</div>
                 <div class="value">{{ code }}</div>
             </div>
             {% endif %}
-            
+
             {% if state %}
             <div class="info">
                 <div class="label">State:</div>
                 <div class="value">{{ state }}</div>
             </div>
             {% endif %}
-            
+
             <div style="margin-top: 20px;">
                 <p><strong>Next steps:</strong></p>
                 <ol>
@@ -91,7 +91,7 @@
                 </ol>
             </div>
         {% endif %}
-        
+
         <div style="margin-top: 30px;">
             <a href="{{ url_for('oauth.oauth_debug') }}" style="color: #007bff; text-decoration: none;">← Back to OAuth Debug</a>
         </div>

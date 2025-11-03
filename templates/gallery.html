@@ -1093,7 +1093,7 @@ endblock %} {% block extra_head %}
 
     async function loadPosts() {
         const postsContainer = document.getElementById('postsContainer');
-        
+
         // Show skeleton loading
         postsContainer.innerHTML = Array(6).fill(0).map(() => `
             <div class="post-card skeleton">
@@ -1105,7 +1105,7 @@ endblock %} {% block extra_head %}
                 </div>
             </div>
         `).join('');
-        
+
         try {
             const response = await fetch('/api/gallery/posts');
             if (response.ok) {
@@ -1657,12 +1657,12 @@ endblock %} {% block extra_head %}
     function checkTutorialRestore() {
         const tutorialInProgress = localStorage.getItem('tutorialInProgress');
         const savedStep = localStorage.getItem('tutorialCurrentStep');
-        
+
         if (tutorialInProgress === 'true' && savedStep) {
             // Clear stored state
             localStorage.removeItem('tutorialInProgress');
             localStorage.removeItem('tutorialCurrentStep');
-            
+
             // Show gallery-specific tutorial step
             showGalleryTutorialStep();
             return true;
@@ -1745,21 +1745,21 @@ endblock %} {% block extra_head %}
 
     function showCurrentGalleryStep() {
         const step = galleryTutorialSteps[galleryTutorialStep];
-        
+
         // Update content
         document.getElementById('tutorialTitle').textContent = step.title;
         document.getElementById('tutorialText').textContent = step.text;
         document.getElementById('tutorialStep').textContent = galleryTutorialStep + 1;
         document.getElementById('tutorialTotal').textContent = galleryTutorialSteps.length;
-        
+
         // Update buttons
         const nextBtn = document.getElementById('nextBtn');
         const finishBtn = document.getElementById('finishBtn');
         const prevBtn = document.getElementById('prevBtn');
-        
+
         prevBtn.disabled = galleryTutorialStep === 0;
         prevBtn.style.display = galleryTutorialStep === 0 ? 'none' : 'inline-block';
-        
+
         if (galleryTutorialStep === galleryTutorialSteps.length - 1) {
             nextBtn.textContent = 'Back to Dashboard';
             nextBtn.onclick = function() {
@@ -1784,18 +1784,18 @@ endblock %} {% block extra_head %}
                 }
             };
         }
-        
+
         prevBtn.onclick = function() {
             if (galleryTutorialStep > 0) {
                 galleryTutorialStep--;
                 showCurrentGalleryStep();
             }
         };
-        
+
         // Position bubble
         const bubble = document.getElementById('tutorialBubble');
         let target = document.querySelector(step.target);
-        
+
         // Wait for modal to appear if targeting modal content
         if (!target && (step.target.includes('Modal') || step.target.includes('#post') || step.target.includes('.modal'))) {
             setTimeout(() => {
@@ -1806,7 +1806,7 @@ endblock %} {% block extra_head %}
             }, 600);
             return;
         }
-        
+
         if (bubble && target) {
             positionGalleryTutorialBubble(bubble, target, step);
         }
@@ -1815,28 +1815,28 @@ endblock %} {% block extra_head %}
     function positionGalleryTutorialBubble(bubble, target, step) {
         const rect = target.getBoundingClientRect();
         const navbarHeight = 70;
-        
+
         let bubbleX = rect.left + rect.width / 2 - 200;
         let bubbleY = step.position === 'top' ? rect.top - 200 : rect.bottom + 20;
-        
+
         // Special positioning for modal elements
         if (step.target.includes('Modal') || step.target.includes('#post')) {
             bubbleX = rect.left + rect.width / 2 - 200;
             bubbleY = rect.top + 50;
         }
-        
+
         // Keep within viewport and below navbar
         bubbleX = Math.max(20, Math.min(window.innerWidth - 400 - 20, bubbleX));
         bubbleY = Math.max(navbarHeight + 20, Math.min(window.innerHeight - 200 - 20, bubbleY));
-        
+
         bubble.style.left = bubbleX + 'px';
         bubble.style.top = bubbleY + 'px';
-        
+
         const arrow = document.getElementById('tutorialArrow');
         if (arrow) {
             arrow.className = `tutorial-arrow ${step.position === 'top' ? 'bottom' : 'top'}`;
         }
-        
+
         // Highlight target
         document.querySelectorAll('.tutorial-highlight').forEach(el => {
             el.classList.remove('tutorial-highlight');
@@ -1849,7 +1849,7 @@ endblock %} {% block extra_head %}
         overlay.id = 'tutorialOverlay';
         overlay.className = 'tutorial-overlay';
         overlay.style.display = 'none';
-        
+
         overlay.innerHTML = `
             <div class="tutorial-backdrop"></div>
             <div class="tutorial-bubble" id="tutorialBubble">
@@ -1875,7 +1875,7 @@ endblock %} {% block extra_head %}
                 <div class="tutorial-arrow" id="tutorialArrow"></div>
             </div>
         `;
-        
+
         document.body.appendChild(overlay);
     }
 

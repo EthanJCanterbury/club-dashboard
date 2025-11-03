@@ -76,7 +76,6 @@ def club_orders(club_id):
         flash('Only club leaders can view orders.', 'danger')
         return redirect(url_for('main.club_dashboard', club_id=club_id))
 
-    # TODO: Implement order viewing
     return render_template('club_orders.html', club=club)
 
 
@@ -234,24 +233,24 @@ def club_background(club_id):
             allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
             filename = secure_filename(file.filename)
             file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-            
+
             if file_ext not in allowed_extensions:
                 return jsonify({'error': f'Invalid file type. Allowed: {", ".join(allowed_extensions)}'}), 400
 
             # Save file to static/uploads/backgrounds/
             upload_folder = os.path.join(current_app.root_path, '..', 'static', 'uploads', 'backgrounds')
             os.makedirs(upload_folder, exist_ok=True)
-            
+
             # Generate unique filename
             unique_filename = f"club_{club_id}_{int(datetime.now().timestamp())}.{file_ext}"
             file_path = os.path.join(upload_folder, unique_filename)
-            
+
             try:
                 file.save(file_path)
-                
+
                 # Store the URL path (relative to static folder)
                 background_url = f"/static/uploads/backgrounds/{unique_filename}"
-                
+
                 # Delete old background file if it exists and is local
                 if club.background_image_url and club.background_image_url.startswith('/static/uploads/backgrounds/'):
                     old_file_path = os.path.join(current_app.root_path, '..', club.background_image_url.lstrip('/'))
@@ -260,10 +259,10 @@ def club_background(club_id):
                             os.remove(old_file_path)
                         except Exception:
                             pass  # Don't fail if we can't delete old file
-                
+
                 club.background_image_url = background_url
                 db.session.commit()
-                
+
                 return jsonify({
                     'success': True,
                     'message': 'Background image uploaded successfully',
@@ -858,7 +857,7 @@ def manage_co_leader(club_id):
             user = User.query.get(user_id)
             if not user:
                 return jsonify({'error': 'User not found'}), 404
-            
+
             # Check if user is a member at all
             any_membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id).first()
             if not any_membership:
@@ -1022,7 +1021,7 @@ def remove_co_leader_legacy(club_id):
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
+
         any_membership = ClubMembership.query.filter_by(club_id=club_id, user_id=user_id).first()
         if not any_membership:
             return jsonify({'error': f'User {user.username} is not a member of this club'}), 400

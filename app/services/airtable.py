@@ -943,11 +943,11 @@ class AirtableService:
 
         try:
             from datetime import datetime, timedelta
-            
+
             # Calculate cutoff time (5 minutes ago by default)
             cutoff_time = datetime.utcnow() - timedelta(minutes=max_age_minutes)
             cutoff_time_iso = cutoff_time.isoformat() + 'Z'
-            
+
             # Find recent verified records
             filter_params = {
                 'filterByFormula': f'AND({{Email}} = "{email}", {{Status}} = "Verified", IS_AFTER({{Modified}}, "{cutoff_time_iso}"))'
@@ -998,7 +998,6 @@ class AirtableService:
                     if self.sync_club_with_airtable(existing_club.id, airtable_club):
                         updated_count += 1
                 else:
-                    # Create new club
                     new_club = self.create_club_from_airtable(airtable_club)
                     if new_club:
                         created_count += 1

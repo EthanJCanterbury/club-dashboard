@@ -30,7 +30,6 @@ def authorize():
     if not client_id or not redirect_uri:
         return jsonify({'error': 'invalid_request', 'error_description': 'Missing required parameters'}), 400
 
-    # Validate client
     app = OAuthApplication.query.filter_by(client_id=client_id).first()
     if not app:
         return jsonify({'error': 'invalid_client', 'error_description': 'Unknown client'}), 401
@@ -77,7 +76,6 @@ def approve_authorization():
     scope = request.form.get('scope', '')
     state = request.form.get('state', '')
 
-    # Validate client
     app = OAuthApplication.query.filter_by(client_id=client_id).first()
     if not app:
         return jsonify({'error': 'invalid_client'}), 401
@@ -92,7 +90,7 @@ def approve_authorization():
             'scope': scope,
             'state': state
         }
-        
+
         # Redirect to identity setup
         from flask import flash
         flash('This application requires identity verification', 'info')
@@ -136,7 +134,6 @@ def token():
     if grant_type != 'authorization_code':
         return jsonify({'error': 'unsupported_grant_type'}), 400
 
-    # Validate client
     app = OAuthApplication.query.filter_by(
         client_id=client_id,
         client_secret=client_secret
@@ -207,7 +204,6 @@ def user_info():
 
     access_token = auth_header[7:]  # Remove "Bearer " prefix
 
-    # Validate token
     token = OAuthToken.query.filter_by(access_token=access_token).first()
 
     if not token:
@@ -221,7 +217,6 @@ def user_info():
     if token.revoked_at:
         return jsonify({'error': 'invalid_token', 'error_description': 'Token revoked'}), 401
 
-    # Get user
     user = User.query.get(token.user_id)
     if not user:
         return jsonify({'error': 'invalid_token'}), 401

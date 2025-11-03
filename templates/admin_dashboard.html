@@ -971,20 +971,20 @@
     .setting-item:hover {
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    
+
     /* User view controls */
     .user-view-controls {
         display: flex;
         gap: 0.5rem;
         flex-wrap: wrap;
     }
-    
+
     .user-view-controls .btn-sm.active {
         background-color: var(--primary);
         color: white;
         border-color: var(--primary);
     }
-    
+
     /* Grouped views */
     .user-group {
         background: white;
@@ -994,7 +994,7 @@
         border: 1px solid #e5e7eb;
         overflow: hidden;
     }
-    
+
     .group-header {
         background: linear-gradient(135deg, #f8fafc, #e2e8f0);
         padding: 1rem 1.5rem;
@@ -1005,11 +1005,11 @@
         cursor: pointer;
         transition: background 0.2s ease;
     }
-    
+
     .group-header:hover {
         background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
     }
-    
+
     .group-title {
         font-size: 1.1rem;
         font-weight: 600;
@@ -1018,7 +1018,7 @@
         align-items: center;
         gap: 0.5rem;
     }
-    
+
     .group-count {
         background: var(--primary);
         color: white;
@@ -1027,17 +1027,17 @@
         font-size: 0.875rem;
         font-weight: 500;
     }
-    
+
     .group-content {
         padding: 0;
         max-height: 400px;
         overflow-y: auto;
     }
-    
+
     .group-content.collapsed {
         display: none;
     }
-    
+
     .user-mini-card {
         padding: 0.75rem 1.5rem;
         border-bottom: 1px solid #f3f4f6;
@@ -1046,31 +1046,31 @@
         align-items: center;
         transition: background 0.2s ease;
     }
-    
+
     .user-mini-card:hover {
         background: #f8fafc;
     }
-    
+
     .user-mini-card:last-child {
         border-bottom: none;
     }
-    
+
     .user-mini-info {
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
     }
-    
+
     .user-mini-name {
         font-weight: 600;
         color: #111827;
     }
-    
+
     .user-mini-email {
         font-size: 0.875rem;
         color: #6b7280;
     }
-    
+
     .user-mini-meta {
         display: flex;
         align-items: center;
@@ -1078,15 +1078,15 @@
         font-size: 0.875rem;
         color: #6b7280;
     }
-    
+
     .collapse-icon {
         transition: transform 0.2s ease;
     }
-    
+
     .collapse-icon.collapsed {
         transform: rotate(-90deg);
     }
-    
+
     /* Badges for user meta */
     .badge {
         display: inline-block;
@@ -1096,27 +1096,27 @@
         border-radius: 12px;
         text-transform: uppercase;
     }
-    
+
     .badge-admin {
         background: #fef3c7;
         color: #d97706;
     }
-    
+
     .badge-reviewer {
         background: #dbeafe;
         color: #2563eb;
     }
-    
+
     .badge-suspended {
         background: #fee2e2;
         color: #dc2626;
     }
-    
+
     .badge-role {
         background: #f3f4f6;
         color: #374151;
     }
-    
+
     /* Group controls */
     .group-controls {
         background: #f8fafc;
@@ -1130,18 +1130,18 @@
         gap: 1rem;
         border: 1px solid #e5e7eb;
     }
-    
+
     .group-sort-controls {
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
-    
+
     .group-sort-controls label {
         font-weight: 500;
         color: #374151;
     }
-    
+
     .group-sort-controls select {
         padding: 0.5rem;
         border: 1px solid #d1d5db;
@@ -1149,12 +1149,12 @@
         background: white;
         color: #374151;
     }
-    
+
     .group-info {
         font-size: 0.9rem;
         color: #6b7280;
     }
-    
+
     @media (max-width: 768px) {
         .group-controls {
             flex-direction: column;
@@ -1424,7 +1424,7 @@
                     <tbody id="usersTableBody">
                     </tbody>
                 </table>
-                
+
                 <!-- Group by IP View -->
                 <div id="groupByIpView" style="display: none;">
                     <div class="group-controls">
@@ -1446,7 +1446,7 @@
                     </div>
                     <div id="ipGroupsPagination" class="pagination-container"></div>
                 </div>
-                
+
                 <!-- Group by Club View -->
                 <div id="groupByClubView" style="display: none;">
                     <div class="group-controls">
@@ -1468,7 +1468,7 @@
                     </div>
                     <div id="clubGroupsPagination" class="pagination-container"></div>
                 </div>
-                
+
                 <div id="usersPagination" class="pagination-container"></div>
             </div>
         </div>
@@ -1775,7 +1775,7 @@
                                 <i class="fas fa-info-circle"></i> When disabled, the shop, token system, and project submissions will be hidden from all users.
                             </p>
                         </div>
-                        
+
                         <!-- Admin Override for Economy -->
                         <div id="adminEconomyOverride" style="margin-top: 1rem; display: none;">
                             <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
@@ -1866,22 +1866,22 @@
                                 <!-- Banner Text -->
                                 <div>
                                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Banner Title</label>
-                                    <input type="text" id="bannerTitle" placeholder="Design Contest" 
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;" 
+                                    <input type="text" id="bannerTitle" placeholder="Design Contest"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;"
                                            onchange="updateBannerPreview()">
                                 </div>
                                 <div>
                                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Banner Icon (FontAwesome class)</label>
-                                    <input type="text" id="bannerIcon" placeholder="fas fa-palette" 
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;" 
+                                    <input type="text" id="bannerIcon" placeholder="fas fa-palette"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;"
                                            onchange="updateBannerPreview()">
                                 </div>
                             </div>
 
                             <div style="margin-bottom: 1.5rem;">
                                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Banner Subtitle</label>
-                                <textarea id="bannerSubtitle" placeholder="Submit your creative projects and win amazing prizes!" 
-                                          style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 80px;" 
+                                <textarea id="bannerSubtitle" placeholder="Submit your creative projects and win amazing prizes!"
+                                          style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 80px;"
                                           onchange="updateBannerPreview()"></textarea>
                             </div>
 
@@ -1889,26 +1889,26 @@
                                 <!-- Color Settings -->
                                 <div>
                                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Primary Color</label>
-                                    <input type="color" id="bannerPrimaryColor" value="#ec3750" 
-                                           style="width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;" 
+                                    <input type="color" id="bannerPrimaryColor" value="#ec3750"
+                                           style="width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;"
                                            onchange="updateBannerPreview()">
                                 </div>
                                 <div>
                                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Secondary Color</label>
-                                    <input type="color" id="bannerSecondaryColor" value="#d63146" 
-                                           style="width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;" 
+                                    <input type="color" id="bannerSecondaryColor" value="#d63146"
+                                           style="width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;"
                                            onchange="updateBannerPreview()">
                                 </div>
                                 <div>
                                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Background Color</label>
-                                    <input type="color" id="bannerBackgroundColor" value="#ffffff" 
-                                           style="width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;" 
+                                    <input type="color" id="bannerBackgroundColor" value="#ffffff"
+                                           style="width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;"
                                            onchange="updateBannerPreview()">
                                 </div>
                                 <div>
                                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Text Color</label>
-                                    <input type="color" id="bannerTextColor" value="#1a202c" 
-                                           style="width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;" 
+                                    <input type="color" id="bannerTextColor" value="#1a202c"
+                                           style="width: 100%; height: 40px; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;"
                                            onchange="updateBannerPreview()">
                                 </div>
                             </div>
@@ -1916,14 +1916,14 @@
                             <div style="display: grid; grid-template-columns: 1fr 200px; gap: 1rem; margin-bottom: 1.5rem;">
                                 <div>
                                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Link URL</label>
-                                    <input type="text" id="bannerLinkUrl" placeholder="/gallery" 
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;" 
+                                    <input type="text" id="bannerLinkUrl" placeholder="/gallery"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;"
                                            onchange="updateBannerPreview()">
                                 </div>
                                 <div>
                                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Button Text</label>
-                                    <input type="text" id="bannerButtonText" placeholder="Submit Entry" 
-                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;" 
+                                    <input type="text" id="bannerButtonText" placeholder="Submit Entry"
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;"
                                            onchange="updateBannerPreview()">
                                 </div>
                             </div>
@@ -1945,7 +1945,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <div style="background: #f8fafc; border-radius: 8px; padding: 1rem; border-left: 4px solid #8b5cf6; margin-top: 1rem;">
                             <p style="margin: 0; color: #475569; font-size: 0.875rem;">
                                 <i class="fas fa-info-circle"></i> When enabled, this banner will appear on the dashboard and other key pages. Perfect for contests, announcements, or promotional campaigns.
@@ -2021,7 +2021,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div>
                         <h4 style="margin-bottom: 1rem; color: #1e293b;">IP Address History</h4>
                         <div style="background: #f8fafc; padding: 1rem; border-radius: 6px; max-height: 300px; overflow-y: auto;">
@@ -2255,17 +2255,17 @@
                 <div style="display: flex; gap: 1rem; align-items: end;">
                     <div style="flex: 1;">
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Search Users</label>
-                        <input 
-                            type="text" 
-                            id="roleUserSearch" 
-                            placeholder="Type username or email..." 
+                        <input
+                            type="text"
+                            id="roleUserSearch"
+                            placeholder="Type username or email..."
                             style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem;"
                             oninput="searchUsersForRole()"
                         >
                     </div>
-                    <button 
-                        onclick="clearRoleUserSearch()" 
-                        class="btn btn-secondary" 
+                    <button
+                        onclick="clearRoleUserSearch()"
+                        class="btn btn-secondary"
                         style="padding: 0.75rem 1.5rem;"
                     >
                         <i class="fas fa-times"></i> Clear
@@ -2615,19 +2615,19 @@ function getCSRFToken() {
 
 function makeSecureRequest(url, options = {}) {
     const csrfToken = getCSRFToken();
-    
+
     // Default options
     const defaultOptions = {
         headers: {
             'Content-Type': 'application/json'
         }
     };
-    
+
     // Add CSRF token to headers if available and method is not GET
     if (csrfToken && options.method && options.method !== 'GET') {
         defaultOptions.headers['X-CSRFToken'] = csrfToken;
     }
-    
+
     // Merge options
     const finalOptions = {
         ...defaultOptions,
@@ -2637,7 +2637,7 @@ function makeSecureRequest(url, options = {}) {
             ...(options.headers || {})
         }
     };
-    
+
     return fetch(url, finalOptions);
 }
 
@@ -2773,12 +2773,12 @@ const groupsPerPage = 4;
 
 function setUserView(viewType) {
     currentUserView = viewType;
-    
+
     // Update button states
     document.querySelectorAll('.user-view-controls .btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(viewType === 'normal' ? 'normalViewBtn' : 
+    document.getElementById(viewType === 'normal' ? 'normalViewBtn' :
                            viewType === 'group-ip' ? 'groupIpBtn' : 'groupClubBtn').classList.add('active');
-    
+
     // Show/hide appropriate views
     const normalView = document.getElementById('usersTable');
     const ipView = document.getElementById('groupByIpView');
@@ -2814,10 +2814,10 @@ async function loadUsersByIP(page = 1, sort = 'users-desc') {
         const infoSpan = document.getElementById('ipGroupsInfo');
         container.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Loading IP groups...</p></div>';
         infoSpan.textContent = 'Loading...';
-        
+
         const response = await fetch(`/api/admin/users/group-by-ip?page=${page}&per_page=${groupsPerPage}&sort=${sort}`);
         const data = await response.json();
-        
+
         if (response.ok) {
             renderIPGroups(data);
             infoSpan.textContent = `${data.total_groups} IP groups, ${data.total_users_with_ips} users`;
@@ -2837,10 +2837,10 @@ async function loadUsersByClub(page = 1, sort = 'users-desc') {
         const infoSpan = document.getElementById('clubGroupsInfo');
         container.innerHTML = '<div class="loading"><div class="loading-spinner"></div><p>Loading club groups...</p></div>';
         infoSpan.textContent = 'Loading...';
-        
+
         const response = await fetch(`/api/admin/users/group-by-club?page=${page}&per_page=${groupsPerPage}&sort=${sort}`);
         const data = await response.json();
-        
+
         if (response.ok) {
             renderClubGroups(data);
             infoSpan.textContent = `${data.total_clubs} clubs, ${data.total_users_in_clubs} users in clubs, ${data.users_without_clubs_count} users without clubs`;
@@ -2857,10 +2857,10 @@ async function loadUsersByClub(page = 1, sort = 'users-desc') {
 function sortAndPaginateGroups(groupType) {
     const sortSelect = document.getElementById(groupType === 'ip' ? 'ipSortSelect' : 'clubSortSelect');
     const sortValue = sortSelect.value;
-    
+
     // Reset to page 1 when sorting changes
     currentGroupPage = 1;
-    
+
     // Load data with new sorting
     if (groupType === 'ip') {
         loadUsersByIP(currentGroupPage, sortValue);
@@ -2871,13 +2871,13 @@ function sortAndPaginateGroups(groupType) {
 
 function renderIPGroups(data) {
     const container = document.getElementById('ipGroupsContainer');
-    
+
     if (!data.groups || data.groups.length === 0) {
         container.innerHTML = '<div class="empty-state"><i class="fas fa-network-wired"></i><p>No IP groups found</p></div>';
         document.getElementById('ipGroupsPagination').innerHTML = '';
         return;
     }
-    
+
     const html = data.groups.map(group => `
         <div class="user-group">
             <div class="group-header" onclick="toggleGroup(this)">
@@ -2910,7 +2910,7 @@ function renderIPGroups(data) {
             </div>
         </div>
     `).join('');
-    
+
     container.innerHTML = html;
     currentGroupPage = data.page;
     renderGroupPagination('ip', data.page, data.total_pages, data.total_groups);
@@ -2918,13 +2918,13 @@ function renderIPGroups(data) {
 
 function renderClubGroups(data) {
     const container = document.getElementById('clubGroupsContainer');
-    
+
     if (!data.groups || data.groups.length === 0) {
         container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No club groups found</p></div>';
         document.getElementById('clubGroupsPagination').innerHTML = '';
         return;
     }
-    
+
     const html = data.groups.map(group => `
         <div class="user-group">
             <div class="group-header" onclick="toggleGroup(this)">
@@ -2959,7 +2959,7 @@ function renderClubGroups(data) {
             </div>
         </div>
     `).join('');
-    
+
     container.innerHTML = html;
     currentGroupPage = data.page;
     renderGroupPagination('club', data.page, data.total_pages, data.total_groups);
@@ -2967,7 +2967,7 @@ function renderClubGroups(data) {
 
 function renderGroupPagination(groupType, currentPage, totalPages, totalGroups) {
     const paginationContainer = document.getElementById(groupType + 'GroupsPagination');
-    
+
     if (totalPages <= 1) {
         paginationContainer.innerHTML = totalGroups > 0 ? `
             <div class="pagination-info">
@@ -2976,10 +2976,10 @@ function renderGroupPagination(groupType, currentPage, totalPages, totalGroups) 
         ` : '';
         return;
     }
-    
+
     const startItem = ((currentPage - 1) * groupsPerPage) + 1;
     const endItem = Math.min(currentPage * groupsPerPage, totalGroups);
-    
+
     let html = `
         <div class="pagination">
             <div class="pagination-info">
@@ -3005,17 +3005,17 @@ function renderGroupPagination(groupType, currentPage, totalPages, totalGroups) 
             </div>
         </div>
     `;
-    
+
     paginationContainer.innerHTML = html;
 }
 
 function generateGroupPageNumbers(currentPage, totalPages, groupType) {
     let html = '';
     const maxVisible = 5;
-    
+
     let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
     let end = Math.min(totalPages, start + maxVisible - 1);
-    
+
     if (end - start + 1 < maxVisible) {
         start = Math.max(1, end - maxVisible + 1);
     }
@@ -3030,7 +3030,7 @@ function generateGroupPageNumbers(currentPage, totalPages, groupType) {
 function goToGroupPage(groupType, page) {
     const sortSelect = document.getElementById(groupType === 'ip' ? 'ipSortSelect' : 'clubSortSelect');
     const sortValue = sortSelect.value;
-    
+
     if (groupType === 'ip') {
         loadUsersByIP(page, sortValue);
     } else {
@@ -3041,7 +3041,7 @@ function goToGroupPage(groupType, page) {
 function toggleGroup(header) {
     const content = header.nextElementSibling;
     const icon = header.querySelector('.collapse-icon');
-    
+
     if (content.classList.contains('collapsed')) {
         content.classList.remove('collapsed');
         icon.classList.remove('collapsed');
@@ -3369,7 +3369,7 @@ const adminSearchElement = document.getElementById('adminSearch');
 if (adminSearchElement) {
     adminSearchElement.addEventListener('input', function(e) {
         const searchTerm = e.target.value.toLowerCase();
-        const filteredAdmins = adminsData.filter(admin => 
+        const filteredAdmins = adminsData.filter(admin =>
             admin.username.toLowerCase().includes(searchTerm) ||
             admin.email.toLowerCase().includes(searchTerm)
         );
@@ -3459,20 +3459,20 @@ function editUser(userId) {
     document.getElementById('editUserId').value = user.id;
     document.getElementById('editUsername').value = user.username;
     document.getElementById('editEmail').value = user.email;
-    
+
     // Construct full name from first_name and last_name
     const fullName = [user.first_name || '', user.last_name || ''].filter(n => n).join(' ');
     document.getElementById('editFullName').value = fullName;
-    
+
     document.getElementById('editRole').value = user.is_admin ? 'admin' : (user.is_reviewer ? 'reviewer' : 'user');
-    
+
     // Check the appropriate status
     if (user.is_suspended) {
         document.getElementById('editStatusSuspended').checked = true;
     } else {
         document.getElementById('editStatusActive').checked = true;
     }
-    
+
     // Show the modal
     openModal('editUserModal');
 }
@@ -3484,12 +3484,12 @@ async function saveUserChanges() {
     const fullName = document.getElementById('editFullName').value;
     const role = document.getElementById('editRole').value;
     const isActive = document.getElementById('editStatusActive').checked;
-    
+
     if (!username || !email) {
         showToast('error', 'Username and email are required');
         return;
     }
-    
+
     try {
         const response = await makeSecureRequest(`/api/admin/users/${userId}`, {
             method: 'PUT',
@@ -3504,9 +3504,9 @@ async function saveUserChanges() {
                 is_suspended: !isActive
             })
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
             showToast('success', data.message || 'User updated successfully');
             closeModal('editUserModal');
@@ -3527,10 +3527,10 @@ function suspendUser(userId, username, isLeader) {
     const isSuspended = user.is_suspended;
     const action = isSuspended ? 'unsuspend' : 'suspend';
     const actionCap = isSuspended ? 'Unsuspend' : 'Suspend';
-    
+
     // Build the HTML content
     let htmlContent = `Are you sure you want to ${action} "<strong>${username}</strong>"?`;
-    
+
     // Add checkbox options if suspending a leader
     if (!isSuspended && isLeader) {
         htmlContent += `
@@ -3553,7 +3553,7 @@ function suspendUser(userId, username, isLeader) {
             </div>
         `;
     }
-    
+
     UniversalModal.custom({
         type: isSuspended ? 'info' : 'warning',
         title: `${actionCap} User`,
@@ -3564,7 +3564,7 @@ function suspendUser(userId, username, isLeader) {
             // Get checkbox values if they exist
             const suspendMembersCheckbox = document.getElementById('suspendClubMembers');
             const suspendClubCheckbox = document.getElementById('suspendClub');
-            
+
             const requestBody = {
                 is_suspended: !isSuspended
             };
@@ -3573,7 +3573,7 @@ function suspendUser(userId, username, isLeader) {
                 requestBody.suspend_club_members = suspendMembersCheckbox ? suspendMembersCheckbox.checked : false;
                 requestBody.suspend_club = suspendClubCheckbox ? suspendClubCheckbox.checked : false;
             }
-            
+
             try {
                 const response = await makeSecureRequest(`/api/admin/users/${userId}/suspend`, {
                     method: 'PUT',
@@ -4385,16 +4385,16 @@ function deleteOAuthApp(oauthAppId, oauthAppName) {
 function executeConfirmedAction() {
     console.log('[DEBUG] executeConfirmedAction called - user clicked CONFIRM button');
     console.log('[DEBUG] pendingAction:', pendingAction);
-    
+
     // Close the modal first
     closeModal('confirmModal');
-    
+
     // Then execute the action
     if (pendingAction === 'transferLeadership') {
         executeTransferLeadership();
     }
     // Note: All delete operations now use UniversalModal directly with callbacks
-    
+
     // Clear pending action
     pendingAction = null;
     pendingUserId = null;
@@ -4637,7 +4637,7 @@ document.addEventListener('click', function(event) {
     if (openModals.length > 0) {
         return; // A modal is open, don't close dropdowns
     }
-    
+
     if (!event.target.closest('.action-dropdown') && !event.target.closest('.dropdown-menu')) {
         closeAllDropdowns();
     }
@@ -4655,7 +4655,7 @@ window.addEventListener('resize', function() {
 
 async function deleteUser(userId, username) {
     console.log('[DEBUG] deleteUser called:', userId, username);
-    
+
     UniversalModal.confirm(
         `Are you sure you want to delete the user "<strong>${username}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`,
         async function() {
@@ -4665,7 +4665,7 @@ async function deleteUser(userId, username) {
                 const response = await makeSecureRequest(`/api/admin/users/${userId}`, {
                     method: 'DELETE'
                 });
-                
+
                 if (response.ok) {
                     showToast('success', 'User deleted successfully');
                     loadUsers();
@@ -4685,7 +4685,7 @@ async function deleteUser(userId, username) {
 
 async function deleteClub(clubId, clubName) {
     console.log('[DEBUG] deleteClub called:', clubId, clubName);
-    
+
     UniversalModal.confirm(
         `Are you sure you want to delete the club "<strong>${clubName}</strong>"?<br><span style="color: #ef4444; font-size: 0.9rem;">This action cannot be undone.</span>`,
         async function() {
@@ -4695,7 +4695,7 @@ async function deleteClub(clubId, clubName) {
                 const response = await makeSecureRequest(`/api/admin/clubs/${clubId}`, {
                     method: 'DELETE'
                 });
-                
+
                 if (response.ok) {
                     showToast('success', 'Club deleted successfully');
                     loadRecentClubs();
@@ -4760,7 +4760,7 @@ async function executeDeleteClub() {
 function toggleSyncImmune(clubId, clubName, currentStatus) {
     const action = currentStatus ? 'disable' : 'enable';
     const actionCapitalized = action.charAt(0).toUpperCase() + action.slice(1);
-    
+
     UniversalModal.confirm(
         `Are you sure you want to <strong>${action}</strong> Sync Immune for "<strong>${clubName}</strong>"?<br><br>` +
         `<span style="color: ${currentStatus ? '#dc2626' : '#16a34a'};">` +
@@ -4858,15 +4858,15 @@ function populateUserInfo(data) {
     // Basic information
     document.getElementById('modalUsername').textContent = data.username || 'N/A';
     document.getElementById('modalEmail').textContent = data.email || 'N/A';
-    document.getElementById('modalFullName').textContent = 
+    document.getElementById('modalFullName').textContent =
         (data.first_name || data.last_name) ? `${data.first_name || ''} ${data.last_name || ''}`.trim() : 'N/A';
-    document.getElementById('modalRole').innerHTML = 
+    document.getElementById('modalRole').innerHTML =
         `<span class="badge ${data.is_admin ? 'badge-warning' : (data.is_reviewer ? 'badge-info' : 'badge-primary')}">${data.is_admin ? 'Admin' : (data.is_reviewer ? 'Reviewer' : 'User')}</span>`;
-    document.getElementById('modalStatus').innerHTML = 
+    document.getElementById('modalStatus').innerHTML =
         `<span class="badge ${data.is_suspended ? 'badge-danger' : 'badge-success'}">${data.is_suspended ? 'Suspended' : 'Active'}</span>`;
-    document.getElementById('modalCreated').textContent = 
+    document.getElementById('modalCreated').textContent =
         data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A';
-    document.getElementById('modalLastLogin').textContent = 
+    document.getElementById('modalLastLogin').textContent =
         data.last_login ? new Date(data.last_login).toLocaleString() : 'Never';
 
     // Security information
@@ -4887,7 +4887,7 @@ function populateUserInfo(data) {
             .map(([ip, count]) => {
                 let type = 'Historical';
                 let badgeClass = 'badge-secondary';
-                
+
                 if (ip === data.registration_ip) {
                     type = 'Registration';
                     badgeClass = 'badge-success';
@@ -4931,30 +4931,30 @@ async function loadLogs(page = 1) {
     try {
         const logsLoading = document.getElementById('logsLoading');
         const logsTable = document.getElementById('logsTable');
-        
+
         logsLoading.style.display = 'block';
         logsTable.style.display = 'none';
-        
+
         // Get filter values
         const search = document.getElementById('logsSearch').value.trim();
         const category = document.getElementById('categoryFilter').value;
         const severity = document.getElementById('severityFilter').value;
         const sortOrder = document.getElementById('sortOrder').value;
-        
+
         // Build query parameters
         const params = new URLSearchParams({
             page: page,
             per_page: 50,
             sort: sortOrder
         });
-        
+
         if (search) params.append('search', search);
         if (category) params.append('category', category);
         if (severity) params.append('severity', severity);
-        
+
         const response = await fetch(`/api/admin/audit-logs?${params}`);
         const data = await response.json();
-        
+
         if (response.ok) {
             logsData = data.logs;
             logsCurrentPage = page;
@@ -4986,17 +4986,17 @@ async function loadLogs(page = 1) {
 function renderLogsTable(logs) {
     const tbody = document.getElementById('logsTableBody');
     tbody.innerHTML = '';
-    
+
     if (logs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 2rem;">No audit logs found</td></tr>';
         return;
     }
-    
+
     logs.forEach(log => {
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
         row.onclick = () => showLogDetails(log);
-        
+
         // Format timestamp
         const timestamp = log.timestamp ? new Date(log.timestamp).toLocaleDateString('en-US', {
             month: 'short',
@@ -5004,27 +5004,27 @@ function renderLogsTable(logs) {
             hour: '2-digit',
             minute: '2-digit'
         }) : 'Unknown';
-        
+
         // Format severity badge
         const severityClass = {
             'info': 'status-info',
-            'warning': 'status-warning', 
+            'warning': 'status-warning',
             'error': 'status-suspended',
             'critical': 'status-suspended'
         }[log.severity] || 'status-user';
-        
+
         // Format category badge
         const categoryClass = {
             'auth': 'status-active',
             'user': 'status-user',
-            'club': 'status-admin', 
+            'club': 'status-admin',
             'project': 'status-reviewer',
             'admin': 'status-warning',
             'security': 'status-suspended',
             'gallery': 'status-active',
             'other': 'status-user'
         }[log.action_category] || 'status-user';
-        
+
         row.innerHTML = `
             <td style="font-size: 0.8rem;">${escapeHtml(timestamp)}</td>
             <td><strong>${escapeHtml(log.username || 'System')}</strong></td>
@@ -5034,19 +5034,19 @@ function renderLogsTable(logs) {
             <td><span class="status-badge ${severityClass}">${escapeHtml(log.severity)}</span></td>
             <td style="font-size: 0.8rem;"><code>${escapeHtml(log.ip_address || 'Unknown')}</code></td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
 
 function renderLogsPagination(pagination) {
     const container = document.getElementById('logsPagination');
-    
+
     if (pagination.pages <= 1) {
         container.innerHTML = '';
         return;
     }
-    
+
     let paginationHtml = `
         <div class="pagination-info">
             Showing ${(pagination.page - 1) * pagination.per_page + 1}-${Math.min(pagination.page * pagination.per_page, pagination.total)} of ${pagination.total} logs
@@ -5054,44 +5054,44 @@ function renderLogsPagination(pagination) {
         <div class="pagination">
             <div class="pagination-buttons">
     `;
-    
+
     // Previous button
     if (pagination.has_prev) {
         paginationHtml += `<button class="pagination-btn" onclick="loadLogs(${pagination.page - 1})"><i class="fas fa-chevron-left"></i> Previous</button>`;
     } else {
         paginationHtml += `<button class="pagination-btn" disabled><i class="fas fa-chevron-left"></i> Previous</button>`;
     }
-    
+
     // Page numbers
     const startPage = Math.max(1, pagination.page - 2);
     const endPage = Math.min(pagination.pages, pagination.page + 2);
-    
+
     if (startPage > 1) {
         paginationHtml += `<button class="pagination-btn" onclick="loadLogs(1)">1</button>`;
         if (startPage > 2) {
             paginationHtml += `<span style="padding: 0.5rem;">...</span>`;
         }
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
         const isActive = i === pagination.page ? 'active' : '';
         paginationHtml += `<button class="pagination-btn ${isActive}" onclick="loadLogs(${i})">${i}</button>`;
     }
-    
+
     if (endPage < pagination.pages) {
         if (endPage < pagination.pages - 1) {
             paginationHtml += `<span style="padding: 0.5rem;">...</span>`;
         }
         paginationHtml += `<button class="pagination-btn" onclick="loadLogs(${pagination.pages})">${pagination.pages}</button>`;
     }
-    
+
     // Next button
     if (pagination.has_next) {
         paginationHtml += `<button class="pagination-btn" onclick="loadLogs(${pagination.page + 1})">Next <i class="fas fa-chevron-right"></i></button>`;
     } else {
         paginationHtml += `<button class="pagination-btn" disabled>Next <i class="fas fa-chevron-right"></i></button>`;
     }
-    
+
     paginationHtml += `
             </div>
             <div class="page-size-selector">
@@ -5104,47 +5104,47 @@ function renderLogsPagination(pagination) {
             </div>
         </div>
     `;
-    
+
     container.innerHTML = paginationHtml;
 }
 
 function showLogDetails(log) {
     const modal = document.getElementById('logDetailsModal');
     const content = document.getElementById('logDetailsContent');
-    
+
     // Format the details nicely
     const timestamp = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Unknown';
-    
+
     let detailsHtml = `
         <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 2rem;">
             <div><strong>Timestamp:</strong></div>
             <div>${escapeHtml(timestamp)}</div>
-            
+
             <div><strong>User:</strong></div>
             <div>${escapeHtml(log.username || 'System')}</div>
-            
+
             <div><strong>Action Type:</strong></div>
             <div><code>${escapeHtml(log.action_type)}</code></div>
-            
+
             <div><strong>Category:</strong></div>
             <div><span class="status-badge">${escapeHtml(log.action_category)}</span></div>
-            
+
             <div><strong>Severity:</strong></div>
             <div><span class="status-badge">${escapeHtml(log.severity)}</span></div>
-            
+
             <div><strong>Description:</strong></div>
             <div>${escapeHtml(log.description)}</div>
-            
+
             <div><strong>IP Address:</strong></div>
             <div><code>${escapeHtml(log.ip_address || 'Unknown')}</code></div>
-            
+
             ${log.target_type ? `
                 <div><strong>Target:</strong></div>
                 <div>${escapeHtml(log.target_type)}${log.target_id ? ` (ID: ${log.target_id})` : ''}</div>
             ` : ''}
         </div>
     `;
-    
+
     // Add detailed information if available
     if (log.details && Object.keys(log.details).length > 0) {
         detailsHtml += `
@@ -5154,7 +5154,7 @@ function showLogDetails(log) {
             </div>
         `;
     }
-    
+
     // Add user agent if available
     if (log.user_agent) {
         detailsHtml += `
@@ -5164,7 +5164,7 @@ function showLogDetails(log) {
             </div>
         `;
     }
-    
+
     content.innerHTML = detailsHtml;
     modal.classList.add('show');
 }
@@ -5296,7 +5296,7 @@ async function toggleEconomySystem() {
 function toggleAdminEconomyOverride() {
     const checkbox = document.getElementById('adminEconomyEnabled');
     const enabled = checkbox.checked;
-    
+
     updateSetting('admin_economy_override', enabled.toString());
 }
 
@@ -5369,7 +5369,7 @@ function updateSetting(key, value) {
 function openModal(modalId) {
     // Close any open dropdowns first
     closeAllDropdowns();
-    
+
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.add('show');
@@ -5395,18 +5395,18 @@ async function openTransferLeadershipModal(clubId, clubName, currentLeaderId) {
     try {
         console.log('openTransferLeadershipModal called with:', {clubId, clubName, currentLeaderId, type: typeof currentLeaderId});
         let currentLeaderText = 'No Leader';
-        
+
         // Get current leader info if there is a leader
         if (currentLeaderId && currentLeaderId !== 'null' && currentLeaderId !== null && currentLeaderId !== 'undefined') {
             console.log('Fetching leader info for ID:', currentLeaderId);
             const response = await fetch(`/api/admin/users/${currentLeaderId}`);
             const leaderData = await response.json();
-            
+
             if (!response.ok) {
                 console.error('Error fetching leader data:', leaderData);
                 throw new Error(leaderData.error || 'Failed to get leader information');
             }
-            
+
             currentLeaderText = `${leaderData.username} (${leaderData.email})`;
             console.log('Leader info loaded:', currentLeaderText);
         } else {
@@ -5419,7 +5419,7 @@ async function openTransferLeadershipModal(clubId, clubName, currentLeaderId) {
         document.getElementById('transferClubName').value = clubName;
         document.getElementById('transferCurrentLeaderId').value = currentLeaderId || '';
         document.getElementById('transferCurrentLeader').value = currentLeaderText;
-        
+
         // Reset search fields
         document.getElementById('transferNewLeaderSearch').value = '';
         document.getElementById('transferNewLeaderId').value = '';
@@ -5461,7 +5461,7 @@ function displayUserSearchResults(users) {
     const resultsContainer = document.getElementById('transferUserSearchResults');
     const currentLeaderIdValue = document.getElementById('transferCurrentLeaderId').value;
     const currentLeaderId = currentLeaderIdValue && currentLeaderIdValue !== '' ? parseInt(currentLeaderIdValue) : null;
-    
+
     if (!users || users.length === 0) {
         resultsContainer.innerHTML = '<div class="user-search-no-results">No users found</div>';
         resultsContainer.style.display = 'block';
@@ -5470,7 +5470,7 @@ function displayUserSearchResults(users) {
 
     // Filter out the current leader (if there is one)
     const filteredUsers = currentLeaderId ? users.filter(user => user.id !== currentLeaderId) : users;
-    
+
     if (filteredUsers.length === 0) {
         resultsContainer.innerHTML = '<div class="user-search-no-results">No other users found</div>';
         resultsContainer.style.display = 'block';
@@ -5514,11 +5514,11 @@ async function confirmTransferLeadership() {
         <br><br>
         <span style="color: #dc2626; font-size: 0.9rem;">The current leader will become a regular member. This action cannot be undone.</span>
     `;
-    
+
     pendingAction = 'transferLeadership';
     pendingClubId = clubId;
     pendingNewLeaderId = newLeaderId;
-    
+
     closeModal('transferLeadershipModal');
     openModal('confirmModal');
 }
@@ -5579,12 +5579,12 @@ const _baseShowAdminSection = showAdminSection;
 showAdminSection = function(section) {
     // Call the original function
     _baseShowAdminSection(section);
-    
+
     // Load settings when switching to settings tab
     if (section === 'settings') {
         loadSettings();
     }
-    
+
     // Load roles when switching to roles tab
     if (section === 'roles') {
         loadRoles();
@@ -5596,7 +5596,7 @@ function toggleBanner() {
     const checkbox = document.getElementById('bannerEnabled');
     const configPanel = document.getElementById('bannerConfigPanel');
     const enabled = checkbox.checked;
-    
+
     if (enabled) {
         configPanel.style.display = 'block';
         loadBannerSettings();
@@ -5626,11 +5626,11 @@ function loadBannerSettings() {
                 document.getElementById('bannerLinkUrl').value = settings.link_url || '/gallery';
                 document.getElementById('bannerButtonText').value = settings.link_text || 'Submit Entry';
                 document.getElementById('bannerEnabled').checked = settings.enabled === 'true';
-                
+
                 if (settings.enabled === 'true') {
                     document.getElementById('bannerConfigPanel').style.display = 'block';
                 }
-                
+
                 updateBannerPreview();
             } else {
                 // Load defaults if no settings exist
@@ -5652,30 +5652,30 @@ function updateBannerPreview() {
     const backgroundColor = document.getElementById('bannerBackgroundColor').value || '#ffffff';
     const textColor = document.getElementById('bannerTextColor').value || '#1a202c';
     const buttonText = document.getElementById('bannerButtonText').value || 'Submit Entry';
-    
+
     const preview = document.getElementById('bannerPreview');
     preview.innerHTML = `
         <div style="
-            background: ${backgroundColor}; 
-            border: 1px solid #e2e8f0; 
-            border-radius: 12px; 
-            padding: 1.5rem; 
-            width: 100%; 
-            display: flex; 
-            align-items: center; 
+            background: ${backgroundColor};
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
             justify-content: space-between;
             color: ${textColor};
         ">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <div style="
-                    width: 50px; 
-                    height: 50px; 
-                    background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); 
-                    border-radius: 12px; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    color: white; 
+                    width: 50px;
+                    height: 50px;
+                    background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
                     font-size: 1.25rem;
                 ">
                     <i class="${icon}"></i>
@@ -5686,12 +5686,12 @@ function updateBannerPreview() {
                 </div>
             </div>
             <button style="
-                background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor}); 
-                color: white; 
-                border: none; 
-                padding: 0.75rem 1.5rem; 
-                border-radius: 8px; 
-                font-weight: 600; 
+                background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+                color: white;
+                border: none;
+                padding: 0.75rem 1.5rem;
+                border-radius: 8px;
+                font-weight: 600;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
@@ -5716,7 +5716,7 @@ function saveBannerSettings() {
         link_url: document.getElementById('bannerLinkUrl').value,
         link_text: document.getElementById('bannerButtonText').value
     };
-    
+
     makeSecureRequest('/admin/api/banner-settings', {
         method: 'POST',
         body: JSON.stringify(settings)
@@ -6660,11 +6660,11 @@ let roleUserSearchTimeout;
 async function viewRoleUsers(roleId, roleName) {
     currentRoleId = roleId;
     currentRoleName = roleName;
-    
+
     document.getElementById('roleUsersRoleName').textContent = roleName;
     document.getElementById('roleUserSearch').value = '';
     document.getElementById('roleUserSearchResults').innerHTML = '<p style="color: #64748b; text-align: center; padding: 1rem;"><i class="fas fa-search"></i> Search for users to add to this role</p>';
-    
+
     openModal('roleUsersModal');
     await loadRoleUsers();
 }
@@ -6672,14 +6672,14 @@ async function viewRoleUsers(roleId, roleName) {
 // Load users assigned to role
 async function loadRoleUsers() {
     if (!currentRoleId) return;
-    
+
     try {
         const response = await makeSecureRequest(`/api/admin/rbac/roles/${currentRoleId}/users`);
         const data = await response.json();
-        
+
         const usersList = document.getElementById('roleUsersList');
         const usersCount = document.getElementById('roleUsersCount');
-        
+
         if (data.users && data.users.length > 0) {
             usersCount.textContent = data.users.length;
             usersList.innerHTML = data.users.map(user => `
@@ -6693,18 +6693,18 @@ async function loadRoleUsers() {
                     margin-bottom: 0.75rem;
                     background: white;
                 ">
-                    <img src="${user.avatar_url || '/static/assets/heidi-avatar.png'}" 
-                         alt="${user.username}" 
+                    <img src="${user.avatar_url || '/static/assets/heidi-avatar.png'}"
+                         alt="${user.username}"
                          style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
                     <div style="flex: 1;">
                         <div style="font-weight: 600; color: #1e293b;">${user.username}</div>
                         <div style="font-size: 0.875rem; color: #64748b;">${user.email}</div>
-                        ${user.first_name || user.last_name ? 
+                        ${user.first_name || user.last_name ?
                             `<div style="font-size: 0.875rem; color: #64748b;">${user.first_name || ''} ${user.last_name || ''}</div>` : ''}
                     </div>
-                    <button 
-                        onclick="removeUserFromRole(${user.id}, '${user.username.replace(/'/g, "\\'")}')" 
-                        class="btn btn-sm" 
+                    <button
+                        onclick="removeUserFromRole(${user.id}, '${user.username.replace(/'/g, "\\'")}')"
+                        class="btn btn-sm"
                         style="padding: 0.5rem 1rem; background: #dc2626; color: white;"
                     >
                         <i class="fas fa-user-minus"></i> Remove
@@ -6735,7 +6735,7 @@ async function loadRoleUsers() {
 function searchUsersForRole() {
     clearTimeout(roleUserSearchTimeout);
     const searchTerm = document.getElementById('roleUserSearch').value.trim();
-    
+
     if (searchTerm.length < 2) {
         document.getElementById('roleUserSearchResults').innerHTML = `
             <p style="color: #64748b; text-align: center; padding: 1rem;">
@@ -6744,20 +6744,20 @@ function searchUsersForRole() {
         `;
         return;
     }
-    
+
     document.getElementById('roleUserSearchResults').innerHTML = `
         <p style="color: #64748b; text-align: center; padding: 1rem;">
             <i class="fas fa-spinner fa-spin"></i> Searching...
         </p>
     `;
-    
+
     roleUserSearchTimeout = setTimeout(async () => {
         try {
             const response = await makeSecureRequest(`/api/admin/users/search?q=${encodeURIComponent(searchTerm)}`);
             const data = await response.json();
-            
+
             const resultsContainer = document.getElementById('roleUserSearchResults');
-            
+
             if (data.users && data.users.length > 0) {
                 resultsContainer.innerHTML = data.users.map(user => `
                     <div class="user-row" style="
@@ -6770,16 +6770,16 @@ function searchUsersForRole() {
                         margin-bottom: 0.75rem;
                         background: white;
                     ">
-                        <img src="${user.avatar_url || '/static/assets/heidi-avatar.png'}" 
-                             alt="${user.username}" 
+                        <img src="${user.avatar_url || '/static/assets/heidi-avatar.png'}"
+                             alt="${user.username}"
                              style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                         <div style="flex: 1;">
                             <div style="font-weight: 600; color: #1e293b;">${user.username}</div>
                             <div style="font-size: 0.875rem; color: #64748b;">${user.email}</div>
                         </div>
-                        <button 
-                            onclick="addUserToRole(${user.id}, '${user.username.replace(/'/g, "\\'")}')" 
-                            class="btn btn-sm" 
+                        <button
+                            onclick="addUserToRole(${user.id}, '${user.username.replace(/'/g, "\\'")}')"
+                            class="btn btn-sm"
                             style="padding: 0.5rem 1rem; background: #16a34a; color: white;"
                         >
                             <i class="fas fa-user-plus"></i> Add to Role
@@ -6807,18 +6807,18 @@ function searchUsersForRole() {
 // Add user to role
 async function addUserToRole(userId, username) {
     if (!currentRoleId) return;
-    
+
     try {
         // Get the role name first
         const rolesResponse = await makeSecureRequest('/api/admin/rbac/roles');
         const rolesData = await rolesResponse.json();
         const role = rolesData.roles.find(r => r.id === currentRoleId);
-        
+
         if (!role) {
             showToast('error', 'Role not found');
             return;
         }
-        
+
         const response = await makeSecureRequest(`/api/admin/rbac/users/${userId}/roles`, {
             method: 'POST',
             headers: {
@@ -6828,9 +6828,9 @@ async function addUserToRole(userId, username) {
                 role_name: role.name  // Send role_name, not role_id
             })
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
             showToast('success', `Added ${username} to ${currentRoleName}`);
             await loadRoleUsers();
@@ -6847,7 +6847,7 @@ async function addUserToRole(userId, username) {
 // Remove user from role (using universal modal)
 function removeUserFromRole(userId, username) {
     if (!currentRoleId) return;
-    
+
     UniversalModal.confirm(
         `Are you sure you want to remove <strong>${username}</strong> from the <strong>${currentRoleName}</strong> role?<br><span style="color: #64748b; font-size: 0.9rem; margin-top: 0.5rem; display: block;">This will revoke all permissions associated with this role for this user.</span>`,
         async function() {
@@ -6857,18 +6857,18 @@ function removeUserFromRole(userId, username) {
                 const rolesResponse = await makeSecureRequest('/api/admin/rbac/roles');
                 const rolesData = await rolesResponse.json();
                 const role = rolesData.roles.find(r => r.id === currentRoleId);
-                
+
                 if (!role) {
                     showToast('error', 'Role not found');
                     return;
                 }
-                
+
                 const response = await makeSecureRequest(`/api/admin/rbac/users/${userId}/roles/${encodeURIComponent(role.name)}`, {
                     method: 'DELETE'
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     showToast('success', `Removed ${username} from ${currentRoleName}`);
                     await loadRoleUsers();

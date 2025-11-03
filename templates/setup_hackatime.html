@@ -425,17 +425,17 @@
                 <div class="step-description">
                     Paste your Hackatime API key in the field below and click save to connect your account.
                 </div>
-                
+
                 <div class="form-section">
                     <div class="form-group">
                         <label for="hackatimeKey" class="form-label">
                             <i class="fas fa-key"></i> Hackatime API Key
                         </label>
-                        <input 
-                            type="password" 
-                            class="form-control" 
-                            id="hackatimeKey" 
-                            value="{{ current_user.hackatime_api_key or '' }}" 
+                        <input
+                            type="password"
+                            class="form-control"
+                            id="hackatimeKey"
+                            value="{{ current_user.hackatime_api_key or '' }}"
                             placeholder="Paste your API key here..."
                         >
                     </div>
@@ -461,19 +461,19 @@
         console.log('Setup Hackatime script loaded');
         const saveHackatime = document.getElementById('saveHackatime');
         const successMessage = document.getElementById('successMessage');
-        
+
         console.log('saveHackatime element:', saveHackatime);
         console.log('successMessage element:', successMessage);
-        
+
         if (saveHackatime) {
             console.log('Adding click listener to saveHackatime button');
             saveHackatime.addEventListener('click', function(event) {
                 console.log('Save Hackatime button clicked!');
                 event.preventDefault();
-                
+
                 const apiKey = document.getElementById('hackatimeKey').value;
                 console.log('API key value:', apiKey ? '[KEY PROVIDED]' : '[EMPTY]');
-                
+
                 if (!apiKey.trim()) {
                     if (typeof showToast === 'function') {
                         showToast('warning', 'Please enter your Hackatime API key', 'Missing API Key');
@@ -504,11 +504,11 @@
                     if (data.message) {
                         successMessage.classList.add('show');
                         saveHackatime.innerHTML = '<i class="fas fa-check"></i> Saved!';
-                        
+
                         if (typeof showToast === 'function') {
                             showToast('success', data.message, 'Hackatime Updated');
                         }
-                        
+
                         // Reset button after 3 seconds
                         setTimeout(() => {
                             saveHackatime.innerHTML = originalText;

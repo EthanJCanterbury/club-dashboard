@@ -110,7 +110,7 @@
                 <i class="fas fa-times"></i>
             {% endif %}
         </div>
-        
+
         <h1 class="result-title">
             {% if status == 'success' %}
                 Identity Verified!
@@ -122,9 +122,9 @@
                 Verification Failed
             {% endif %}
         </h1>
-        
+
         <p class="result-message">{{ message }}</p>
-        
+
         <button onclick="closeWindow()" class="btn-close">
             {% if opener %}Close{% else %}Continue{% endif %}
         </button>

@@ -28,12 +28,11 @@ def dashboard():
 
     current_user = get_current_user()
 
-    # Get statistics
     total_users = User.query.count()
     total_clubs = Club.query.count()
     total_posts = ClubPost.query.count()
     total_assignments = ClubAssignment.query.count()
-    
+
     # Get pending projects from Airtable
     airtable_service = AirtableService()
     all_projects = airtable_service.get_ysws_project_submissions()
@@ -56,7 +55,7 @@ def dashboard():
     can_manage_settings = current_user.has_permission('system.manage_settings') or current_user.is_admin
     can_view_dashboard = current_user.has_permission('admin.access_dashboard') or current_user.is_admin
     can_view_activity = current_user.has_permission('admin.view_activity') or current_user.is_admin
-    
+
     # Get user permissions list for granular checks in frontend
     user_permissions = current_user.get_all_permissions()
 
@@ -267,10 +266,10 @@ def recent_clubs():
     for c in clubs:
         # Get leader info from club.leader relationship
         leader_user = c.leader if c.leader_id else None
-        
+
         # Get member count
         member_count = ClubMembership.query.filter_by(club_id=c.id).count()
-        
+
         results.append({
             'id': c.id,
             'name': c.name,
@@ -306,10 +305,10 @@ def search_clubs():
     for c in clubs:
         # Get leader info from club.leader relationship
         leader_user = c.leader if c.leader_id else None
-        
+
         # Get member count
         member_count = ClubMembership.query.filter_by(club_id=c.id).count()
-        
+
         results.append({
             'id': c.id,
             'name': c.name,
@@ -388,7 +387,6 @@ def create_club():
     leader_email = data.get('leader_email', '').strip().lower()
     balance = float(data.get('balance', 0))
 
-    # Validate inputs
     if not name:
         return jsonify({'error': 'Club name is required'}), 400
 
@@ -461,20 +459,20 @@ def review_projects():
 def approve_project(project_id):
     """Approve a project submission in Airtable"""
     from app.services.airtable import AirtableService
-    
+
     airtable_service = AirtableService()
-    
+
     # Update project status in Airtable
     success = airtable_service.update_ysws_project_submission(project_id, {
         'Status': 'Approved',
         'Decision Reason': f'Approved by {get_current_user().username}'
     })
-    
+
     if success:
         flash('Project approved!', 'success')
     else:
         flash('Failed to approve project.', 'error')
-    
+
     return redirect(url_for('admin.review_projects'))
 
 
@@ -485,7 +483,7 @@ def review_orders():
     """Review pending shop orders from Airtable"""
     airtable_service = AirtableService()
     orders = airtable_service.get_all_orders()
-    
+
     return render_template('admin_order_review.html', orders=orders)
 
 
@@ -501,7 +499,6 @@ def settings():
         db.session.commit()
 
     if request.method == 'POST':
-        # Update settings
         system_settings.maintenance_mode = request.form.get('maintenance_mode') == 'on'
         system_settings.economy_enabled = request.form.get('economy_enabled') == 'on'
         system_settings.registration_enabled = request.form.get('registration_enabled') == 'on'
@@ -525,7 +522,7 @@ def stats():
     # Get projects from Airtable
     airtable_service = AirtableService()
     all_projects = airtable_service.get_ysws_project_submissions()
-    
+
     # Get various statistics
     stats_data = {
         'total_users': User.query.count(),

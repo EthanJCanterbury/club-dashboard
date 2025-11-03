@@ -2186,7 +2186,6 @@
         });
 
 
-
         // Close modal when clicking outside
         document.getElementById('cartModal').addEventListener('click', function(e) {
             if (e.target === this) {
@@ -2449,7 +2448,7 @@
         container.innerHTML = filteredItems.map(item => {
             const itemPrice = parseFloat(item.price || 0);
             const canAfford = itemPrice <= CLUB_BALANCE;
-            
+
             let buttonClass, buttonText, buttonDisabled;
             if (canAfford) {
                 buttonClass = 'btn-add-cart';
@@ -3036,12 +3035,12 @@
     function checkTutorialRestore() {
         const tutorialInProgress = localStorage.getItem('tutorialInProgress');
         const savedStep = localStorage.getItem('tutorialCurrentStep');
-        
+
         if (tutorialInProgress === 'true' && savedStep) {
             // Clear stored state
             localStorage.removeItem('tutorialInProgress');
             localStorage.removeItem('tutorialCurrentStep');
-            
+
             // Show shop-specific tutorial step
             showShopTutorialStep();
             return true;
@@ -3117,21 +3116,21 @@
 
     function showCurrentShopStep() {
         const step = shopTutorialSteps[shopTutorialStep];
-        
+
         // Update content
         document.getElementById('tutorialTitle').textContent = step.title;
         document.getElementById('tutorialText').textContent = step.text;
         document.getElementById('tutorialStep').textContent = shopTutorialStep + 1;
         document.getElementById('tutorialTotal').textContent = shopTutorialSteps.length;
-        
+
         // Update buttons
         const nextBtn = document.getElementById('nextBtn');
         const finishBtn = document.getElementById('finishBtn');
         const prevBtn = document.getElementById('prevBtn');
-        
+
         prevBtn.disabled = shopTutorialStep === 0;
         prevBtn.style.display = shopTutorialStep === 0 ? 'none' : 'inline-block';
-        
+
         if (shopTutorialStep === shopTutorialSteps.length - 1) {
             nextBtn.textContent = 'Back to Dashboard';
             nextBtn.onclick = function() {
@@ -3156,18 +3155,18 @@
                 }
             };
         }
-        
+
         prevBtn.onclick = function() {
             if (shopTutorialStep > 0) {
                 shopTutorialStep--;
                 showCurrentShopStep();
             }
         };
-        
+
         // Position bubble
         const bubble = document.getElementById('tutorialBubble');
         let target = document.querySelector(step.target);
-        
+
         // Wait for modal to appear if targeting modal content
         if (!target && (step.target.includes('modal') || step.target.includes('add-to-cart') || step.target.includes('close'))) {
             setTimeout(() => {
@@ -3178,7 +3177,7 @@
             }, 600);
             return;
         }
-        
+
         if (bubble && target) {
             positionTutorialBubble(bubble, target, step);
         }
@@ -3187,28 +3186,28 @@
     function positionTutorialBubble(bubble, target, step) {
         const rect = target.getBoundingClientRect();
         const navbarHeight = 70;
-        
+
         let bubbleX = rect.left + rect.width / 2 - 200;
         let bubbleY = step.position === 'top' ? rect.top - 200 : rect.bottom + 20;
-        
+
         // Special positioning for modal elements
         if (step.target.includes('modal')) {
             bubbleX = rect.left + rect.width / 2 - 200;
             bubbleY = rect.top + 50;
         }
-        
+
         // Keep within viewport and below navbar
         bubbleX = Math.max(20, Math.min(window.innerWidth - 400 - 20, bubbleX));
         bubbleY = Math.max(navbarHeight + 20, Math.min(window.innerHeight - 200 - 20, bubbleY));
-        
+
         bubble.style.left = bubbleX + 'px';
         bubble.style.top = bubbleY + 'px';
-        
+
         const arrow = document.getElementById('tutorialArrow');
         if (arrow) {
             arrow.className = `tutorial-arrow ${step.position === 'top' ? 'bottom' : 'top'}`;
         }
-        
+
         // Highlight target
         document.querySelectorAll('.tutorial-highlight').forEach(el => {
             el.classList.remove('tutorial-highlight');
@@ -3221,7 +3220,7 @@
         overlay.id = 'tutorialOverlay';
         overlay.className = 'tutorial-overlay';
         overlay.style.display = 'none';
-        
+
         overlay.innerHTML = `
             <div class="tutorial-backdrop"></div>
             <div class="tutorial-bubble" id="tutorialBubble">
@@ -3247,7 +3246,7 @@
                 <div class="tutorial-arrow" id="tutorialArrow"></div>
             </div>
         `;
-        
+
         document.body.appendChild(overlay);
     }
 

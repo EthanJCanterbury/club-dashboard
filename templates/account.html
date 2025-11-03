@@ -236,7 +236,7 @@
         <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
             <h4 style="margin-bottom: 1rem;"><i class="fas fa-plus-circle"></i> Join a Club</h4>
             <p style="margin-bottom: 1rem; color: #6b7280; font-size: 0.9rem;">Enter a join code from your club leader to join an existing club.</p>
-            
+
             <div style="display: flex; gap: 1rem; align-items: end;">
                 <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label class="form-label">Join Code</label>
@@ -417,7 +417,7 @@
             <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #374151;">
                 <i class="fas fa-key"></i> Your Permissions
             </h3>
-            
+
             {% if permissions_by_category %}
                 {% for category, perms in permissions_by_category.items() %}
                 <div class="permission-category" style="margin-bottom: 1.5rem;">
@@ -796,7 +796,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Join club from settings function
     window.joinClubFromSettings = function() {
         const joinCode = document.getElementById('joinCode').value.trim();
-        
+
         if (!joinCode) {
             if (typeof showToast === 'function') {
                 showToast('error', 'Please enter a join code', 'Error');
@@ -852,7 +852,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         // Focus password input after modal opens
         setTimeout(() => {
             const input = document.getElementById('disable2faPassword');
@@ -901,7 +901,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         // Focus password input after modal opens
         setTimeout(() => {
             const input = document.getElementById('regeneratePassword');
@@ -910,10 +910,10 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function showBackupCodes(codes) {
-        const codesGrid = codes.map(code => 
+        const codesGrid = codes.map(code =>
             `<div style="font-family: monospace; padding: 0.75rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; text-align: center; font-size: 1rem;">${code}</div>`
         ).join('');
-        
+
         UniversalModal.show({
             type: 'success',
             title: '🔑 Your New Backup Codes',

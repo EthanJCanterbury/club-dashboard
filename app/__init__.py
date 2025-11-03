@@ -27,7 +27,6 @@ def create_app(config_class=Config):
                 template_folder='../templates',
                 static_folder='../static')
 
-    # Load configuration
     app.config.from_object(config_class)
 
     # Configure logging
@@ -38,7 +37,6 @@ def create_app(config_class=Config):
     # Initialize profanity filter
     profanity.load_censor_words()
 
-    # Initialize extensions
     db.init_app(app)
     limiter.init_app(app)
 
@@ -58,7 +56,6 @@ def create_app(config_class=Config):
     # Register middleware
     register_middleware(app)
 
-    # Initialize services
     initialize_services(app)
 
     return app

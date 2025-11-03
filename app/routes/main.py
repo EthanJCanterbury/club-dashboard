@@ -154,7 +154,7 @@ def gallery():
 def leaderboard(leaderboard_type='total_tokens'):
     """Club leaderboard"""
     from app.models.club import ClubMembership
-    
+
     # Get excluded clubs for this leaderboard type
     excluded_club_ids = [
         exc.club_id for exc in LeaderboardExclusion.query.filter_by(
@@ -179,14 +179,14 @@ def leaderboard(leaderboard_type='total_tokens'):
         clubs = Club.query.filter(
             ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True
         ).all()
-        
+
         # Add member count and calculate projects per member
         for club in clubs:
             member_count = ClubMembership.query.filter_by(club_id=club.id).count()
             club.member_count = max(1, member_count)  # Avoid division by zero
             # Use tokens as proxy for projects (or add actual project count)
             club.projects_per_member = round(club.tokens / club.member_count, 2) if member_count > 0 else 0
-        
+
         # Sort by projects per member
         clubs = sorted(clubs, key=lambda c: c.projects_per_member, reverse=True)[:100]
         title = "Top Clubs by Projects Per Member"
@@ -194,12 +194,12 @@ def leaderboard(leaderboard_type='total_tokens'):
         clubs = Club.query.filter(
             ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True
         ).all()
-        
+
         # Add member count
         for club in clubs:
             club.member_count = ClubMembership.query.filter_by(club_id=club.id).count()
             club.total_members = club.member_count
-        
+
         # Sort by member count
         clubs = sorted(clubs, key=lambda c: c.member_count, reverse=True)[:100]
         title = "Top Clubs by Member Count"
@@ -286,15 +286,15 @@ def suspended():
 def account():
     """User account settings"""
     user = get_current_user()
-    
+
     # Get user's roles and permissions
     user_roles = [role.name for role in user.roles]
     user_permissions = user.get_all_permissions()
-    
+
     # Get all permissions grouped by category
     from app.models.user import Permission
     all_permissions = Permission.query.order_by(Permission.category, Permission.name).all()
-    
+
     # Group permissions by category
     permissions_by_category = {}
     for perm in all_permissions:
@@ -305,11 +305,11 @@ def account():
             'description': perm.description,
             'has_permission': perm.name in user_permissions
         })
-    
+
     # Show permissions section only if user has any RBAC-related roles
     show_permissions = len(user_roles) > 0 and not (len(user_roles) == 1 and 'user' in user_roles)
-    
-    return render_template('account.html', 
+
+    return render_template('account.html',
                          user=user,
                          user_roles=user_roles,
                          permissions_by_category=permissions_by_category,

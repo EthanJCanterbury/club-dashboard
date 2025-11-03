@@ -1088,11 +1088,11 @@ function testAddressInformation() {
                 endpoint: '/oauth/user',
                 explanation: {
                     address_available: !!data.user.address,
-                    reason: data.user.address 
+                    reason: data.user.address
                         ? 'Address information is available because user completed Hack Club Identity verification with address scope'
                         : 'No address information available. This could be because: 1) User has not completed identity verification, 2) Identity verification was not requested during OAuth flow, or 3) Address scope was not included in the OAuth request'
                 },
-                next_steps: data.user.address 
+                next_steps: data.user.address
                     ? 'Address information is successfully retrieved and can be used by your application'
                     : 'To get address information: 1) Include "Verify Identity" checkbox during OAuth consent, 2) Complete Hack Club Identity verification process, 3) Ensure your OAuth app requests address scope'
             };

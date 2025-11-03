@@ -433,14 +433,14 @@ function setupEventListeners() {
 async function loadOrders() {
     try {
         const response = await fetch(`/api/club/${CLUB_ID}/orders`);
-        
+
         if (response.ok) {
             const data = await response.json();
             allOrders = data.orders || [];
             filteredOrders = [...allOrders];
-            
+
             document.getElementById('loadingContainer').style.display = 'none';
-            
+
             if (allOrders.length === 0) {
                 document.getElementById('emptyState').style.display = 'block';
             } else {
@@ -463,18 +463,18 @@ async function loadOrders() {
 
 function filterOrders() {
     const statusFilter = document.getElementById('statusFilter').value;
-    
+
     filteredOrders = allOrders.filter(order => {
         if (statusFilter && order.shipment_status !== statusFilter) return false;
         return true;
     });
-    
+
     renderOrders();
 }
 
 function renderOrders() {
     const container = document.getElementById('ordersContainer');
-    
+
     if (filteredOrders.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -485,12 +485,12 @@ function renderOrders() {
         `;
         return;
     }
-    
+
     container.innerHTML = filteredOrders.map(order => {
         const statusClass = getStatusClass(order.shipment_status);
         const formattedDate = formatDate(order.created_time);
         const orderIdShort = order.id.substring(0, 8);
-        
+
         return `
             <div class="order-card">
                 <div class="order-header">
@@ -564,7 +564,7 @@ function getStatusClass(status) {
 
 function formatDate(dateString) {
     if (!dateString) return 'Unknown date';
-    
+
     try {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {

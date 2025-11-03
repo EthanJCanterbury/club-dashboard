@@ -740,14 +740,14 @@ function setupEventListeners() {
 async function loadOrders() {
     try {
         const response = await fetch('/api/admin/orders');
-        
+
         if (response.ok) {
             const data = await response.json();
             allOrders = data.orders || [];
             filteredOrders = [...allOrders];
-            
+
             document.getElementById('loadingContainer').style.display = 'none';
-            
+
             if (allOrders.length === 0) {
                 document.getElementById('emptyState').style.display = 'block';
             } else {
@@ -789,13 +789,13 @@ async function loadShopItems() {
 function filterOrders() {
     const statusFilter = document.getElementById('statusFilter').value;
     const sortFilter = document.getElementById('sortFilter').value;
-    
+
     // Filter by status
     filteredOrders = allOrders.filter(order => {
         if (statusFilter && order.shipment_status !== statusFilter) return false;
         return true;
     });
-    
+
     // Sort orders
     filteredOrders.sort((a, b) => {
         switch (sortFilter) {
@@ -811,13 +811,13 @@ function filterOrders() {
                 return new Date(b.created_time) - new Date(a.created_time);
         }
     });
-    
+
     renderOrders();
 }
 
 function renderOrders() {
     const container = document.getElementById('ordersContainer');
-    
+
     if (filteredOrders.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
@@ -828,13 +828,13 @@ function renderOrders() {
         `;
         return;
     }
-    
+
     container.innerHTML = filteredOrders.map(order => {
         const statusClass = getStatusClass(order.shipment_status);
         const formattedDate = formatDate(order.created_time);
         const orderIdShort = order.id.substring(0, 8);
         const products = parseProducts(order.products);
-        
+
         return `
             <div class="order-card" data-order-id="${order.id}">
                 <div class="order-header">
@@ -860,12 +860,12 @@ function renderOrders() {
                                         const shopItem = findShopItem(product.name);
                                         const hasImage = shopItem && shopItem.picture;
                                         const hasUrl = shopItem && shopItem.url;
-                                        
-                                        
+
+
                                         return `
                                         <div class="product-item">
                                             <div class="product-image">
-                                                ${hasImage ? 
+                                                ${hasImage ?
                                                     `<img src="${shopItem.picture}" alt="${product.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
                                                      <i class="fas fa-box" style="display: none;"></i>` :
                                                     `<i class="fas fa-box"></i>`
@@ -873,7 +873,7 @@ function renderOrders() {
                                             </div>
                                             <div class="product-details">
                                                 <div class="product-name">${product.name} x${product.quantity}${shopItem && shopItem.name !== product.name ? ` (${shopItem.name})` : ''}</div>
-                                                ${hasUrl ? 
+                                                ${hasUrl ?
                                                     `<a href="${shopItem.url}" target="_blank" class="product-link">
                                                         <i class="fas fa-external-link-alt"></i> Purchase Link
                                                     </a>` :
@@ -897,7 +897,7 @@ function renderOrders() {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="order-section">
                         <div class="section-title">Delivery Address</div>
                         <div class="section-content">
@@ -909,28 +909,28 @@ function renderOrders() {
                             </div>
                         </div>
                     </div>
-                    
+
                     ${order.usage_reason ? `
                         <div class="order-section">
                             <div class="section-title">Usage Reason</div>
                             <div class="section-content">${order.usage_reason}</div>
                         </div>
                     ` : ''}
-                    
+
                     ${order.special_notes ? `
                         <div class="order-section">
                             <div class="section-title">Special Notes</div>
                             <div class="section-content">${order.special_notes}</div>
                         </div>
                     ` : ''}
-                    
+
                     ${order.order_sources && order.order_sources.length > 0 ? `
                         <div class="order-section">
                             <div class="section-title">Order Sources</div>
                             <div class="section-content">${order.order_sources.join(', ')}</div>
                         </div>
                     ` : ''}
-                    
+
                     ${order.reviewer_reason ? `
                         <div class="order-section">
                             <div class="section-title">Previous Review</div>
@@ -965,7 +965,7 @@ function renderOrders() {
             </div>
         `;
     }).join('');
-    
+
     // Add event listeners for status options
     document.querySelectorAll('.status-option').forEach(option => {
         option.addEventListener('click', function() {
@@ -979,7 +979,7 @@ function renderOrders() {
 
 function parseProducts(productsString) {
     if (!productsString) return [];
-    
+
     // Parse "pcb x1, esp32 x4" format
     return productsString.split(',').map(item => {
         const trimmed = item.trim();
@@ -996,20 +996,20 @@ function parseProducts(productsString) {
 
 function findShopItem(productName) {
     if (!productName) return null;
-    
+
     const cleanedName = productName.toLowerCase().trim();
-    
+
     // First try exact match
     if (shopItems[cleanedName]) {
         return shopItems[cleanedName];
     }
-    
+
     // Try normalizing the product name (remove brackets, special chars)
     const normalizedName = cleanedName.replace(/[\[\]()]/g, '').replace(/\s+/g, ' ').trim();
     if (shopItems[normalizedName]) {
         return shopItems[normalizedName];
     }
-    
+
     // Try matching individual words from the product name
     const productWords = cleanedName.split(/\s+/).filter(word => word.length > 2);
     for (const word of productWords) {
@@ -1017,48 +1017,48 @@ function findShopItem(productName) {
             return shopItems[word];
         }
     }
-    
+
     // Try fuzzy matching with full product names (not individual word keys)
     let bestMatch = null;
     let bestScore = 0;
-    
+
     for (const [key, item] of Object.entries(shopItems)) {
         // Skip single word keys for this phase
         if (!key.includes(' ')) continue;
-        
+
         const itemName = item.name.toLowerCase();
-        
+
         // Calculate similarity score
         let score = 0;
-        
+
         // Check if product name contains item name or vice versa
         if (cleanedName.includes(itemName) || itemName.includes(cleanedName)) {
             score += 10;
         }
-        
+
         // Check word overlap
         const itemWords = itemName.split(/\s+/);
-        const matchingWords = productWords.filter(pw => 
+        const matchingWords = productWords.filter(pw =>
             itemWords.some(iw => iw.includes(pw) || pw.includes(iw))
         );
-        
+
         score += matchingWords.length * 2;
-        
+
         // Bonus for similar length
         if (Math.abs(cleanedName.length - itemName.length) < 10) {
             score += 1;
         }
-        
+
         if (score > bestScore && score >= 3) {
             bestScore = score;
             bestMatch = item;
         }
     }
-    
+
     if (bestMatch) {
         return bestMatch;
     }
-    
+
     console.warn(`✗ No shop item found for product: "${productName}"`);
     return null;
 }
@@ -1074,7 +1074,7 @@ function getStatusClass(status) {
 
 function formatDate(dateString) {
     if (!dateString) return 'Unknown date';
-    
+
     try {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
@@ -1093,18 +1093,18 @@ async function submitReview(orderId) {
     const statusSelector = document.querySelector(`[data-order-id="${orderId}"] .status-option.selected`);
     const reasonInput = document.getElementById(`reason-${orderId}`);
     const submitButton = document.querySelector(`[data-order-id="${orderId}"] .btn-review`);
-    
+
     if (!statusSelector) {
         showErrorModal('Please select a status');
         return;
     }
-    
+
     const status = statusSelector.dataset.status;
     const reason = reasonInput.value.trim();
-    
+
     submitButton.disabled = true;
     submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-    
+
     try {
         const response = await fetch(`/api/admin/orders/${orderId}/status`, {
             method: 'PATCH',
@@ -1116,9 +1116,9 @@ async function submitReview(orderId) {
                 reviewer_reason: reason
             })
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok) {
             // Update the order in local data
             const orderIndex = allOrders.findIndex(o => o.id === orderId);
@@ -1126,10 +1126,10 @@ async function submitReview(orderId) {
                 allOrders[orderIndex].shipment_status = status;
                 allOrders[orderIndex].reviewer_reason = reason;
             }
-            
+
             // Refresh the display
             filterOrders();
-            
+
             showSuccessModal('Order status updated successfully!');
         } else {
             throw new Error(result.error || 'Failed to update order status');
@@ -1151,15 +1151,15 @@ async function deleteOrder(orderId) {
 }
 
 async function performDeleteOrder(orderId) {
-    
+
     const deleteButton = document.querySelector(`[data-order-id="${orderId}"] .btn-delete`);
     const originalText = deleteButton ? deleteButton.innerHTML : 'Delete Order';
-    
+
     if (deleteButton) {
         deleteButton.disabled = true;
         deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
     }
-    
+
     try {
         const response = await fetch(`/api/admin/orders/${orderId}`, {
             method: 'DELETE',
@@ -1167,19 +1167,19 @@ async function performDeleteOrder(orderId) {
                 'Content-Type': 'application/json',
             }
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok) {
             // Remove the order from local data
             const orderIndex = allOrders.findIndex(o => o.id === orderId);
             if (orderIndex !== -1) {
                 allOrders.splice(orderIndex, 1);
             }
-            
+
             // Refresh the display
             filterOrders();
-            
+
             showSuccessModal('Order deleted successfully!');
         } else {
             throw new Error(result.error || 'Failed to delete order');
@@ -1187,7 +1187,7 @@ async function performDeleteOrder(orderId) {
     } catch (error) {
         console.error('Error deleting order:', error);
         showErrorModal(`Error: ${error.message}`);
-        
+
         // Reset button state on error
         if (deleteButton) {
             deleteButton.disabled = false;
@@ -1199,20 +1199,20 @@ async function performDeleteOrder(orderId) {
 async function refundOrder(orderId) {
     const refundButton = document.querySelector(`[onclick="refundOrder('${orderId}')"]`);
     const originalText = refundButton.innerHTML;
-    
+
     try {
         refundButton.disabled = true;
         refundButton.innerHTML = '🔄 Refunding...';
-        
+
         const response = await fetch(`/api/admin/orders/${orderId}/refund`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             }
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             // Update the order status in local data
             const order = allOrders.find(o => o.id === orderId);
@@ -1220,10 +1220,10 @@ async function refundOrder(orderId) {
                 order.shipment_status = 'Rejected Shipment';
                 order.reviewer_reason = result.message;
             }
-            
+
             // Refresh the display
             filterOrders();
-            
+
             showSuccessModal(result.message || 'Order refunded and rejected');
         } else {
             throw new Error(result.error || 'Failed to refund order');
@@ -1231,7 +1231,7 @@ async function refundOrder(orderId) {
     } catch (error) {
         console.error('Error refunding order:', error);
         showErrorModal(`Error: ${error.message}`);
-        
+
         // Reset button state on error
         if (refundButton) {
             refundButton.disabled = false;
