@@ -31,6 +31,18 @@ class Config:
     SECRET_KEY = get_secret_key()
     SQLALCHEMY_DATABASE_URI = get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Database connection pool settings to handle connection timeouts
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,  # Test connections before using them
+        'pool_recycle': 300,    # Recycle connections after 5 minutes
+        'pool_size': 10,        # Number of connections to keep open
+        'max_overflow': 20,     # Maximum overflow connections
+        'connect_args': {
+            'connect_timeout': 10,  # Connection timeout in seconds
+            'options': '-c statement_timeout=30000'  # Query timeout 30s
+        }
+    }
 
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
 

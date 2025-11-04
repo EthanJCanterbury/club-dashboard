@@ -27,6 +27,7 @@ class SystemSettings(db.Model):
             return setting.value if setting else default
         except Exception as e:
             current_app.logger.error(f"Error getting setting '{key}': {str(e)}")
+            db.session.rollback()
             return default
 
     @staticmethod

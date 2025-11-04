@@ -7,10 +7,11 @@ the Flask application with all necessary extensions, blueprints, and configurati
 """
 
 import logging
-from flask import Flask
+from flask import Flask, g
 from config import Config
 from extensions import db, limiter
 from better_profanity import profanity
+from sqlalchemy.exc import OperationalError, DatabaseError
 
 
 def create_app(config_class=Config):
@@ -238,18 +239,31 @@ def register_template_helpers(app):
 
     @app.context_processor
     def inject_user():
-        return dict(current_user=get_current_user())
+        try:
+            return dict(current_user=get_current_user())
+        except Exception as e:
+            app.logger.error(f"Error injecting user context: {e}")
+            return dict(current_user=None)
 
     @app.context_processor
     def inject_system_settings():
         """Inject system settings helpers into templates"""
-        return dict(
-            is_maintenance_mode=SystemSettings.is_maintenance_mode(),
-            is_economy_enabled=SystemSettings.is_economy_enabled(),
-            is_mobile_enabled=SystemSettings.is_mobile_enabled(),
-            economy_enabled=SystemSettings.is_economy_enabled(
-            )  # Legacy compatibility
-        )
+        try:
+            return dict(
+                is_maintenance_mode=SystemSettings.is_maintenance_mode(),
+                is_economy_enabled=SystemSettings.is_economy_enabled(),
+                is_mobile_enabled=SystemSettings.is_mobile_enabled(),
+                economy_enabled=SystemSettings.is_economy_enabled()  # Legacy compatibility
+            )
+        except Exception as e:
+            app.logger.error(f"Error injecting system settings: {e}")
+            # Return safe defaults if database is unavailable
+            return dict(
+                is_maintenance_mode=False,
+                is_economy_enabled=False,
+                is_mobile_enabled=False,
+                economy_enabled=False
+            )
 
     @app.context_processor
     def inject_cosmetics_functions():
@@ -352,25 +366,75 @@ def register_template_helpers(app):
 
 def register_middleware(app):
     """Register middleware and before/after request handlers"""
-    from flask import request, session, redirect, url_for
+    from flask import request, session, redirect, url_for, render_template, make_response
     from app.models.system import SystemSettings
     from app.utils.security import add_security_headers, get_real_ip
+
+    def check_database_health():
+        """Check if database is accessible"""
+        if hasattr(g, 'database_healthy'):
+            return g.database_healthy
+        
+        try:
+            # Simple query to check database connectivity
+            db.session.execute(db.text('SELECT 1'))
+            g.database_healthy = True
+            return True
+        except (OperationalError, DatabaseError) as e:
+            app.logger.error(f"Database health check failed: {e}")
+            g.database_healthy = False
+            return False
+        except Exception as e:
+            app.logger.error(f"Unexpected error in database health check: {e}")
+            g.database_healthy = False
+            return False
+
+    @app.before_request
+    def check_database_before_request():
+        """Check database health before each request"""
+        # Skip database check for static files
+        if request.endpoint == 'static':
+            return None
+        
+        # Check if database is healthy
+        if not check_database_health():
+            try:
+                return make_response(render_template('errors/database_error.html'), 503)
+            except Exception:
+                # If template rendering fails, return a simple HTML response
+                return '''
+                <!DOCTYPE html>
+                <html>
+                <head><title>Database Error</title></head>
+                <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+                    <h1>503 - Service Unavailable</h1>
+                    <p>Our servers are experiencing technical difficulties.</p>
+                    <p>Please try again in a few minutes.</p>
+                    <button onclick="location.reload()">Retry</button>
+                </body>
+                </html>
+                ''', 503
 
     @app.before_request
     def check_maintenance_mode():
         """Check if maintenance mode is enabled and redirect if necessary"""
-        if request.endpoint in ['main.maintenance', 'static']:
+        # Allow access to maintenance page, static files, and auth endpoints
+        if request.endpoint in ['main.maintenance', 'static', 'auth.login', 'auth.logout', 'auth.verify_2fa']:
             return None
 
-        if SystemSettings.is_maintenance_mode():
-            from app.utils.auth_helpers import get_current_user
-            user = get_current_user()
-            if not user or not user.is_admin:
-                from flask import render_template
-                try:
-                    return render_template('maintenance.html'), 503
-                except:
-                    return '<h1>System Maintenance</h1><p>We are currently performing maintenance. Please check back soon.</p>', 503
+        try:
+            if SystemSettings.is_maintenance_mode():
+                from app.utils.auth_helpers import get_current_user
+                user = get_current_user()
+                if not user or not user.is_admin:
+                    from flask import render_template
+                    try:
+                        return render_template('maintenance.html'), 503
+                    except:
+                        return '<h1>System Maintenance</h1><p>We are currently performing maintenance. Please check back soon.</p>', 503
+        except Exception as e:
+            app.logger.error(f"Error checking maintenance mode: {e}")
+            db.session.rollback()
 
         return None
 
@@ -410,6 +474,14 @@ def register_middleware(app):
     def after_request(response):
         """Add security headers to all responses"""
         return add_security_headers(response)
+
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        """Remove database session after each request"""
+        try:
+            db.session.remove()
+        except Exception as e:
+            app.logger.error(f"Error removing session: {e}")
 
 
 def initialize_services(app):

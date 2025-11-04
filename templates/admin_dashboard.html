@@ -5045,13 +5045,24 @@ async function toggleUserRegistration() {
 
 function updateSetting(key, value) {
     console.log('[DEBUG] updateSetting called with key:', key, 'value:', value);
-    console.log('[DEBUG] Stack trace:', new Error().stack);
+    
+    // Convert string booleans to actual booleans
+    let settingValue = value;
+    if (value === 'true' || value === true) {
+        settingValue = true;
+    } else if (value === 'false' || value === false) {
+        settingValue = false;
+    }
+    
+    // Build the payload with the key as the property name
+    const payload = {};
+    payload[key] = settingValue;
+    
+    console.log('[DEBUG] Sending payload:', JSON.stringify(payload));
+    
     makeSecureRequest('/api/admin/settings', {
         method: 'POST',
-        body: JSON.stringify({
-            key: key,
-            value: value
-        })
+        body: JSON.stringify(payload)
     })
     .then(response => response.json())
     .then(data => {
@@ -5059,13 +5070,13 @@ function updateSetting(key, value) {
             showToast('success', 'Setting updated successfully');
             loadSettings(); // Reload to ensure consistency
         } else {
-            showToast('error', 'Failed to update setting: ' + data.message);
+            showToast('error', 'Failed to update setting: ' + (data.message || 'Unknown error'));
             loadSettings(); // Reload to reset UI state
         }
     })
     .catch(error => {
         console.error('Error updating setting:', error);
-        showToast('error', 'Failed to update setting');
+        showToast('error', 'Failed to update setting: ' + error.message);
         loadSettings(); // Reload to reset UI state
     });
 }
