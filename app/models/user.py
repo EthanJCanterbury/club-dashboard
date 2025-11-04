@@ -125,6 +125,17 @@ class User(db.Model):
                 self.has_permission('reviews.submit') or
                 self.is_admin)
 
+    def requires_2fa(self):
+        """Check if user has any role that requires 2FA"""
+        for role in self.roles:
+            if role.requires_2fa:
+                return True
+        return False
+
+    def get_2fa_required_roles(self):
+        """Get list of role names that require 2FA"""
+        return [role.display_name for role in self.roles if role.requires_2fa]
+
     def get_all_ips(self):
         """Get all IPs used by this user as a list"""
         try:
@@ -222,6 +233,7 @@ class Role(db.Model):
     display_name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     is_system_role = db.Column(db.Boolean, default=False, nullable=False)  # System roles can't be deleted
+    requires_2fa = db.Column(db.Boolean, default=False, nullable=False)  # Require 2FA for users with this role
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -234,6 +246,7 @@ class Role(db.Model):
             'display_name': self.display_name,
             'description': self.description,
             'is_system_role': self.is_system_role,
+            'requires_2fa': self.requires_2fa,
             'permissions': [p.name for p in self.permissions]
         }
 

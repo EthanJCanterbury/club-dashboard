@@ -47,7 +47,6 @@ def dashboard():
     can_view_content = current_user.has_permission('content.view') or current_user.is_admin
     can_manage_roles = current_user.has_permission('system.manage_roles') or current_user.has_role('super-admin')
     can_manage_users = current_user.has_permission('users.assign_roles') or current_user.is_admin
-    can_access_api = current_user.has_permission('admin.manage_api_keys') or current_user.is_admin
     can_manage_settings = current_user.has_permission('system.manage_settings') or current_user.is_admin
     can_view_dashboard = current_user.has_permission('admin.access_dashboard') or current_user.is_admin
     can_view_activity = current_user.has_permission('admin.view_activity') or current_user.is_admin
@@ -68,7 +67,6 @@ def dashboard():
                          can_view_content=can_view_content,
                          can_manage_roles=can_manage_roles,
                          can_manage_users=can_manage_users,
-                         can_access_api=can_access_api,
                          can_manage_settings=can_manage_settings,
                          can_view_dashboard=can_view_dashboard,
                          can_view_activity=can_view_activity,
@@ -202,6 +200,7 @@ def recent_users():
         'last_name': u.last_name,
         'is_admin': u.is_admin,
         'is_suspended': u.is_suspended,
+        'totp_enabled': u.totp_enabled,
         'created_at': u.created_at.isoformat() if u.created_at else None,
         'clubs_led': ClubMembership.query.filter_by(user_id=u.id, role='leader').count(),
         'clubs_joined': ClubMembership.query.filter(ClubMembership.user_id == u.id, ClubMembership.role != 'leader').count()
@@ -238,6 +237,7 @@ def search_users():
         'last_name': u.last_name,
         'is_admin': u.is_admin,
         'is_suspended': u.is_suspended,
+        'totp_enabled': u.totp_enabled,
         'created_at': u.created_at.isoformat() if u.created_at else None,
         'clubs_led': ClubMembership.query.filter_by(user_id=u.id, role='leader').count(),
         'clubs_joined': ClubMembership.query.filter(ClubMembership.user_id == u.id, ClubMembership.role != 'leader').count()
@@ -533,7 +533,7 @@ def pizza_grants():
 
 @admin_bp.route('/activity')
 @login_required
-@admin_required
+@permission_required('admin.view_activity')
 def activity():
     """Recent activity log"""
     page = request.args.get('page', 1, type=int)

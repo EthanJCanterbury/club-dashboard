@@ -494,6 +494,24 @@ def regenerate_backup_codes():
     })
 
 
+@auth_bp.route('/2fa/required')
+@login_required
+def require_2fa():
+    """Show 2FA requirement page for users with roles that require 2FA"""
+    user = get_current_user()
+    
+    if not user.requires_2fa():
+        # User doesn't need 2FA, redirect to dashboard
+        return redirect(url_for('main.dashboard'))
+    
+    if user.totp_enabled:
+        # User already has 2FA enabled, redirect to dashboard
+        return redirect(url_for('main.dashboard'))
+    
+    required_roles = user.get_2fa_required_roles()
+    return render_template('2fa_required.html', required_roles=required_roles)
+
+
 @auth_bp.route('/2fa/verify', methods=['GET', 'POST'])
 @limiter.limit("10 per minute")
 def verify_2fa():

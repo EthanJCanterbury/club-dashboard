@@ -5,7 +5,6 @@ All models are imported here for easy access and to ensure proper SQLAlchemy rel
 
 # Import all models so SQLAlchemy can track relationships
 from app.models.user import User, Role, Permission, RolePermission, UserRole, AuditLog
-from app.models.auth import APIKey, OAuthApplication, OAuthToken, OAuthAuthorizationCode
 from app.models.club import Club, ClubMembership, ClubCosmetic, MemberCosmetic
 from app.models.club_content import ClubPost, ClubAssignment, ClubMeeting, ClubResource, ClubProject
 from app.models.chat import ClubChatMessage
@@ -20,7 +19,6 @@ from app.models.economy import create_club_transaction, get_current_week_start, 
 
 __all__ = [
     'User', 'Role', 'Permission', 'RolePermission', 'UserRole', 'AuditLog',
-    'APIKey', 'OAuthApplication', 'OAuthToken', 'OAuthAuthorizationCode',
     'Club', 'ClubMembership', 'ClubCosmetic', 'MemberCosmetic',
     'ClubPost', 'ClubAssignment', 'ClubMeeting', 'ClubResource', 'ClubProject',
     'ClubChatMessage',

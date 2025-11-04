@@ -10,7 +10,6 @@ This package contains all Flask blueprints organized by functionality:
 - chat: Club chat messaging
 - attendance: Attendance tracking and reporting
 - status: Public status page
-- oauth: OAuth 2.0 authorization server
 """
 
 from app.routes.main import main_bp
@@ -21,7 +20,6 @@ from app.routes.api import api_bp
 from app.routes.chat import chat_bp
 from app.routes.attendance import attendance_bp
 from app.routes.status import status_bp
-from app.routes.oauth import oauth_bp
 
 __all__ = [
     'main_bp',
@@ -32,5 +30,4 @@ __all__ = [
     'chat_bp',
     'attendance_bp',
     'status_bp',
-    'oauth_bp',
 ]

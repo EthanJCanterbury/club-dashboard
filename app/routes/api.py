@@ -5,6 +5,7 @@ Handles public API endpoints, admin API, and mobile app endpoints.
 
 import html
 import logging
+import requests as http_requests
 from flask import Blueprint, jsonify, request, current_app, session
 from extensions import db, limiter
 from app.decorators.auth import api_key_required, oauth_required, admin_required, login_required, reviewer_required, permission_required
@@ -209,6 +210,7 @@ def admin_get_users():
             'last_name': user.last_name,
             'is_admin': user.is_admin,
             'is_suspended': user.is_suspended,
+            'totp_enabled': user.totp_enabled,
             'clubs_led': clubs_led,
             'clubs_joined': clubs_joined,
             'created_at': user.created_at.isoformat() if user.created_at else None
@@ -450,6 +452,7 @@ def admin_get_roles():
             'display_name': role.display_name,
             'description': role.description,
             'is_system_role': role.is_system_role,
+            'requires_2fa': role.requires_2fa,
             'permissions': [p.name for p in role.permissions.all()],
             'user_count': len(role.users)
         })
@@ -527,54 +530,6 @@ def admin_get_user_roles(user_id):
         })
 
 
-@api_bp.route('/admin/apikeys', methods=['GET'])
-@login_required
-@admin_required
-def admin_get_api_keys():
-    """Get all API keys (admin only)"""
-    from app.models.auth import APIKey
-
-    keys = APIKey.query.order_by(APIKey.created_at.desc()).all()
-    keys_data = []
-    for key in keys:
-        keys_data.append({
-            'id': key.id,
-            'name': key.name,
-            'key_preview': key.key[:8] + '...' if key.key else '',
-            'user_id': key.user_id,
-            'username': key.user.username if key.user else None,
-            'scopes': key.get_scopes(),
-            'is_active': key.is_active,
-            'created_at': key.created_at.isoformat() if key.created_at else None,
-            'last_used_at': key.last_used_at.isoformat() if key.last_used_at else None
-        })
-
-    return jsonify({'api_keys': keys_data})
-
-
-@api_bp.route('/admin/oauthapps', methods=['GET'])
-@login_required
-@admin_required
-def admin_get_oauth_apps():
-    """Get all OAuth applications (admin only)"""
-    from app.models.auth import OAuthApplication
-
-    apps = OAuthApplication.query.order_by(OAuthApplication.created_at.desc()).all()
-    apps_data = []
-    for app in apps:
-        apps_data.append({
-            'id': app.id,
-            'name': app.name,
-            'client_id': app.client_id,
-            'owner_id': app.user_id,
-            'owner_username': app.user.username if app.user else None,
-            'redirect_uris': app.get_redirect_uris(),
-            'scopes': app.get_scopes(),
-            'is_active': app.is_active,
-            'created_at': app.created_at.isoformat() if app.created_at else None
-        })
-
-    return jsonify({'oauth_apps': apps_data})
 
 
 @api_bp.route('/admin/audit-logs', methods=['GET'])
@@ -747,6 +702,46 @@ def admin_delete_user(user_id):
     return jsonify({
         'success': True,
         'message': 'User deleted successfully'
+    })
+
+
+@api_bp.route('/admin/users/<int:user_id>/remove-2fa', methods=['POST'])
+@login_required
+@permission_required('users.manage_2fa')
+def admin_remove_2fa(user_id):
+    """Remove 2FA from a user account (admin only)"""
+    user = User.query.get_or_404(user_id)
+    current_user = get_current_user()
+
+    if not user.totp_enabled:
+        return jsonify({'error': 'User does not have 2FA enabled'}), 400
+
+    # Store username before disabling
+    username = user.username
+
+    # Disable 2FA
+    user.totp_enabled = False
+    user.totp_secret = None
+    user.totp_backup_codes = None
+    user.totp_enabled_at = None
+
+    db.session.commit()
+
+    create_audit_log(
+        action_type='admin_2fa_remove',
+        description=f'Admin {current_user.username} removed 2FA for user {username}',
+        user=current_user,
+        target_type='user',
+        target_id=user_id,
+        details={'username': username, 'reason': 'admin_removal'},
+        severity='warning',
+        admin_action=True,
+        category='security'
+    )
+
+    return jsonify({
+        'success': True,
+        'message': f'2FA has been removed for {username}'
     })
 
 
@@ -1139,267 +1134,6 @@ def admin_delete_pizza_grant(grant_id):
     except Exception as e:
         current_app.logger.error(f'Error deleting pizza grant: {str(e)}')
         return jsonify({'error': 'Failed to delete grant'}), 500
-@api_bp.route('/admin/apikeys', methods=['POST'])
-@login_required
-@permission_required('admin.manage_api_keys')
-def admin_create_api_key():
-    """Create a new API key (admin only)"""
-    from app.models.auth import APIKey
-
-    current_user = get_current_user()
-    data = request.get_json()
-
-    name = sanitize_string(data.get('name', ''), max_length=200)
-    description = sanitize_string(data.get('description', ''), max_length=1000)
-    scopes = data.get('scopes', [])
-    target_user_id = data.get('user_id', current_user.id)
-
-    if not name:
-        return jsonify({'error': 'Name is required'}), 400
-
-    api_key = APIKey(
-        name=name,
-        description=description,
-        user_id=target_user_id
-    )
-    api_key.generate_key()
-    api_key.set_scopes(scopes)
-
-    db.session.add(api_key)
-    db.session.commit()
-
-    create_audit_log(
-        action_type='api_key_create',
-        description=f'Admin {current_user.username} created API key "{name}"',
-        user=current_user,
-        target_type='api_key',
-        target_id=api_key.id,
-        details={'name': name, 'scopes': scopes},
-        severity='info',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'API key created',
-        'api_key': {
-            'id': api_key.id,
-            'key': api_key.key,
-            'name': api_key.name,
-            'scopes': scopes
-        }
-    })
-
-
-@api_bp.route('/admin/api-keys/<int:key_id>', methods=['PUT'])
-@login_required
-@admin_required
-def admin_update_api_key(key_id):
-    """Update an API key (admin only)"""
-    from app.models.auth import APIKey
-
-    api_key = APIKey.query.get_or_404(key_id)
-    current_user = get_current_user()
-
-    data = request.get_json()
-
-    if 'name' in data:
-        api_key.name = sanitize_string(data['name'], max_length=200)
-
-    if 'description' in data:
-        api_key.description = sanitize_string(data['description'], max_length=1000)
-
-    if 'is_active' in data:
-        api_key.is_active = bool(data['is_active'])
-
-    if 'scopes' in data:
-        api_key.set_scopes(data['scopes'])
-
-    db.session.commit()
-
-    create_audit_log(
-        action_type='api_key_update',
-        description=f'Admin {current_user.username} updated API key "{api_key.name}"',
-        user=current_user,
-        target_type='api_key',
-        target_id=key_id,
-        severity='info',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'API key updated'
-    })
-
-
-@api_bp.route('/admin/api-keys/<int:key_id>', methods=['DELETE'])
-@login_required
-@permission_required('admin.manage_api_keys')
-def admin_delete_api_key(key_id):
-    """Delete an API key (admin only)"""
-    from app.models.auth import APIKey
-
-    api_key = APIKey.query.get_or_404(key_id)
-    current_user = get_current_user()
-
-    key_name = api_key.name
-
-    db.session.delete(api_key)
-    db.session.commit()
-
-    create_audit_log(
-        action_type='api_key_delete',
-        description=f'Admin {current_user.username} deleted API key "{key_name}"',
-        user=current_user,
-        target_type='api_key',
-        target_id=key_id,
-        severity='warning',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'API key deleted'
-    })
-
-
-@api_bp.route('/admin/oauthapps', methods=['POST'])
-@login_required
-@admin_required
-def admin_create_oauth_app():
-    """Create a new OAuth application (admin only)"""
-    from app.models.auth import OAuthApplication
-
-    current_user = get_current_user()
-    data = request.get_json()
-
-    name = sanitize_string(data.get('name', ''), max_length=200)
-    description = sanitize_string(data.get('description', ''), max_length=1000)
-    redirect_uris = data.get('redirect_uris', [])
-    scopes = data.get('scopes', [])
-    target_user_id = data.get('user_id', current_user.id)
-
-    if not name:
-        return jsonify({'error': 'Name is required'}), 400
-
-    oauth_app = OAuthApplication(
-        name=name,
-        description=description,
-        user_id=target_user_id
-    )
-    oauth_app.generate_credentials()
-    oauth_app.set_redirect_uris(redirect_uris)
-    oauth_app.set_scopes(scopes)
-
-    db.session.add(oauth_app)
-    db.session.commit()
-
-    create_audit_log(
-        action_type='oauth_app_create',
-        description=f'Admin {current_user.username} created OAuth app "{name}"',
-        user=current_user,
-        target_type='oauth_app',
-        target_id=oauth_app.id,
-        details={'name': name, 'scopes': scopes},
-        severity='info',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'OAuth application created',
-        'oauth_app': {
-            'id': oauth_app.id,
-            'client_id': oauth_app.client_id,
-            'client_secret': oauth_app.client_secret,
-            'name': oauth_app.name,
-            'redirect_uris': redirect_uris,
-            'scopes': scopes
-        }
-    })
-
-
-@api_bp.route('/admin/oauth-applications/<int:app_id>', methods=['PUT'])
-@login_required
-@admin_required
-def admin_update_oauth_app(app_id):
-    """Update an OAuth application (admin only)"""
-    from app.models.auth import OAuthApplication
-
-    oauth_app = OAuthApplication.query.get_or_404(app_id)
-    current_user = get_current_user()
-
-    data = request.get_json()
-
-    if 'name' in data:
-        oauth_app.name = sanitize_string(data['name'], max_length=200)
-
-    if 'description' in data:
-        oauth_app.description = sanitize_string(data['description'], max_length=1000)
-
-    if 'is_active' in data:
-        oauth_app.is_active = bool(data['is_active'])
-
-    if 'redirect_uris' in data:
-        oauth_app.set_redirect_uris(data['redirect_uris'])
-
-    if 'scopes' in data:
-        oauth_app.set_scopes(data['scopes'])
-
-    db.session.commit()
-
-    create_audit_log(
-        action_type='oauth_app_update',
-        description=f'Admin {current_user.username} updated OAuth app "{oauth_app.name}"',
-        user=current_user,
-        target_type='oauth_app',
-        target_id=app_id,
-        severity='info',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'OAuth application updated'
-    })
-
-
-@api_bp.route('/admin/oauth-applications/<int:app_id>', methods=['DELETE'])
-@login_required
-@admin_required
-def admin_delete_oauth_app(app_id):
-    """Delete an OAuth application (admin only)"""
-    from app.models.auth import OAuthApplication
-
-    oauth_app = OAuthApplication.query.get_or_404(app_id)
-    current_user = get_current_user()
-
-    app_name = oauth_app.name
-
-    db.session.delete(oauth_app)
-    db.session.commit()
-
-    create_audit_log(
-        action_type='oauth_app_delete',
-        description=f'Admin {current_user.username} deleted OAuth app "{app_name}"',
-        user=current_user,
-        target_type='oauth_app',
-        target_id=app_id,
-        severity='warning',
-        admin_action=True,
-        category='admin'
-    )
-
-    return jsonify({
-        'success': True,
-        'message': 'OAuth application deleted'
-    })
 @api_bp.route('/admin/rbac/users/<int:user_id>/roles', methods=['POST'])
 @login_required
 @permission_required('users.assign_roles', 'system.manage_roles')
@@ -1522,6 +1256,7 @@ def admin_create_role():
     name = sanitize_string(data.get('name', ''), max_length=50)
     display_name = sanitize_string(data.get('display_name', ''), max_length=100)
     description = sanitize_string(data.get('description', ''), max_length=500)
+    requires_2fa = data.get('requires_2fa', False)
     permission_names = data.get('permissions', [])
 
     if not name or not display_name:
@@ -1535,7 +1270,8 @@ def admin_create_role():
         name=name,
         display_name=display_name,
         description=description,
-        is_system_role=False
+        is_system_role=False,
+        requires_2fa=requires_2fa
     )
     db.session.add(role)
     db.session.flush()
@@ -1551,11 +1287,11 @@ def admin_create_role():
 
     create_audit_log(
         action_type='role_create',
-        description=f'Admin {current_user.username} created role "{name}"',
+        description=f'Admin {current_user.username} created role "{name}"' + (' (requires 2FA)' if requires_2fa else ''),
         user=current_user,
         target_type='role',
         target_id=role.id,
-        details={'name': name, 'permissions': permission_names},
+        details={'name': name, 'permissions': permission_names, 'requires_2fa': requires_2fa},
         severity='info',
         admin_action=True,
         category='admin'
@@ -1586,6 +1322,9 @@ def admin_update_role(role_id):
     if 'description' in data:
         role.description = sanitize_string(data['description'], max_length=500)
 
+    if 'requires_2fa' in data:
+        role.requires_2fa = data['requires_2fa']
+
     if 'permissions' in data:
         RolePermission.query.filter_by(role_id=role.id).delete()
 
@@ -1599,10 +1338,11 @@ def admin_update_role(role_id):
 
     create_audit_log(
         action_type='role_update',
-        description=f'Admin {current_user.username} updated role "{role.name}"',
+        description=f'Admin {current_user.username} updated role "{role.name}"' + (' (requires 2FA)' if role.requires_2fa else ''),
         user=current_user,
         target_type='role',
         target_id=role_id,
+        details={'requires_2fa': role.requires_2fa},
         severity='info',
         admin_action=True,
         category='admin'
@@ -2797,84 +2537,6 @@ def get_public_status_incident(incident_id):
     return jsonify({
         'incident': incident.to_dict()
     })
-@api_bp.route('/v1/users/<int:user_id>', methods=['GET'])
-@limiter.limit("100 per minute")
-def oauth_get_user(user_id):
-    """Get user info via OAuth (requires valid OAuth token)"""
-    user = User.query.get_or_404(user_id)
-
-    return jsonify({
-        'id': user.id,
-        'username': user.username,
-        'created_at': user.created_at.isoformat() if user.created_at else None
-    })
-
-
-@api_bp.route('/v1/clubs/<int:club_id>', methods=['GET'])
-@limiter.limit("100 per minute")
-def oauth_get_club(club_id):
-    """Get club info via OAuth (requires valid OAuth token)"""
-    club = Club.query.get_or_404(club_id)
-
-    return jsonify({
-        'id': club.id,
-        'name': club.name,
-        'description': club.description,
-        'tokens': club.tokens,
-        'created_at': club.created_at.isoformat() if club.created_at else None
-    })
-
-
-@api_bp.route('/v1/clubs/<int:club_id>/members', methods=['GET'])
-@limiter.limit("100 per minute")
-def oauth_get_club_members(club_id):
-    """Get club members via OAuth (requires valid OAuth token)"""
-    club = Club.query.get_or_404(club_id)
-
-    memberships = ClubMembership.query.filter_by(club_id=club_id).all()
-
-    members_data = []
-    for m in memberships:
-        members_data.append({
-            'id': m.user.id,
-            'username': m.user.username,
-            'role': m.role,
-            'joined_at': m.joined_at.isoformat() if m.joined_at else None
-        })
-
-    return jsonify({
-        'members': members_data,
-        'total': len(members_data)
-    })
-
-
-@api_bp.route('/v1/clubs/<int:club_id>/projects', methods=['GET'])
-@limiter.limit("100 per minute")
-def oauth_get_club_projects(club_id):
-    """Get club projects via OAuth (requires valid OAuth token)"""
-    from app.models.economy import ProjectSubmission
-
-    club = Club.query.get_or_404(club_id)
-
-    projects = ProjectSubmission.query.filter_by(club_id=club_id).order_by(
-        ProjectSubmission.created_at.desc()
-    ).all()
-
-    projects_data = []
-    for project in projects:
-        projects_data.append({
-            'id': project.id,
-            'name': project.name,
-            'description': project.description,
-            'url': project.url,
-            'created_at': project.created_at.isoformat() if project.created_at else None,
-            'approved': project.approved_at is not None
-        })
-
-    return jsonify({
-        'projects': projects_data,
-        'total': len(projects_data)
-    })
 @api_bp.route('/upload-images', methods=['POST'])
 @login_required
 @limiter.limit("10 per hour")
@@ -3713,3 +3375,69 @@ def api_test_projects():
             {'id': '2', 'firstName': 'Another', 'lastName': 'Test', 'status': 'Rejected'}
         ]
     })
+
+
+# Proxy endpoints for poster editor - keep API keys server-side
+@api_bp.route('/fonts/google', methods=['GET'])
+@login_required
+@limiter.limit("100 per hour")
+def proxy_google_fonts():
+    """Proxy Google Fonts API to keep API key server-side"""
+    api_key = current_app.config.get('GOOGLE_FONTS_API_KEY')
+    if not api_key:
+        return jsonify({'error': 'Google Fonts API not configured'}), 503
+
+    try:
+        sort = request.args.get('sort', 'popularity')
+        response = http_requests.get(
+            f'https://www.googleapis.com/webfonts/v1/webfonts',
+            params={'key': api_key, 'sort': sort},
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            current_app.logger.error(f"Google Fonts API error: {response.status_code}")
+            return jsonify({'error': 'Failed to fetch fonts'}), response.status_code
+
+    except Exception as e:
+        current_app.logger.error(f"Error proxying Google Fonts API: {str(e)}")
+        return jsonify({'error': 'Failed to fetch fonts'}), 500
+
+
+@api_bp.route('/images/search', methods=['GET'])
+@login_required
+@limiter.limit("50 per hour")
+def proxy_unsplash_search():
+    """Proxy Unsplash API to keep API key server-side"""
+    api_key = current_app.config.get('UNSPLASH_API_KEY')
+    if not api_key:
+        return jsonify({'error': 'Image search API not configured'}), 503
+
+    query = request.args.get('query', '').strip()
+    if not query:
+        return jsonify({'error': 'Query parameter required'}), 400
+
+    try:
+        per_page = min(int(request.args.get('per_page', 20)), 30)  # Max 30 for safety
+
+        response = http_requests.get(
+            'https://api.unsplash.com/search/photos',
+            params={
+                'query': query,
+                'per_page': per_page,
+                'client_id': api_key
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            current_app.logger.error(f"Unsplash API error: {response.status_code}")
+            return jsonify({'error': 'Failed to search images'}), response.status_code
+
+    except Exception as e:
+        current_app.logger.error(f"Error proxying Unsplash API: {str(e)}")
+        return jsonify({'error': 'Failed to search images'}), 500

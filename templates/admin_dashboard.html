@@ -1305,11 +1305,6 @@
             <i class="fas fa-user-shield"></i> Roles & Permissions
         </button>
         {% endif %}
-        {% if can_access_api %}
-        <button class="admin-tab" onclick="showAdminSection('api')" data-section="api">
-            <i class="fas fa-code"></i> API
-        </button>
-        {% endif %}
         {% if can_manage_settings %}
         <button class="admin-tab" onclick="showAdminSection('settings')" data-section="settings">
             <i class="fas fa-cogs"></i> Settings
@@ -1584,83 +1579,6 @@
         </div>
     </div>
     {% endif %}
-
-    <div class="admin-section" id="api">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-            <div class="data-table">
-                <div class="table-header">
-                    <h3>API Keys</h3>
-                    <button class="btn btn-primary" onclick="openModal('addApiKeyModal')">
-                        <i class="fas fa-plus"></i> Create API Key
-                    </button>
-                </div>
-                <div class="table-content">
-                    <div class="loading" id="apiKeysLoading">
-                        <div class="loading-spinner"></div>
-                        <p>Loading API keys...</p>
-                    </div>
-                    <table id="apiKeysTable" style="display: none;">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>User</th>
-                                <th>Scopes</th>
-                                <th>Status</th>
-                                <th>Last Used</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="apiKeysTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="data-table">
-                <div class="table-header">
-                    <h3>OAuth Applications</h3>
-                    <button class="btn btn-primary" onclick="openModal('addOAuthAppModal')">
-                        <i class="fas fa-plus"></i> Create OAuth App
-                    </button>
-                </div>
-                <div class="table-content">
-                    <div class="loading" id="oauthAppsLoading">
-                        <div class="loading-spinner"></div>
-                        <p>Loading OAuth applications...</p>
-                    </div>
-                    <table id="oauthAppsTable" style="display: none;">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Client ID</th>
-                                <th>Owner</th>
-                                <th>Scopes</th>
-                                <th>Identity Verification</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="oauthAppsTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="data-table">
-            <div class="table-header">
-                <h3>API Documentation</h3>
-            </div>
-            <div class="table-content">
-                <div style="padding: 2rem; text-align: center;">
-                    <p style="margin-bottom: 1rem; color: #64748b;">Complete API documentation with examples and endpoints</p>
-                    <a href="/api/docs" target="_blank" class="btn btn-primary">
-                        <i class="fas fa-book"></i> View API Documentation
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
 
 
     <div class="admin-section" id="roles">
@@ -2315,265 +2233,6 @@
     </div>
 </div>
 
-<div class="modal-backdrop" id="addApiKeyModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Create API Key</h3>
-            <button class="modal-close" onclick="closeModal('addApiKeyModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="addApiKeyForm">
-                <div class="form-group">
-                    <label class="form-label">Key Name</label>
-                    <input type="text" class="form-control" id="apiKeyName" placeholder="Enter key name" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-control" id="apiKeyDescription" placeholder="Enter description (optional)">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">User Email</label>
-                    <input type="email" class="form-control" id="apiKeyUserEmail" placeholder="User email (defaults to current user)">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Scopes</label>
-                    <select class="form-control" id="apiKeyScopes" multiple required style="height: 120px;">
-                        <option value="clubs:read">Read Clubs</option>
-                        <option value="clubs:write">Write Clubs</option>
-                        <option value="users:read">Read Users</option>
-                        <option value="projects:read">Read Projects</option>
-                        <option value="assignments:read">Read Assignments</option>
-                        <option value="meetings:read">Read Meetings</option>
-                        <option value="analytics:read">Read Analytics</option>
-                    </select>
-                    <small style="color: #64748b; font-size: 0.875rem;">Hold Ctrl/Cmd to select multiple scopes</small>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Rate Limit (requests per hour)</label>
-                    <input type="number" class="form-control" id="apiKeyRateLimit" value="1000" min="1" max="10000">
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('addApiKeyModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="createApiKey()">Create API Key</button>
-        </div>
-    </div>
-</div>
-
-<div class="modal-backdrop" id="addOAuthAppModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Create OAuth Application</h3>
-            <button class="modal-close" onclick="closeModal('addOAuthAppModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="addOAuthAppForm">
-                <div class="form-group">
-                    <label class="form-label">Application Name</label>
-                    <input type="text" class="form-control" id="oauthAppName" placeholder="Enter application name" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Redirect URIs</label>
-                    <input type="text" class="form-control" id="oauthAppRedirectUris" placeholder="Enter redirect URIs (comma-separated)" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Scopes</label>
-                    <select class="form-control" id="oauthAppScopes" multiple required style="height: 120px;">
-                        <option value="clubs:read">Read Clubs</option>
-                        <option value="clubs:write">Write Clubs</option>
-                        <option value="users:read">Read Users</option>
-                        <option value="projects:read">Read Projects</option>
-                        <option value="assignments:read">Read Assignments</option>
-                        <option value="meetings:read">Read Meetings</option>
-                        <option value="analytics:read">Read Analytics</option>
-                    </select>
-                    <small class="form-help">Hold Ctrl/Cmd to select multiple scopes</small>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">
-                        <input type="checkbox" id="oauthAppRequireIdentityVerification" style="margin-right: 0.5rem;">
-                        Require Hack Club Identity Verification
-                    </label>
-                    <small class="form-help">Users must verify their identity through Hack Club Identity before authorizing this application</small>
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('addOAuthAppModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="createOAuthApp()">Create OAuth App</button>
-        </div>
-    </div>
-</div>
-
-<div class="modal-backdrop" id="editApiKeyModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Edit API Key</h3>
-            <button class="modal-close" onclick="closeModal('editApiKeyModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="editApiKeyForm">
-                <input type="hidden" id="editApiKeyId">
-                <div class="form-group">
-                    <label class="form-label">Key Name</label>
-                    <input type="text" class="form-control" id="editApiKeyName" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-control" id="editApiKeyDescription">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Rate Limit (requests per hour)</label>
-                    <input type="number" class="form-control" id="editApiKeyRateLimit" min="1" max="10000">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">
-                        <input type="checkbox" id="editApiKeyActive"> Active
-                    </label>
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('editApiKeyModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="saveApiKeyChanges()">Save Changes</button>
-        </div>
-    </div>
-</div>
-
-<div class="modal-backdrop" id="editOAuthAppModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Edit OAuth Application</h3>
-            <button class="modal-close" onclick="closeModal('editOAuthAppModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="editOAuthAppForm">
-                <input type="hidden" id="editOAuthAppId">
-                <div class="form-group">
-                    <label class="form-label">Application Name</label>
-                    <input type="text" class="form-control" id="editOAuthAppName" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-control" id="editOAuthAppDescription">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Redirect URIs</label>
-                    <input type="text" class="form-control" id="editOAuthAppRedirectUris" placeholder="Enter redirect URIs (comma-separated)" required>
-                </div>
-                 <div class="form-group">
-                    <label class="form-label">Scopes</label>
-                    <select class="form-control" id="editOAuthAppScopes" multiple required style="height: 120px;">
-                        <option value="clubs:read">Read Clubs</option>
-                        <option value="clubs:write">Write Clubs</option>
-                        <option value="users:read">Read Users</option>
-                        <option value="projects:read">Read Projects</option>
-                        <option value="assignments:read">Read Assignments</option>
-                        <option value="meetings:read">Read Meetings</option>
-                        <option value="analytics:read">Read Analytics</option>
-                    </select>
-                    <small class="form-help">Hold Ctrl/Cmd to select multiple scopes</small>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">
-                        <input type="checkbox" id="editOAuthAppActive"> Active
-                    </label>
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('editOAuthAppModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="saveOAuthAppChanges()">Save Changes</button>
-        </div>
-    </div>
-</div>
-
-<div class="modal-backdrop" id="apiKeyModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-key"></i> Your New API Key</h3>
-            <button class="modal-close" onclick="closeModal('apiKeyModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
-                <div style="color: #0c4a6e; margin-bottom: 1rem;">
-                    <i class="fas fa-info-circle"></i> <strong>Important:</strong> Copy this API key now as it won't be shown again!
-                </div>
-
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <input type="text" id="generatedApiKey" readonly style="flex: 1; padding: 0.75rem; border: 2px solid #0ea5e9; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.875rem; background: white;">
-                    <button class="btn btn-primary" onclick="copyApiKey()" style="padding: 0.75rem 1rem;">
-                        <i class="fas fa-copy"></i> Copy
-                    </button>
-                </div>
-
-                <div style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">
-                    Store this key securely - you'll need it to authenticate API requests.
-                </div>
-            </div>
-
-            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem;">
-                <div style="color: #92400e; font-size: 0.875rem;">
-                    <i class="fas fa-exclamation-triangle"></i> This key provides access to your account. Keep it secret and don't share it publicly.
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-primary" onclick="closeModal('apiKeyModal')">I've Copied the Key</button>
-        </div>
-    </div>
-</div>
-
-<div class="modal-backdrop" id="oauthCredentialsModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-shield-alt"></i> Your New OAuth Application</h3>
-            <button class="modal-close" onclick="closeModal('oauthCredentialsModal')">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem;">
-                <div style="color: #0c4a6e; margin-bottom: 1rem;">
-                    <i class="fas fa-info-circle"></i> <strong>Important:</strong> Copy these credentials now as the client secret won't be shown again!
-                </div>
-
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Client ID</label>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="text" id="generatedClientId" readonly style="flex: 1; padding: 0.75rem; border: 2px solid #0ea5e9; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.875rem; background: white;">
-                        <button class="btn btn-primary" onclick="copyClientId()" style="padding: 0.75rem 1rem;">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
-                    </div>
-                </div>
-
-                <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">Client Secret</label>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="text" id="generatedClientSecret" readonly style="flex: 1; padding: 0.75rem; border: 2px solid #0ea5e9; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.875rem; background: white;">
-                        <button class="btn btn-primary" onclick="copyClientSecret()" style="padding: 0.75rem 1rem;">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
-                    </div>
-                </div>
-
-                <div style="color: #64748b; font-size: 0.875rem; margin-top: 1rem;">
-                    Store these credentials securely - you'll need them to authenticate your OAuth application.
-                </div>
-            </div>
-
-            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem;">
-                <div style="color: #92400e; font-size: 0.875rem;">
-                    <i class="fas fa-exclamation-triangle"></i> These credentials provide access to your account. Keep them secret and don't share them publicly.
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-primary" onclick="closeModal('oauthCredentialsModal')">I've Copied the Credentials</button>
-        </div>
-    </div>
-</div>
-
 <script>
 // User Permissions (from backend)
 window.canManageRoles = {{ 'true' if can_manage_users else 'false' }};
@@ -2581,11 +2240,12 @@ window.canEditUsers = {{ 'true' if 'users.edit' in user_permissions or current_u
 window.canDeleteUsers = {{ 'true' if 'users.delete' in user_permissions or current_user.is_admin else 'false' }};
 window.canSuspendUsers = {{ 'true' if 'users.suspend' in user_permissions or current_user.is_admin else 'false' }};
 window.canImpersonate = {{ 'true' if 'users.impersonate' in user_permissions or current_user.is_admin else 'false' }};
+window.canManage2FA = {{ 'true' if 'users.manage_2fa' in user_permissions or current_user.is_admin else 'false' }};
 window.canViewUsers = {{ 'true' if can_view_users else 'false' }};
 window.canViewClubs = {{ 'true' if can_view_clubs else 'false' }};
 window.canViewContent = {{ 'true' if can_view_content else 'false' }};
 window.canManageSettings = {{ 'true' if can_manage_settings else 'false' }};
-window.canAccessApi = {{ 'true' if can_access_api else 'false' }};
+window.canViewActivity = {{ 'true' if can_view_activity else 'false' }};
 window.canEditClubs = {{ 'true' if 'clubs.edit' in user_permissions or current_user.is_admin else 'false' }};
 window.canDeleteClubs = {{ 'true' if 'clubs.delete' in user_permissions or current_user.is_admin else 'false' }};
 window.canTransferClubLeadership = {{ 'true' if 'clubs.edit' in user_permissions or current_user.is_admin else 'false' }};
@@ -2640,10 +2300,6 @@ let adminsData = [];
 let reviewData = [];
 let currentSubmissionId = null;
 let currentAction = { type: null, data: null };
-let currentEditingAppId = null;
-let currentEditingApiKeyId = null;
-let oauthAppsData = [];
-let apiKeysData = [];
 let projectGrantSubmissions = [];
 let currentLoginAsUserId = null;
 let currentResetPasswordUserId = null;
@@ -2720,9 +2376,6 @@ function showAdminSection(section) {
         loadLogs();
     } else if (section === 'review') {
         loadProjectGrantSubmissions();
-    } else if (section === 'api') {
-        loadOAuthApps();
-        loadApiKeys();
     }
 }
 
@@ -3090,6 +2743,10 @@ function renderUsersTable(users) {
     loading.style.display = 'none';
     table.style.display = 'table';
 
+    // Debug logging
+    console.log('[DEBUG] Rendering users, canManage2FA:', window.canManage2FA);
+    console.log('[DEBUG] First user data sample:', users[0]);
+
     if (!users || users.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 2rem;">No users found</td></tr>';
         return;
@@ -3107,10 +2764,17 @@ function renderUsersTable(users) {
             const roles = userData.roles || [];
 
             const row = document.createElement('tr');
+            
+            // Debug for 2FA button
+            if (user.username === 'Ethan' || user.totp_enabled) {
+                console.log(`[DEBUG] User: ${user.username}, totp_enabled:`, user.totp_enabled, 'type:', typeof user.totp_enabled);
+            }
+            
             row.innerHTML = `
                 <td>
                     <strong>${user.username}</strong>
                     ${isRoot ? '<i class="fas fa-crown" style="color: #fbbf24; margin-left: 0.5rem;" title="Root User"></i>' : ''}
+                    ${user.totp_enabled ? '<i class="fas fa-shield-alt" style="color: #10b981; margin-left: 0.5rem;" title="2FA Enabled"></i>' : ''}
                 </td>
                 <td>${user.email}</td>
                 <td>
@@ -3154,6 +2818,12 @@ function renderUsersTable(users) {
                             ${window.canEditUsers ? `
                             <button class="dropdown-item reset" onclick="event.stopPropagation(); resetUserPassword(${user.id}, '${escapeHtml(user.username).replace(/'/g, '\\\'').replace(/"/g, '\\"')}'); closeDropdown(this); return false;">
                                 <i class="fas fa-key"></i> Reset Password
+                            </button>` : ''}
+                            ${window.canManage2FA ? `
+                            <button class="dropdown-item ${user.totp_enabled ? 'warning' : 'disabled'}" 
+                                    onclick="${user.totp_enabled ? `event.stopPropagation(); remove2FA(${user.id}, '${escapeHtml(user.username).replace(/'/g, '\\\'').replace(/"/g, '\\"')}'); closeDropdown(this); return false;` : 'event.preventDefault();'}" 
+                                    ${!user.totp_enabled ? 'style="opacity: 0.5; cursor: not-allowed;" title="User does not have 2FA enabled"' : ''}>
+                                <i class="fas fa-shield-alt"></i> Remove 2FA ${user.totp_enabled ? '' : '(Not Enabled)'}
                             </button>` : ''}
                             ${window.canSuspendUsers ? `
                             <button class="dropdown-item suspend" onclick="event.stopPropagation(); suspendUser(${user.id}, '${escapeHtml(user.username).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${user.clubs_led > 0}); closeDropdown(this); return false;">
@@ -3587,6 +3257,48 @@ function suspendUser(userId, username, isLeader) {
             } catch (error) {
                 console.error(`Error ${action}ing user:`, error);
                 showToast('error', `Failed to ${action} user`);
+            }
+        }
+    });
+}
+
+function remove2FA(userId, username) {
+    UniversalModal.custom({
+        type: 'warning',
+        title: 'Remove Two-Factor Authentication',
+        html: `
+            <p style="margin-bottom: 1rem;">Are you sure you want to remove 2FA for <strong>${username}</strong>?</p>
+            <div style="background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px; padding: 1rem; text-align: left;">
+                <div style="color: #92400e; font-size: 0.875rem; display: flex; align-items: start; gap: 0.5rem;">
+                    <i class="fas fa-exclamation-triangle" style="margin-top: 0.125rem;"></i>
+                    <div>
+                        <strong>Warning:</strong> This will completely disable 2FA for this user. They will be able to log in without a second factor. Use this only for account recovery purposes.
+                    </div>
+                </div>
+            </div>
+        `,
+        confirmText: 'Remove 2FA',
+        cancelText: 'Cancel',
+        onConfirm: async function() {
+            try {
+                const response = await makeSecureRequest(`/api/admin/users/${userId}/remove-2fa`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('success', data.message || '2FA removed successfully');
+                    loadRecentUsers();
+                } else {
+                    showToast('error', data.error || 'Failed to remove 2FA');
+                }
+            } catch (error) {
+                console.error('Error removing 2FA:', error);
+                showToast('error', 'Failed to remove 2FA');
             }
         }
     });
@@ -5976,15 +5688,30 @@ function loadRoles() {
     makeSecureRequest('/api/admin/rbac/roles')
         .then(response => response.json())
         .then(data => {
+            // Debug logging
+            console.log('[DEBUG] loadRoles - API response:', data);
+            if (data.roles && data.roles.length > 0) {
+                console.log('[DEBUG] First role sample:', data.roles[0]);
+                const roleWithRequires2fa = data.roles.find(r => r.requires_2fa);
+                if (roleWithRequires2fa) {
+                    console.log('[DEBUG] Found role with requires_2fa:', roleWithRequires2fa);
+                }
+            }
+            
             const container = document.getElementById('rolesContainer');
             if (data.roles && data.roles.length > 0) {
-                container.innerHTML = data.roles.map(role => `
+                container.innerHTML = data.roles.map(role => {
+                    // Debug logging for each role
+                    console.log(`[DEBUG] Building card for ${role.name}, requires_2fa:`, role.requires_2fa);
+                    
+                    return `
                     <div class="role-card ${role.is_system_role ? 'system-role' : 'custom-role'}">
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                             <div style="flex: 1;">
                                 <h4 style="margin: 0 0 0.5rem 0; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;">
                                     <i class="fas ${role.is_system_role ? 'fa-shield-alt' : 'fa-star'}"></i>
                                     ${role.display_name}
+                                    ${role.requires_2fa ? '<span style="display: inline-flex; align-items: center; gap: 0.375rem; background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #78350f; padding: 0.25rem 0.625rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;"><i class="fas fa-shield-alt"></i> 2FA Required</span>' : ''}
                                 </h4>
                                 <p style="margin: 0; color: #64748b; font-size: 0.9rem;">
                                     ${role.description || 'No description'}
@@ -6002,6 +5729,7 @@ function loadRoles() {
                                         data-role-name="${role.name}"
                                         data-role-display="${role.display_name}"
                                         data-role-description="${(role.description || '').replace(/"/g, '&quot;')}"
+                                        data-role-requires-2fa="${String(role.requires_2fa)}"
                                         data-role-permissions='${JSON.stringify(role.permissions)}'>
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
@@ -6024,7 +5752,18 @@ function loadRoles() {
                             </div>
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
+                
+                // Debug: Check what's actually in the DOM
+                setTimeout(() => {
+                    const superAdminButton = container.querySelector('button[data-role-name="super-admin"]');
+                    if (superAdminButton) {
+                        console.log('[DEBUG] Super-admin button element:', superAdminButton);
+                        console.log('[DEBUG] All data attributes:', superAdminButton.dataset);
+                        console.log('[DEBUG] data-role-requires-2fa attribute:', superAdminButton.getAttribute('data-role-requires-2fa'));
+                    }
+                }, 100);
             } else {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 3rem; color: #64748b;">
@@ -6317,6 +6056,21 @@ async function createNewRole() {
                           style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; min-height: 80px; resize: vertical;"></textarea>
             </div>
 
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px;">
+                <label style="display: flex; align-items: start; cursor: pointer;">
+                    <input type="checkbox" id="newRoleRequires2FA" 
+                           style="margin-top: 0.25rem; margin-right: 0.75rem; width: 18px; height: 18px; cursor: pointer;">
+                    <div>
+                        <div style="font-weight: 600; color: #92400e; font-size: 1rem; margin-bottom: 0.25rem;">
+                            <i class="fas fa-shield-alt"></i> Require Two-Factor Authentication (2FA)
+                        </div>
+                        <div style="color: #78350f; font-size: 0.875rem; line-height: 1.5;">
+                            Force all users with this role to enable 2FA for enhanced security. Users will be prompted to set up 2FA before accessing the dashboard.
+                        </div>
+                    </div>
+                </label>
+            </div>
+
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; margin-bottom: 0.75rem; font-weight: 600; color: #1e293b;">Permissions <span style="color: #dc2626;">*</span></label>
                 <div style="max-height: 300px; overflow-y: auto; border: 2px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
@@ -6370,6 +6124,7 @@ async function saveNewRole() {
     const name = document.getElementById('newRoleName').value.trim();
     const displayName = document.getElementById('newRoleDisplayName').value.trim();
     const description = document.getElementById('newRoleDescription').value.trim();
+    const requires2FA = document.getElementById('newRoleRequires2FA').checked;
 
     const selectedPerms = Array.from(document.querySelectorAll('.permission-checkbox:checked'))
         .map(cb => cb.value);
@@ -6397,6 +6152,7 @@ async function saveNewRole() {
                 name: name,
                 display_name: displayName,
                 description: description,
+                requires_2fa: requires2FA,
                 permissions: selectedPerms
             })
         });
@@ -6422,13 +6178,26 @@ async function editRoleById(roleId) {
     const roleName = button.dataset.roleName;
     const roleDisplay = button.dataset.roleDisplay;
     const roleDescription = button.dataset.roleDescription;
+    const roleRequires2FA = button.getAttribute('data-role-requires-2fa') === 'true';
     const rolePermissions = JSON.parse(button.dataset.rolePermissions);
 
-    await editRole(roleId, roleName, roleDisplay, roleDescription, rolePermissions);
+    // Debug logging
+    console.log('[DEBUG] editRoleById - button datasets:');
+    console.log('  data-role-requires-2fa:', button.getAttribute('data-role-requires-2fa'));
+    console.log('  roleRequires2FA after conversion:', roleRequires2FA);
+
+    await editRole(roleId, roleName, roleDisplay, roleDescription, rolePermissions, roleRequires2FA);
 }
 
-async function editRole(roleId, roleName, roleDisplayName, roleDescription, currentPermissions) {
+async function editRole(roleId, roleName, roleDisplayName, roleDescription, currentPermissions, currentRequires2FA) {
     try {
+        // Debug logging
+        console.log('[DEBUG] editRole called with:');
+        console.log('  roleId:', roleId);
+        console.log('  roleName:', roleName);
+        console.log('  currentRequires2FA:', currentRequires2FA);
+        console.log('  type of currentRequires2FA:', typeof currentRequires2FA);
+        
         // Fetch all permissions
         const permResponse = await makeSecureRequest('/api/admin/rbac/permissions');
         const permData = await permResponse.json();
@@ -6454,6 +6223,21 @@ async function editRole(roleId, roleName, roleDisplayName, roleDescription, curr
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b;">Description</label>
                 <textarea id="editRoleDescription"
                           style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; min-height: 80px; resize: vertical;">${safeDescription}</textarea>
+            </div>
+
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px;">
+                <label style="display: flex; align-items: start; cursor: pointer;">
+                    <input type="checkbox" id="editRoleRequires2FA" ${currentRequires2FA ? 'checked' : ''}
+                           style="margin-top: 0.25rem; margin-right: 0.75rem; width: 18px; height: 18px; cursor: pointer;">
+                    <div>
+                        <div style="font-weight: 600; color: #92400e; font-size: 1rem; margin-bottom: 0.25rem;">
+                            <i class="fas fa-shield-alt"></i> Require Two-Factor Authentication (2FA)
+                        </div>
+                        <div style="color: #78350f; font-size: 0.875rem; line-height: 1.5;">
+                            Force all users with this role to enable 2FA for enhanced security. Users will be prompted to set up 2FA before accessing the dashboard.
+                        </div>
+                    </div>
+                </label>
             </div>
 
             <div style="margin-bottom: 1.5rem;">
@@ -6509,6 +6293,7 @@ async function saveEditedRole(roleId) {
     console.log('[DEBUG] Stack trace:', new Error().stack);
     const displayName = document.getElementById('editRoleDisplayName').value.trim();
     const description = document.getElementById('editRoleDescription').value.trim();
+    const requires2FA = document.getElementById('editRoleRequires2FA').checked;
 
     const selectedPerms = Array.from(document.querySelectorAll('.permission-checkbox:checked'))
         .map(cb => cb.value);
@@ -6530,6 +6315,7 @@ async function saveEditedRole(roleId) {
             body: JSON.stringify({
                 display_name: displayName,
                 description: description,
+                requires_2fa: requires2FA,
                 permissions: selectedPerms
             })
         });

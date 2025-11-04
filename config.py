@@ -33,3 +33,9 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+
+    # Google Fonts API Key
+    GOOGLE_FONTS_API_KEY = os.getenv('GOOGLE_FONTS_API_KEY', '')
+
+    # Unsplash API Key (for image search)
+    UNSPLASH_API_KEY = os.getenv('UNSPLASH_API_KEY', '')

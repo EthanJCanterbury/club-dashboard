@@ -1,7 +1,8 @@
 """
 Hack Club Dashboard Application Factory
 
-This module provides the application factory pattern for creating and configuring
+This module provides the application factory pattern for creating 
+and configuring
 the Flask application with all necessary extensions, blueprints, and configurations.
 """
 
@@ -63,7 +64,6 @@ def register_blueprints(app):
     from app.routes.chat import chat_bp
     from app.routes.attendance import attendance_bp
     from app.routes.status import status_bp
-    from app.routes.oauth import oauth_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -74,7 +74,6 @@ def register_blueprints(app):
     app.register_blueprint(
         attendance_bp)  # Routes: /api/clubs/<id>/attendance/*
     app.register_blueprint(status_bp)  # Routes: /status, /admin/status/*
-    app.register_blueprint(oauth_bp)  # Prefix: /oauth
 
 
 def register_error_handlers(app):
@@ -353,7 +352,7 @@ def register_template_helpers(app):
 
 def register_middleware(app):
     """Register middleware and before/after request handlers"""
-    from flask import request, session
+    from flask import request, session, redirect, url_for
     from app.models.system import SystemSettings
     from app.utils.security import add_security_headers, get_real_ip
 
@@ -373,6 +372,38 @@ def register_middleware(app):
                 except:
                     return '<h1>System Maintenance</h1><p>We are currently performing maintenance. Please check back soon.</p>', 503
 
+        return None
+
+    @app.before_request
+    def check_2fa_requirement():
+        """Check if user needs 2FA enabled for their roles"""
+        # Skip check for certain endpoints
+        excluded_endpoints = [
+            'auth.require_2fa', 'auth.setup_2fa', 'auth.disable_2fa',
+            'auth.logout', 'static', 'auth.verify_2fa',
+            'auth.regenerate_backup_codes'
+        ]
+        
+        if request.endpoint in excluded_endpoints:
+            return None
+        
+        # Skip check for API endpoints (they handle auth differently)
+        if request.endpoint and request.endpoint.startswith('api.'):
+            return None
+        
+        from app.utils.auth_helpers import get_current_user, is_authenticated
+        
+        if not is_authenticated():
+            return None
+        
+        user = get_current_user()
+        if not user:
+            return None
+        
+        # If user has roles requiring 2FA but hasn't enabled it, redirect
+        if user.requires_2fa() and not user.totp_enabled:
+            return redirect(url_for('auth.require_2fa'))
+        
         return None
 
     @app.after_request

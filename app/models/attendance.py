@@ -17,6 +17,7 @@ class AttendanceSession(db.Model):
     location = db.Column(db.String(255))
     session_type = db.Column(db.String(50), default='meeting')
     max_attendance = db.Column(db.Integer)
+    notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -44,6 +45,7 @@ class AttendanceSession(db.Model):
             'location': self.location,
             'session_type': self.session_type,
             'max_attendance': self.max_attendance,
+            'notes': self.notes,
             'is_active': self.is_active,
             'attendance_count': self.get_attendance_count(),
             'guest_count': self.get_guest_count(),

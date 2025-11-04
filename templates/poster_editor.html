@@ -6,7 +6,9 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;600;700&family=Lato:wght@400;700&family=Oswald:wght@400;600&family=Raleway:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',system-ui,sans-serif;background:#f8f9fa;color:#333;overflow-x:hidden}.editor{display:flex;height:100vh;position:fixed;top:0;left:0;right:0;bottom:0}.sidebar{width:320px;background:#fff;border-right:1px solid #e0e0e0;overflow-y:auto;box-shadow:2px 0 8px rgba(0,0,0,0.08);height:100vh;padding-bottom:20px}.sidebar-header{padding:1.5rem;background:linear-gradient(135deg,#ec3750,#d63146);color:#fff}.sidebar-header h1{font-size:1.3rem;margin-bottom:0.3rem;font-weight:700}.tool-section{padding:1.25rem;border-bottom:1px solid #f0f0f0}.tool-section h3{font-size:0.75rem;text-transform:uppercase;color:#ec3750;margin-bottom:1rem;font-weight:700;letter-spacing:0.5px}.tool-btn{width:100%;padding:0.75rem;margin-bottom:0.5rem;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;color:#333;cursor:pointer;display:flex;align-items:center;gap:0.5rem;transition:all .2s;font-size:0.875rem;font-weight:500}.tool-btn:hover{background:#ec3750;border-color:#ec3750;color:#fff;transform:translateX(2px)}.tool-btn i{width:20px}.templates-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}.template-card{padding:1rem;background:#f8f9fa;border:2px solid #e0e0e0;border-radius:8px;text-align:center;cursor:pointer;transition:all .2s}.template-card:hover{background:#fff;border-color:#ec3750;box-shadow:0 4px 12px rgba(236,55,80,0.15);transform:translateY(-2px)}.template-card i{font-size:2rem;display:block;margin-bottom:0.5rem;color:#ec3750}.canvas-area{flex:1;display:flex;flex-direction:column;background:#f0f0f0;height:100vh}.toolbar{height:65px;background:#fff;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;gap:1rem;box-shadow:0 2px 8px rgba(0,0,0,0.05);flex-shrink:0}.toolbar-group{display:flex;gap:0.5rem}.toolbar-btn{padding:0.6rem 1rem;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;color:#333;cursor:pointer;display:flex;align-items:center;gap:0.5rem;transition:all .2s;font-size:0.875rem;font-weight:500}.toolbar-btn:hover{background:#fff;border-color:#ec3750;color:#ec3750}.toolbar-btn.primary{background:linear-gradient(135deg,#ec3750,#d63146);border:none;color:#fff}.toolbar-btn.primary:hover{box-shadow:0 4px 12px rgba(236,55,80,0.3)}.canvas-wrapper{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;overflow:auto;height:calc(100vh - 65px)}.canvas-container{box-shadow:0 8px 32px rgba(0,0,0,0.12);border-radius:4px;background:#fff;position:relative}#canvas{display:block}.sidebar-right{width:320px;background:#fff;border-left:1px solid #e0e0e0;overflow-y:auto;box-shadow:-2px 0 8px rgba(0,0,0,0.08);height:100vh;padding-bottom:20px}.property-section{padding:1.25rem;border-bottom:1px solid #f0f0f0}.property-section h3{font-size:0.813rem;margin-bottom:1rem;color:#ec3750;text-transform:uppercase;font-weight:700}.property-row{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem}.property-row.full{grid-template-columns:1fr}.tool-label{display:block;font-size:0.813rem;margin-bottom:0.5rem;color:#666;font-weight:600}.tool-input{width:100%;padding:0.6rem;background:#fff;border:1px solid #e0e0e0;border-radius:6px;color:#333;font-size:0.875rem}.tool-input:focus{outline:none;border-color:#ec3750;box-shadow:0 0 0 3px rgba(236,55,80,0.1)}.color-input{width:100%;height:45px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer}.layers-list{list-style:none}.layer-item{padding:0.75rem;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:0.5rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all .2s}.layer-item:hover{background:#fff;border-color:#ec3750}.layer-item.active{background:#fef7f7;border-color:#ec3750}.layer-controls{display:flex;gap:0.25rem}.layer-controls button{padding:0.25rem 0.5rem;background:transparent;border:none;color:#666;cursor:pointer;font-size:0.75rem;border-radius:4px}.layer-controls button:hover{color:#fff;background:#ec3750}.shapes-grid,.icons-grid,.stickers-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem}.shape-btn,.icon-btn{aspect-ratio:1;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;color:#333;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.25rem;transition:all .2s}.shape-btn:hover,.icon-btn:hover{background:#ec3750;border-color:#ec3750;color:#fff;transform:scale(1.05)}.stickers-grid{grid-template-columns:repeat(3,1fr);max-height:400px;overflow-y:auto}.sticker-item{aspect-ratio:1;background:#f8f9fa;border:2px solid #e0e0e0;border-radius:6px;cursor:pointer;transition:all .2s;overflow:hidden;padding:0.25rem}.sticker-item:hover{border-color:#ec3750;transform:scale(1.05)}.sticker-item img{width:100%;height:100%;object-fit:contain}.modal{display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;backdrop-filter:blur(2px)}.modal.show{display:flex}.modal-content{background:#fff;border-radius:16px;padding:2rem;max-width:600px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:modalSlideIn .3s ease}@keyframes modalSlideIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid #f0f0f0}.modal-header h3{margin:0;color:#333;font-size:1.5rem;font-weight:700}.modal-close{background:#f8f9fa;border:none;font-size:1.5rem;cursor:pointer;color:#666;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .2s}.modal-close:hover{background:#ec3750;color:#fff}.modal-body{margin-bottom:1.5rem}.modal-footer{display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:2px solid #f0f0f0}.modal-btn{padding:0.75rem 1.5rem;border-radius:8px;cursor:pointer;font-size:0.875rem;font-weight:600;transition:all .2s}.modal-btn.primary{background:linear-gradient(135deg,#ec3750,#d63146);color:#fff;border:none}.modal-btn.primary:hover{box-shadow:0 4px 12px rgba(236,55,80,0.3);transform:translateY(-1px)}.modal-btn.secondary{background:#f8f9fa;color:#333;border:1px solid #e0e0e0}.modal-btn.secondary:hover{background:#fff;border-color:#ec3750}.qr-input-group{display:flex;gap:0.5rem;margin-bottom:1rem}.qr-input-group input{flex:1}.qr-input-group button{padding:0.6rem 1rem;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:0.875rem;font-weight:500}.qr-input-group button:hover{background:#ec3750;color:#fff;border-color:#ec3750}.tabs{display:flex;gap:0.5rem;margin-bottom:1rem;border-bottom:2px solid #f0f0f0}.tab{padding:0.75rem 1.5rem;background:transparent;border:none;color:#666;cursor:pointer;font-size:0.875rem;font-weight:600;border-bottom:2px solid transparent;transition:all .2s}.tab.active{color:#ec3750;border-bottom-color:#ec3750}.tab:hover{color:#ec3750}.tab-content{display:none}.tab-content.active{display:block}@media(max-width:1024px){.sidebar-right{display:none}}@media print{.sidebar,.sidebar-right,.toolbar,.modal{display:none!important}.editor{display:block;position:static;height:auto}.canvas-area{height:auto;background:#fff}.canvas-wrapper{padding:0;height:auto;display:block;overflow:visible}.canvas-container{box-shadow:none;page-break-inside:avoid;width:8.5in!important;height:11in!important;margin:0 auto}#canvas{width:100%!important;height:auto!important}@page{size:letter portrait;margin:0.5in}body{margin:0;padding:0}}
+/* Hide navbar on poster editor page */
+nav.navbar{display:none!important}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',system-ui,sans-serif;background:#f8f9fa;color:#333}.editor{display:flex;height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;overflow:hidden}.sidebar{width:320px;background:#fff;border-right:1px solid #e0e0e0;overflow-y:auto;box-shadow:2px 0 8px rgba(0,0,0,0.08);height:100%;padding-bottom:20px}.font-item{padding:1rem;background:#f8f9fa;border:2px solid #e0e0e0;border-radius:8px;margin-bottom:0.5rem;cursor:pointer;transition:all .2s}.font-item:hover{background:#fff;border-color:#ec3750;transform:translateX(2px)}.font-item.selected{background:#fef7f7;border-color:#ec3750}.font-name{font-size:0.875rem;font-weight:600;color:#333;margin-bottom:0.25rem}.font-preview{font-size:1.25rem;color:#666}.image-result{position:relative;cursor:pointer;border-radius:8px;overflow:hidden;aspect-ratio:1;background:#f0f0f0;transition:all .2s;border:2px solid transparent}.image-result:hover{transform:scale(1.05);border-color:#ec3750;box-shadow:0 4px 12px rgba(236,55,80,0.2)}.image-result img{width:100%;height:100%;object-fit:cover}.sidebar-header{padding:1.5rem;background:linear-gradient(135deg,#ec3750,#d63146);color:#fff}.sidebar-header h1{font-size:1.3rem;margin-bottom:0.3rem;font-weight:700}.tool-section{padding:1.25rem;border-bottom:1px solid #f0f0f0}.tool-section h3{font-size:0.75rem;text-transform:uppercase;color:#ec3750;margin-bottom:1rem;font-weight:700;letter-spacing:0.5px}.tool-btn{width:100%;padding:0.75rem;margin-bottom:0.5rem;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;color:#333;cursor:pointer;display:flex;align-items:center;gap:0.5rem;transition:all .2s;font-size:0.875rem;font-weight:500}.tool-btn:hover{background:#ec3750;border-color:#ec3750;color:#fff;transform:translateX(2px)}.tool-btn i{width:20px}.templates-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}.template-card{padding:1rem;background:#f8f9fa;border:2px solid #e0e0e0;border-radius:8px;text-align:center;cursor:pointer;transition:all .2s}.template-card:hover{background:#fff;border-color:#ec3750;box-shadow:0 4px 12px rgba(236,55,80,0.15);transform:translateY(-2px)}.template-card i{font-size:2rem;display:block;margin-bottom:0.5rem;color:#ec3750}.canvas-area{flex:1;display:flex;flex-direction:column;background:#f0f0f0;height:100%}.toolbar{height:65px;background:#fff;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;gap:1rem;box-shadow:0 2px 8px rgba(0,0,0,0.05);flex-shrink:0}.toolbar-group{display:flex;gap:0.5rem}.toolbar-btn{padding:0.6rem 1rem;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;color:#333;cursor:pointer;display:flex;align-items:center;gap:0.5rem;transition:all .2s;font-size:0.875rem;font-weight:500}.toolbar-btn:hover{background:#fff;border-color:#ec3750;color:#ec3750}.toolbar-btn.primary{background:linear-gradient(135deg,#ec3750,#d63146);border:none;color:#fff}.toolbar-btn.primary:hover{box-shadow:0 4px 12px rgba(236,55,80,0.3)}.canvas-wrapper{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;overflow:auto}.canvas-container{box-shadow:0 8px 32px rgba(0,0,0,0.12);border-radius:4px;background:#fff;position:relative}#canvas{display:block}.sidebar-right{width:320px;background:#fff;border-left:1px solid #e0e0e0;overflow-y:auto;box-shadow:-2px 0 8px rgba(0,0,0,0.08);height:100%;padding-bottom:20px}.property-section{padding:1.25rem;border-bottom:1px solid #f0f0f0}.property-section h3{font-size:0.813rem;margin-bottom:1rem;color:#ec3750;text-transform:uppercase;font-weight:700}.property-row{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.75rem}.property-row.full{grid-template-columns:1fr}.tool-label{display:block;font-size:0.813rem;margin-bottom:0.5rem;color:#666;font-weight:600}.tool-input{width:100%;padding:0.6rem;background:#fff;border:1px solid #e0e0e0;border-radius:6px;color:#333;font-size:0.875rem}.tool-input:focus{outline:none;border-color:#ec3750;box-shadow:0 0 0 3px rgba(236,55,80,0.1)}.color-input{width:100%;height:45px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer}.layers-list{list-style:none}.layer-item{padding:0.75rem;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:0.5rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all .2s}.layer-item:hover{background:#fff;border-color:#ec3750}.layer-item.active{background:#fef7f7;border-color:#ec3750}.layer-controls{display:flex;gap:0.25rem}.layer-controls button{padding:0.25rem 0.5rem;background:transparent;border:none;color:#666;cursor:pointer;font-size:0.75rem;border-radius:4px}.layer-controls button:hover{color:#fff;background:#ec3750}.shapes-grid,.icons-grid,.stickers-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem}.shape-btn,.icon-btn{aspect-ratio:1;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;color:#333;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.25rem;transition:all .2s}.shape-btn:hover,.icon-btn:hover{background:#ec3750;border-color:#ec3750;color:#fff;transform:scale(1.05)}.stickers-grid{grid-template-columns:repeat(3,1fr);max-height:400px;overflow-y:auto}.sticker-item{aspect-ratio:1;background:#f8f9fa;border:2px solid #e0e0e0;border-radius:6px;cursor:pointer;transition:all .2s;overflow:hidden;padding:0.25rem}.sticker-item:hover{border-color:#ec3750;transform:scale(1.05)}.sticker-item img{width:100%;height:100%;object-fit:contain}.modal{display:none!important;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;backdrop-filter:blur(2px)}.modal.show{display:flex!important}.modal-content{background:#fff;border-radius:16px;padding:2rem;max-width:600px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:modalSlideIn .3s ease}@keyframes modalSlideIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid #f0f0f0}.modal-header h3{margin:0;color:#333;font-size:1.5rem;font-weight:700}.modal-close{background:#f8f9fa;border:none;font-size:1.5rem;cursor:pointer;color:#666;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .2s}.modal-close:hover{background:#ec3750;color:#fff}.modal-body{margin-bottom:1.5rem}.modal-footer{display:flex;gap:0.75rem;justify-content:flex-end;padding-top:1rem;border-top:2px solid #f0f0f0}.modal-btn{padding:0.75rem 1.5rem;border-radius:8px;cursor:pointer;font-size:0.875rem;font-weight:600;transition:all .2s}.modal-btn.primary{background:linear-gradient(135deg,#ec3750,#d63146);color:#fff;border:none}.modal-btn.primary:hover{box-shadow:0 4px 12px rgba(236,55,80,0.3);transform:translateY(-1px)}.modal-btn.secondary{background:#f8f9fa;color:#333;border:1px solid #e0e0e0}.modal-btn.secondary:hover{background:#fff;border-color:#ec3750}.qr-input-group{display:flex;gap:0.5rem;margin-bottom:1rem}.qr-input-group input{flex:1}.qr-input-group button{padding:0.6rem 1rem;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;cursor:pointer;font-size:0.875rem;font-weight:500}.qr-input-group button:hover{background:#ec3750;color:#fff;border-color:#ec3750}.tabs{display:flex;gap:0.5rem;margin-bottom:1rem;border-bottom:2px solid #f0f0f0}.tab{padding:0.75rem 1.5rem;background:transparent;border:none;color:#666;cursor:pointer;font-size:0.875rem;font-weight:600;border-bottom:2px solid transparent;transition:all .2s}.tab.active{color:#ec3750;border-bottom-color:#ec3750}.tab:hover{color:#ec3750}.tab-content{display:none}.tab-content.active{display:block}@media(max-width:1024px){.sidebar-right{display:none}}@media print{.sidebar,.sidebar-right,.toolbar,.modal{display:none!important}.editor{display:block;position:static;height:auto}.canvas-area{height:auto;background:#fff}.canvas-wrapper{padding:0;height:auto;display:block;overflow:visible}.canvas-container{box-shadow:none;page-break-inside:avoid;width:8.5in!important;height:11in!important;margin:0 auto}#canvas{width:100%!important;height:auto!important}@page{size:letter portrait;margin:0.5in}body{margin:0;padding:0}}
 </style>
 {% endblock %}
 
@@ -31,6 +33,7 @@
 <button class="tool-btn" onclick="addText()"><i class="fas fa-font"></i>Add Text</button>
 <button class="tool-btn" onclick="addHeading()"><i class="fas fa-heading"></i>Add Heading</button>
 <button class="tool-btn" onclick="addImage()"><i class="fas fa-image"></i>Upload Image</button>
+<button class="tool-btn" onclick="showImageSearchModal()"><i class="fas fa-search"></i>Search Images</button>
 <button class="tool-btn" onclick="showQRModal()"><i class="fas fa-qrcode"></i>Add QR Code</button>
 <button class="tool-btn" onclick="showStickersModal()"><i class="fas fa-sticker-mule"></i>Add Stickers</button>
 <button class="tool-btn" onclick="showIconsModal()"><i class="fas fa-icons"></i>Add Icons</button>
@@ -159,20 +162,10 @@
 <h3>Text</h3>
 <div class="property-row full">
 <label class="tool-label">Font</label>
-<select class="tool-input" id="fontFamily" onchange="updateTextProps()">
-<option value="Inter">Inter</option>
-<option value="Poppins">Poppins</option>
-<option value="Roboto">Roboto</option>
-<option value="Playfair Display">Playfair Display</option>
-<option value="Montserrat">Montserrat</option>
-<option value="Lato">Lato</option>
-<option value="Oswald">Oswald</option>
-<option value="Raleway">Raleway</option>
-<option value="Open Sans">Open Sans</option>
-<option value="Arial">Arial</option>
-<option value="Georgia">Georgia</option>
-<option value="Impact">Impact</option>
-</select>
+<button class="tool-btn" onclick="showFontModal()" id="currentFontBtn" style="margin-bottom:0.75rem">
+<i class="fas fa-font"></i>
+<span id="currentFontName">Inter</span>
+</button>
 </div>
 <div class="property-row full">
 <label class="tool-label">Size: <span id="fontSizeValue">24px</span></label>
@@ -315,8 +308,61 @@
 </div>
 </div>
 
+<div id="fontModal" class="modal">
+<div class="modal-content" style="max-width:700px;max-height:80vh">
+<div class="modal-header">
+<h3><i class="fas fa-font"></i> Choose Font</h3>
+<button class="modal-close" onclick="closeFontModal()">&times;</button>
+</div>
+<div class="modal-body" style="padding:0">
+<div style="padding:1rem;padding-bottom:0">
+<input type="text" class="tool-input" id="fontSearch" placeholder="Search fonts..." oninput="searchFonts()" style="margin-bottom:1rem">
+<p style="color:#666;font-size:0.813rem;margin-bottom:0.5rem">Popular Fonts</p>
+</div>
+<div id="fontList" style="max-height:400px;overflow-y:auto;padding:1rem"></div>
+<div id="fontLoading" style="text-align:center;padding:1rem;color:#666;display:none">
+<i class="fas fa-spinner fa-spin"></i> Loading more fonts...
+</div>
+</div>
+</div>
+</div>
+
+<div id="imageSearchModal" class="modal">
+<div class="modal-content" style="max-width:800px;max-height:85vh">
+<div class="modal-header">
+<h3><i class="fas fa-search"></i> Search Images</h3>
+<button class="modal-close" onclick="closeImageSearchModal()">&times;</button>
+</div>
+<div class="modal-body" style="padding:0">
+<div style="padding:1rem">
+<div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+<input type="text" class="tool-input" id="imageSearchInput" placeholder="Search for images..." style="flex:1" onkeypress="if(event.key==='Enter')searchImages()">
+<button class="modal-btn primary" onclick="searchImages()" style="padding:0.6rem 1.5rem"><i class="fas fa-search"></i> Search</button>
+</div>
+<p style="color:#666;font-size:0.75rem;margin-bottom:0.5rem">Powered by <a href="https://unsplash.com" target="_blank" style="color:#ec3750;text-decoration:none">Unsplash</a> - Free high-quality images</p>
+</div>
+<div id="imageSearchResults" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0.75rem;padding:1rem;max-height:450px;overflow-y:auto"></div>
+<div id="imageSearchLoading" style="text-align:center;padding:2rem;color:#666;display:none">
+<i class="fas fa-spinner fa-spin"></i> Searching...
+</div>
+</div>
+</div>
+</div>
+
 <script>
+// Wait for fonts to load before initializing
+if (document.fonts && document.fonts.ready) {
+document.fonts.ready.then(function() {
+initializeEditor();
+});
+} else {
+// Fallback for browsers without FontFace API
 window.addEventListener('load', function() {
+setTimeout(initializeEditor, 100);
+});
+}
+
+function initializeEditor() {
 if (typeof fabric === 'undefined') { console.error('Fabric.js not loaded'); return; }
 
 const canvas = new fabric.Canvas('canvas', {width: 550, height: 800, backgroundColor: '#ffffff'});
@@ -324,7 +370,14 @@ const CLUB_JOIN_LINK = '{{ request.url_root }}join-club?code={{ club.join_code }
 const STATIC_URL = '{{ url_for("static", filename="") }}';
 let history = [], historyStep = 0, hackClubFlag = null;
 
-const stickers = ["0318016-8380173-Super-Matte-5000-Uncoated-Vinyl-Stickers_11.png","0318024-8706261-Super-Matte-5000-Uncoated-Vinyl-Stickers_11.png","0c7bf843-2b3b-41d1-a171-88905372303e_thumb.png","13756150.png","16332315_working.png","44d6d530-6a20-4543-8d15-57d02ec7831c_thumb.png","862905_1.png","ArtisanProduction.png","Artist_202501282025052.png","CleanShot2025-01-28at12.55.412x.png","CleanShot2025-01-28at12.56.342x.png","CleanShot2025-01-28at12.57.062x.png","CleanShot2025-01-28at12.57.392x.png","CleanShot2025-01-28at12.57.562x.png","CleanShot2025-01-28at12.58.332x.png","CleanShot2025-01-28at12.58.522x.png","CleanShot2025-01-28at12.59.172x.png","CleanShot2025-01-28at13.00.022x.png","CleanShot2025-01-28at13.00.392x.png","CleanShot2025-01-28at13.02.102x.png","CleanShot2025-01-28at13.02.502x.png","flag-orpheus-left,(1).png","flag-orpheus-top.png","flag-standalone.png","Group152.png","hcb-dark.png","hcb-light.png","highseassticker2.png","icon-rounded.png","icon-square,(1).png","image12.png","image13.png","nest_1.png","nest_2.png","ProofforR047107314.png","ProofforR6201338011.png","ProofforR620133801.png","ProofforR840222152.png","ProofforR8437368311.png","ProofforR843736831.png","purpleno11.png","Screenshot2024-06-10at1.22.49PM.png","spookyorph.png","StickerMuleProof.png","terrifiedheidi.png","unnamed7.png","Untitled-28.png","white_untitled103_202502212246142.png","working.png"];
+// Font management
+let allGoogleFonts = [];
+let displayedFonts = [];
+let currentFontFamily = 'Inter';
+let fontSearchQuery = '';
+let isLoadingFonts = false;
+
+const stickers = ["0318016-8380173-Super-Matte-5000-Uncoated-Vinyl-Stickers_11.png","0318024-8706261-Super-Matte-5000-Uncoated-Vinyl-Stickers_11.png","0c7bf843-2b3b-41d1-a171-88905372303e_thumb.png","13756150.png","16332315_working.png","44d6d530-6a20-4543-8d15-57d02ec7831c_thumb.png","862905_1.png","ArtisanProduction.png","Artist_202501282025052.png","CleanShot2025-01-28at12.55.412x.png","CleanShot2025-01-28at12.56.342x.png","CleanShot2025-01-28at12.57.062x.png","CleanShot2025-01-28at12.57.392x.png","CleanShot2025-01-28at12.57.562x.png","CleanShot2025-01-28at12.58.332x.png","CleanShot2025-01-28at12.58.522x.png","CleanShot2025-01-28at12.59.172x.png","CleanShot2025-01-28at13.00.022x.png","CleanShot2025-01-28at13.00.392x.png","CleanShot2025-01-28at13.02.102x.png","CleanShot2025-01-28at13.02.502x.png","flag-orpheus-top.png","flag-standalone.png","Group152.png","hcb-dark.png","hcb-light.png","highseassticker2.png","icon-rounded.png","image12.png","image13.png","nest_1.png","nest_2.png","ProofforR047107314.png","ProofforR6201338011.png","ProofforR620133801.png","ProofforR840222152.png","ProofforR8437368311.png","ProofforR843736831.png","purpleno11.png","Screenshot2024-06-10at1.22.49PM.png","spookyorph.png","StickerMuleProof.png","terrifiedheidi.png","unnamed7.png","Untitled-28.png","white_untitled103_202502212246142.png","working.png"];
 
 const icons = ["heart","star","fire","rocket","trophy","crown","code","laptop","robot","lightbulb","brain","book","music","camera","paint-brush","pizza-slice","coffee"];
 
@@ -422,7 +475,8 @@ fill: t.color,
 fontFamily: 'Poppins',
 originX: 'center',
 originY: 'center',
-textAlign: 'center'
+textAlign: 'center',
+textBaseline: 'alphabetic'
 });
 canvas.add(title);
 
@@ -435,7 +489,8 @@ fill: t.bg === '#1e1b4b' ? '#ffffff' : '#1a1a1a',
 fontFamily: 'Inter',
 originX: 'center',
 originY: 'center',
-textAlign: 'center'
+textAlign: 'center',
+textBaseline: 'alphabetic'
 });
 canvas.add(subtitle);
 
@@ -448,7 +503,8 @@ fill: t.bg === '#1e1b4b' ? '#d1d5db' : '#4a5568',
 fontFamily: 'Inter',
 originX: 'center',
 originY: 'center',
-textAlign: 'center'
+textAlign: 'center',
+textBaseline: 'alphabetic'
 });
 canvas.add(desc);
 
@@ -479,21 +535,44 @@ applyCanvasStyle();
 };
 
 window.addText = function() {
-const text = new fabric.IText('Double click to edit', {left: canvas.width / 2, top: canvas.height / 2, fontSize: 24, fill: '#000000', fontFamily: 'Inter', originX: 'center', originY: 'center'});
+loadFontDynamically('Inter', function() {
+const text = new fabric.IText('Double click to edit', {
+left: canvas.width / 2,
+top: canvas.height / 2,
+fontSize: 24,
+fill: '#000000',
+fontFamily: 'Inter',
+originX: 'center',
+originY: 'center',
+textBaseline: 'alphabetic'
+});
 canvas.add(text);
 canvas.setActiveObject(text);
 canvas.renderAll();
 saveState();
 updateLayers();
+});
 };
 
 window.addHeading = function() {
-const h = new fabric.IText('Heading', {left: canvas.width / 2, top: canvas.height / 2, fontSize: 48, fontWeight: 'bold', fill: '#ec3750', fontFamily: 'Poppins', originX: 'center', originY: 'center'});
+loadFontDynamically('Poppins', function() {
+const h = new fabric.IText('Heading', {
+left: canvas.width / 2,
+top: canvas.height / 2,
+fontSize: 48,
+fontWeight: 'bold',
+fill: '#ec3750',
+fontFamily: 'Poppins',
+originX: 'center',
+originY: 'center',
+textBaseline: 'alphabetic'
+});
 canvas.add(h);
 canvas.setActiveObject(h);
 canvas.renderAll();
 saveState();
 updateLayers();
+});
 };
 
 window.addImage = function() {
@@ -892,14 +971,22 @@ window.updateTextProps = function() {
 const obj = canvas.getActiveObject();
 if (obj && (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox')) {
 const fs = parseInt(document.getElementById('fontSize').value);
+const textColor = document.getElementById('textColor').value;
+
+// Make sure the current font is loaded before applying
+loadFontDynamically(currentFontFamily, function() {
 obj.set({
-fontFamily: document.getElementById('fontFamily').value,
+fontFamily: currentFontFamily,
 fontSize: fs,
-fill: document.getElementById('textColor').value
+fill: textColor
 });
 document.getElementById('fontSizeValue').textContent = fs + 'px';
+// Force text object to recalculate and re-render
+obj.initDimensions();
+obj.setCoords();
 canvas.renderAll();
 saveState();
+});
 }
 };
 
@@ -996,6 +1083,302 @@ document.getElementById('successModal').classList.add('show');
 
 window.closeSuccessModal = function() { document.getElementById('successModal').classList.remove('show'); };
 
+// Font modal functions
+window.showFontModal = function() {
+console.log('showFontModal called');
+const modal = document.getElementById('fontModal');
+console.log('Modal element:', modal);
+if (modal) {
+modal.classList.add('show');
+console.log('Added show class, allGoogleFonts.length:', allGoogleFonts.length);
+if (allGoogleFonts.length === 0) {
+loadGoogleFonts();
+}
+} else {
+console.error('Font modal not found!');
+}
+};
+
+window.closeFontModal = function() {
+document.getElementById('fontModal').classList.remove('show');
+};
+
+function loadGoogleFonts() {
+document.getElementById('fontLoading').style.display = 'block';
+// Use server-side proxy to keep API key secure
+fetch('/api/fonts/google?sort=popularity')
+.then(response => response.json())
+.then(data => {
+allGoogleFonts = data.items || [];
+displayedFonts = [];
+document.getElementById('fontLoading').style.display = 'none';
+loadMoreFonts();
+})
+.catch(error => {
+console.error('Error loading fonts:', error);
+document.getElementById('fontLoading').style.display = 'none';
+// Fallback to basic fonts
+allGoogleFonts = [
+{family: 'Inter'}, {family: 'Poppins'}, {family: 'Roboto'},
+{family: 'Playfair Display'}, {family: 'Montserrat'}, {family: 'Lato'},
+{family: 'Oswald'}, {family: 'Raleway'}, {family: 'Open Sans'},
+{family: 'Merriweather'}, {family: 'Nunito'}, {family: 'Ubuntu'},
+{family: 'PT Sans'}, {family: 'Noto Sans'}, {family: 'Roboto Condensed'},
+{family: 'Source Sans Pro'}, {family: 'Mukta'}, {family: 'Rubik'},
+{family: 'Karla'}, {family: 'Quicksand'}, {family: 'Fira Sans'},
+{family: 'Work Sans'}, {family: 'Barlow'}, {family: 'Oxygen'},
+{family: 'Manrope'}, {family: 'DM Sans'}, {family: 'IBM Plex Sans'},
+{family: 'Libre Franklin'}, {family: 'Bebas Neue'}, {family: 'Pacifico'},
+{family: 'Lobster'}, {family: 'Dancing Script'}, {family: 'Satisfy'},
+{family: 'Great Vibes'}, {family: 'Caveat'}, {family: 'Amatic SC'},
+{family: 'Indie Flower'}, {family: 'Permanent Marker'}, {family: 'Righteous'},
+{family: 'Abril Fatface'}, {family: 'Anton'}, {family: 'Alfa Slab One'},
+{family: 'Cinzel'}, {family: 'Cormorant'}, {family: 'EB Garamond'},
+{family: 'Crimson Text'}, {family: 'Libre Baskerville'}, {family: 'Vollkorn'},
+{family: 'Bitter'}, {family: 'Arvo'}, {family: 'Zilla Slab'}
+];
+loadMoreFonts();
+});
+}
+
+function loadMoreFonts() {
+console.log('loadMoreFonts called, isLoadingFonts:', isLoadingFonts);
+if (isLoadingFonts) return;
+isLoadingFonts = true;
+const startIndex = displayedFonts.length;
+const fontsToLoad = fontSearchQuery
+? allGoogleFonts.filter(f => f.family.toLowerCase().includes(fontSearchQuery.toLowerCase())).slice(startIndex, startIndex + 10)
+: allGoogleFonts.slice(startIndex, startIndex + 10);
+
+console.log('Fonts to load:', fontsToLoad.length);
+
+const fontList = document.getElementById('fontList');
+if (!fontList) {
+console.error('fontList element not found!');
+isLoadingFonts = false;
+return;
+}
+
+fontsToLoad.forEach(font => {
+displayedFonts.push(font);
+const fontItem = document.createElement('div');
+fontItem.className = 'font-item';
+if (font.family === currentFontFamily) {
+fontItem.classList.add('selected');
+}
+
+const fontNameDiv = document.createElement('div');
+fontNameDiv.className = 'font-name';
+fontNameDiv.textContent = font.family;
+
+const fontPreviewDiv = document.createElement('div');
+fontPreviewDiv.className = 'font-preview';
+fontPreviewDiv.textContent = 'Loading...';
+fontPreviewDiv.style.fontFamily = 'sans-serif';
+
+fontItem.appendChild(fontNameDiv);
+fontItem.appendChild(fontPreviewDiv);
+fontItem.onclick = () => selectFont(font.family);
+fontList.appendChild(fontItem);
+
+// Load the font dynamically and update preview when ready
+loadFontDynamically(font.family, function() {
+fontPreviewDiv.textContent = 'The quick brown fox jumps';
+fontPreviewDiv.style.fontFamily = `'${font.family}', sans-serif`;
+});
+});
+
+console.log('Loaded', fontsToLoad.length, 'fonts. Total displayed:', displayedFonts.length);
+isLoadingFonts = false;
+}
+
+function loadFontDynamically(fontFamily, callback) {
+// Create a link element to load the font
+const fontKey = fontFamily.replace(/ /g, '+');
+const existingLink = document.querySelector(`link[href*="${fontKey}"]`);
+
+if (!existingLink) {
+const link = document.createElement('link');
+link.href = `https://fonts.googleapis.com/css2?family=${fontKey}:wght@400;700&display=swap`;
+link.rel = 'stylesheet';
+document.head.appendChild(link);
+
+// Wait for the font to actually load
+if (document.fonts && document.fonts.load) {
+document.fonts.load(`16px "${fontFamily}"`).then(function() {
+console.log('Font loaded:', fontFamily);
+if (callback) callback();
+}).catch(function(err) {
+console.warn('Font load failed:', fontFamily, err);
+if (callback) callback(); // Still callback even if it fails
+});
+} else {
+// Fallback: wait a bit
+setTimeout(function() {
+if (callback) callback();
+}, 500);
+}
+} else {
+// Font already loaded, wait for it to be ready
+if (document.fonts && document.fonts.load) {
+document.fonts.load(`16px "${fontFamily}"`).then(function() {
+if (callback) callback();
+}).catch(function() {
+if (callback) callback();
+});
+} else {
+if (callback) callback();
+}
+}
+}
+
+function selectFont(fontFamily) {
+currentFontFamily = fontFamily;
+document.getElementById('currentFontName').textContent = fontFamily;
+
+// Update selected state in modal
+document.querySelectorAll('.font-item').forEach(item => {
+item.classList.remove('selected');
+if (item.querySelector('.font-name').textContent === fontFamily) {
+item.classList.add('selected');
+}
+});
+
+// Show loading state
+const obj = canvas.getActiveObject();
+if (obj && (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox')) {
+// Store original font temporarily
+const originalFont = obj.fontFamily;
+
+console.log('Applying font:', fontFamily);
+
+// Load font first, then apply
+loadFontDynamically(fontFamily, function() {
+console.log('Font ready, applying to canvas:', fontFamily);
+
+// Double-check the font is really loaded
+if (document.fonts && document.fonts.check) {
+const fontSize = obj.fontSize || 24;
+const isLoaded = document.fonts.check(`${fontSize}px "${fontFamily}"`);
+console.log('Font check result:', isLoaded);
+}
+
+// Apply the font
+obj.set('fontFamily', fontFamily);
+obj.initDimensions();
+obj.setCoords();
+canvas.renderAll();
+saveState();
+});
+}
+
+closeFontModal();
+}
+
+window.searchFonts = function() {
+fontSearchQuery = document.getElementById('fontSearch').value;
+displayedFonts = [];
+const fontList = document.getElementById('fontList');
+if (fontList) {
+fontList.innerHTML = '';
+}
+loadMoreFonts();
+};
+
+// Infinite scroll for fonts - add listener safely
+const fontListElement = document.getElementById('fontList');
+if (fontListElement) {
+fontListElement.addEventListener('scroll', function() {
+if (this.scrollTop + this.clientHeight >= this.scrollHeight - 50) {
+loadMoreFonts();
+}
+});
+console.log('Infinite scroll listener added');
+} else {
+console.error('Could not add infinite scroll listener - fontList not found');
+}
+
+// Image search functions
+window.showImageSearchModal = function() {
+document.getElementById('imageSearchModal').classList.add('show');
+document.getElementById('imageSearchInput').focus();
+};
+
+window.closeImageSearchModal = function() {
+document.getElementById('imageSearchModal').classList.remove('show');
+};
+
+window.searchImages = function() {
+const query = document.getElementById('imageSearchInput').value.trim();
+if (!query) {
+showSuccess('Please enter a search term');
+return;
+}
+
+const resultsDiv = document.getElementById('imageSearchResults');
+const loadingDiv = document.getElementById('imageSearchLoading');
+
+resultsDiv.innerHTML = '';
+loadingDiv.style.display = 'block';
+
+// Use server-side proxy to keep API key secure
+fetch(`/api/images/search?query=${encodeURIComponent(query)}&per_page=20`)
+.then(response => {
+if (!response.ok && response.status === 503) {
+throw new Error('API not configured');
+}
+return response.json();
+})
+.then(data => {
+loadingDiv.style.display = 'none';
+
+if (data.error) {
+resultsDiv.innerHTML = `<p style="text-align:center;padding:2rem;color:#666">${data.error}</p>`;
+return;
+}
+
+if (!data.results || data.results.length === 0) {
+resultsDiv.innerHTML = '<p style="text-align:center;padding:2rem;color:#666">No images found. Try a different search term.</p>';
+return;
+}
+
+data.results.forEach(photo => {
+const imgContainer = document.createElement('div');
+imgContainer.className = 'image-result';
+
+const img = document.createElement('img');
+img.src = photo.urls.small;
+img.alt = photo.alt_description || 'Unsplash image';
+
+imgContainer.onclick = () => addImageFromURL(photo.urls.regular, photo.user.name);
+imgContainer.appendChild(img);
+resultsDiv.appendChild(imgContainer);
+});
+})
+.catch(error => {
+loadingDiv.style.display = 'none';
+console.error('Image search error:', error);
+resultsDiv.innerHTML = '<p style="text-align:center;padding:2rem;color:#666">Image search is not configured. Please add your Unsplash API key to environment variables.</p>';
+});
+};
+
+function addImageFromURL(url, credit) {
+fabric.Image.fromURL(url, function(img) {
+img.scaleToWidth(250);
+img.set({
+left: canvas.width / 2 - 125,
+top: canvas.height / 2 - 125
+});
+canvas.add(img);
+canvas.setActiveObject(img);
+canvas.renderAll();
+saveState();
+updateLayers();
+closeImageSearchModal();
+showSuccess('Image added! Photo by ' + credit + ' on Unsplash');
+}, {crossOrigin: 'anonymous'});
+}
+
 canvas.on('selection:created', updatePropertiesPanel);
 canvas.on('selection:updated', updatePropertiesPanel);
 canvas.on('selection:cleared', function() {
@@ -1029,7 +1412,8 @@ document.getElementById('qrURL').value = obj.qrData;
 document.getElementById('textProps').style.display = 'block';
 document.getElementById('shapeProps').style.display = 'none';
 document.getElementById('qrProps').style.display = 'none';
-document.getElementById('fontFamily').value = obj.fontFamily;
+currentFontFamily = obj.fontFamily || 'Inter';
+document.getElementById('currentFontName').textContent = currentFontFamily;
 document.getElementById('fontSize').value = obj.fontSize;
 document.getElementById('fontSizeValue').textContent = obj.fontSize + 'px';
 const fillColor = obj.fill || '#000000';
@@ -1186,6 +1570,6 @@ document.getElementById('patternColor').value = '#ec3750';
 document.getElementById('borderColor').value = '#ec3750';
 applyCanvasStyle();
 saveState();
-});
+}
 </script>
 {% endblock %}

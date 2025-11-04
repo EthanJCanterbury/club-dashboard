@@ -82,14 +82,16 @@ def poster_editor(club_id):
     club = Club.query.get_or_404(club_id)
     user = get_current_user()
 
-    membership = ClubMembership.query.filter_by(
-        club_id=club_id,
-        user_id=user.id
-    ).first()
+    # Allow admins, club leaders, and club members
+    if not user.is_admin:
+        membership = ClubMembership.query.filter_by(
+            club_id=club_id,
+            user_id=user.id
+        ).first()
 
-    if not membership:
-        flash('You must be a member of this club to use the poster editor.', 'danger')
-        return redirect(url_for('main.dashboard'))
+        if not membership:
+            flash('You must be a member of this club to use the poster editor.', 'danger')
+            return redirect(url_for('main.dashboard'))
 
     return render_template('poster_editor.html', club=club)
 
