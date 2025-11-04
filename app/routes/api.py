@@ -3441,3 +3441,166 @@ def proxy_unsplash_search():
     except Exception as e:
         current_app.logger.error(f"Error proxying Unsplash API: {str(e)}")
         return jsonify({'error': 'Failed to search images'}), 500
+
+
+# Export endpoints
+@api_bp.route('/admin/export/users', methods=['GET'])
+@login_required
+@permission_required('users.view')
+def export_users():
+    """Export all users as JSON (requires users.view permission)"""
+    from datetime import datetime, timezone
+    current_user = get_current_user()
+
+    try:
+        users = User.query.all()
+        users_data = []
+
+        for user in users:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'is_admin': user.is_admin,
+                'is_suspended': user.is_suspended,
+                'totp_enabled': user.totp_enabled,
+                'roles': [role.name for role in user.roles]
+            })
+
+        # Log export action
+        create_audit_log(
+            action_type='users_export',
+            description=f'Admin {current_user.username} exported {len(users_data)} users',
+            user=current_user,
+            severity='info',
+            category='admin',
+            admin_action=True,
+            details={'count': len(users_data)}
+        )
+
+        return jsonify({
+            'success': True,
+            'count': len(users_data),
+            'data': users_data,
+            'exported_at': datetime.now(timezone.utc).isoformat()
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error exporting users: {str(e)}")
+        return jsonify({'error': 'Failed to export users'}), 500
+
+
+@api_bp.route('/admin/export/clubs', methods=['GET'])
+@login_required
+@permission_required('clubs.view')
+def export_clubs():
+    """Export all clubs as JSON (requires clubs.view permission)"""
+    from datetime import datetime, timezone
+    current_user = get_current_user()
+
+    try:
+        clubs = Club.query.all()
+        clubs_data = []
+
+        for club in clubs:
+            leader = User.query.get(club.leader_id) if club.leader_id else None
+            co_leader = User.query.get(club.co_leader_id) if club.co_leader_id else None
+            member_count = ClubMembership.query.filter_by(club_id=club.id).count()
+
+            clubs_data.append({
+                'id': club.id,
+                'name': club.name,
+                'description': club.description,
+                'location': club.location,
+                'created_at': club.created_at.isoformat() if club.created_at else None,
+                'leader': leader.username if leader else None,
+                'leader_email': leader.email if leader else None,
+                'co_leader': co_leader.username if co_leader else None,
+                'balance': float(club.balance),
+                'tokens': club.tokens,
+                'member_count': member_count,
+                'join_code': club.join_code,
+                'is_suspended': club.is_suspended,
+                'sync_immune': club.sync_immune
+            })
+
+        # Log export action
+        create_audit_log(
+            action_type='clubs_export',
+            description=f'Admin {current_user.username} exported {len(clubs_data)} clubs',
+            user=current_user,
+            severity='info',
+            category='admin',
+            admin_action=True,
+            details={'count': len(clubs_data)}
+        )
+
+        return jsonify({
+            'success': True,
+            'count': len(clubs_data),
+            'data': clubs_data,
+            'exported_at': datetime.now(timezone.utc).isoformat()
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error exporting clubs: {str(e)}")
+        return jsonify({'error': 'Failed to export clubs'}), 500
+
+
+@api_bp.route('/admin/export/audit-logs', methods=['GET'])
+@login_required
+@permission_required('admin.view_activity')
+def export_audit_logs():
+    """Export all audit logs as JSON (requires admin.view_activity permission)"""
+    from app.models.user import AuditLog
+    from datetime import datetime, timezone
+    current_user = get_current_user()
+
+    try:
+        audit_logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).all()
+        logs_data = []
+
+        for log in audit_logs:
+            log_user = User.query.get(log.user_id) if log.user_id else None
+
+            logs_data.append({
+                'id': log.id,
+                'timestamp': log.timestamp.isoformat() if log.timestamp else None,
+                'user_id': log.user_id,
+                'username': log_user.username if log_user else None,
+                'action_type': log.action_type,
+                'action_category': log.action_category,
+                'target_type': log.target_type,
+                'target_id': log.target_id,
+                'description': log.description,
+                'details': log.details,
+                'ip_address': log.ip_address,
+                'user_agent': log.user_agent,
+                'severity': log.severity,
+                'admin_action': log.admin_action
+            })
+
+        # Log export action
+        create_audit_log(
+            action_type='audit_logs_export',
+            description=f'Admin {current_user.username} exported {len(logs_data)} audit logs',
+            user=current_user,
+            severity='warning',
+            category='admin',
+            admin_action=True,
+            details={'count': len(logs_data)}
+        )
+
+        return jsonify({
+            'success': True,
+            'count': len(logs_data),
+            'data': logs_data,
+            'exported_at': datetime.now(timezone.utc).isoformat()
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error exporting audit logs: {str(e)}")
+        return jsonify({'error': 'Failed to export audit logs'}), 500

@@ -159,18 +159,6 @@ def leaderboard(leaderboard_type='total_tokens'):
             ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True
         ).order_by(Club.tokens.desc()).limit(100).all()
         title = "Top Clubs by Monthly Tokens"
-    elif leaderboard_type == 'per_member':
-        clubs = Club.query.filter(
-            ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True
-        ).all()
-
-        for club in clubs:
-            member_count = ClubMembership.query.filter_by(club_id=club.id).count()
-            club.member_count = max(1, member_count)  # Avoid division by zero
-            club.projects_per_member = round(club.tokens / club.member_count, 2) if member_count > 0 else 0
-
-        clubs = sorted(clubs, key=lambda c: c.projects_per_member, reverse=True)[:100]
-        title = "Top Clubs by Projects Per Member"
     elif leaderboard_type == 'most_members':
         clubs = Club.query.filter(
             ~Club.id.in_(excluded_club_ids) if excluded_club_ids else True

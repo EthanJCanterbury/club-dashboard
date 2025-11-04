@@ -28,6 +28,17 @@ def dashboard():
 
     current_user = get_current_user()
 
+    # Log admin dashboard access
+    from app.models.user import create_audit_log
+    create_audit_log(
+        action_type='admin_dashboard_access',
+        description=f'Admin {current_user.username} accessed admin dashboard',
+        user=current_user,
+        severity='info',
+        category='admin',
+        admin_action=True
+    )
+
     total_users = User.query.count()
     total_clubs = Club.query.count()
     total_posts = ClubPost.query.count()
@@ -35,7 +46,42 @@ def dashboard():
 
     airtable_service = AirtableService()
     all_projects = airtable_service.get_ysws_project_submissions()
+
+    # Count projects by status
     pending_projects = len([p for p in all_projects if p.get('status', '').lower() in ['pending', '']])
+    total_pending_projects = pending_projects
+    total_approved_projects = len([p for p in all_projects if p.get('status', '').lower() == 'approved'])
+    total_rejected_projects = len([p for p in all_projects if p.get('status', '').lower() in ['rejected', 'denied']])
+    total_projects = len(all_projects)
+
+    # Calculate hours statistics
+    approved_projects = [p for p in all_projects if p.get('status', '').lower() == 'approved']
+    approved_hours = 0
+    for project in approved_projects:
+        hours = project.get('hours', 0)
+        try:
+            approved_hours += float(hours) if hours else 0
+        except (ValueError, TypeError):
+            pass
+
+    submitted_hours = 0
+    for project in all_projects:
+        hours = project.get('hours', 0)
+        try:
+            submitted_hours += float(hours) if hours else 0
+        except (ValueError, TypeError):
+            pass
+
+    # Calculate weighted grants (hours / 10)
+    total_approved_weighted_grants = round(approved_hours / 10, 2)
+    total_submitted_weighted_grants = round(submitted_hours / 10, 2)
+
+    # Calculate averages
+    avg_hours_per_project = round(submitted_hours / total_projects, 2) if total_projects > 0 else 0
+    avg_hours_approved = round(approved_hours / total_approved_projects, 2) if total_approved_projects > 0 else 0
+
+    # Calculate approval rate
+    approval_rate = round((total_approved_projects / total_projects * 100), 1) if total_projects > 0 else 0
 
     total_club_balance = db.session.query(db.func.sum(Club.balance)).scalar() or 0
 
@@ -58,7 +104,18 @@ def dashboard():
                          total_clubs=total_clubs,
                          total_posts=total_posts,
                          total_assignments=total_assignments,
+                         total_projects=total_projects,
                          pending_projects=pending_projects,
+                         total_pending_projects=total_pending_projects,
+                         total_approved_projects=total_approved_projects,
+                         total_rejected_projects=total_rejected_projects,
+                         total_approved_weighted_grants=total_approved_weighted_grants,
+                         total_submitted_weighted_grants=total_submitted_weighted_grants,
+                         approved_hours=approved_hours,
+                         submitted_hours=submitted_hours,
+                         avg_hours_per_project=avg_hours_per_project,
+                         avg_hours_approved=avg_hours_approved,
+                         approval_rate=approval_rate,
                          total_club_balance=total_club_balance,
                          recent_users=recent_users,
                          recent_clubs=recent_clubs,
@@ -442,12 +499,26 @@ def approve_project(project_id):
 
     airtable_service = AirtableService()
 
+    current_user = get_current_user()
+
     success = airtable_service.update_ysws_project_submission(project_id, {
         'Status': 'Approved',
-        'Decision Reason': f'Approved by {get_current_user().username}'
+        'Decision Reason': f'Approved by {current_user.username}'
     })
 
     if success:
+        # Log project approval
+        from app.models.user import create_audit_log
+        create_audit_log(
+            action_type='project_approved',
+            description=f'Admin {current_user.username} approved project {project_id}',
+            user=current_user,
+            target_type='project',
+            target_id=project_id,
+            severity='info',
+            category='admin',
+            admin_action=True
+        )
         flash('Project approved!', 'success')
     else:
         flash('Failed to approve project.', 'error')

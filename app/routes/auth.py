@@ -51,6 +51,15 @@ def login():
 
         if user and user.check_password(password):
             if user.is_suspended:
+                # Log suspended account login attempt
+                from app.models.user import create_audit_log
+                create_audit_log(
+                    action_type='suspended_login_attempt',
+                    description=f'Suspended user {user.username} attempted to log in',
+                    user=user,
+                    severity='warning',
+                    category='security'
+                )
                 flash('Your account has been suspended. Please contact support.', 'error')
                 return redirect(url_for('main.suspended'))
 
@@ -60,6 +69,17 @@ def login():
                 return redirect(url_for('auth.verify_2fa'))
 
             do_login_user(user, remember=remember_me)
+
+            # Log successful login
+            from app.models.user import create_audit_log
+            create_audit_log(
+                action_type='login',
+                description=f'User {user.username} logged in successfully',
+                user=user,
+                severity='info',
+                category='auth'
+            )
+
             flash(f'Welcome back, {user.username}!', 'success')
 
             oauth_params = session.get('oauth_params')
@@ -70,6 +90,16 @@ def login():
 
             return redirect(url_for('main.dashboard'))
         else:
+            # Log failed login attempt with audit log
+            from app.models.user import create_audit_log
+            create_audit_log(
+                action_type='failed_login',
+                description=f'Failed login attempt for email: {email}',
+                user=user if user else None,
+                severity='warning',
+                category='security',
+                details={'email': email, 'reason': 'invalid_credentials'}
+            )
             log_security_event("FAILED_LOGIN", f"Failed login attempt for email: {email}", ip_address=get_real_ip())
             flash('Invalid email or password', 'error')
 
@@ -79,6 +109,19 @@ def login():
 @auth_bp.route('/logout')
 def logout():
     """User logout"""
+    current_user = get_current_user()
+
+    # Log logout before clearing session
+    if current_user:
+        from app.models.user import create_audit_log
+        create_audit_log(
+            action_type='logout',
+            description=f'User {current_user.username} logged out',
+            user=current_user,
+            severity='info',
+            category='auth'
+        )
+
     do_logout_user()
     flash('You have been logged out successfully.', 'success')
     return redirect(url_for('main.index'))
@@ -131,6 +174,17 @@ def signup():
 
         db.session.add(user)
         db.session.commit()
+
+        # Log new user signup
+        from app.models.user import create_audit_log
+        create_audit_log(
+            action_type='signup',
+            description=f'New user signed up: {user.username}',
+            user=user,
+            severity='info',
+            category='auth',
+            details={'email': email}
+        )
 
         do_login_user(user)
         flash(f'Welcome to Hack Club, {user.username}!', 'success')

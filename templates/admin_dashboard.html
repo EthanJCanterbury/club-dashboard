@@ -3,6 +3,7 @@
 {% block title %}Admin Dashboard - Hack Club Dashboard{% endblock %}
 
 {% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
     .admin-container {
         padding: 2rem 0;
@@ -84,20 +85,42 @@
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 2rem;
-        margin-bottom: 3rem;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
     }
 
     .stat-card {
         background: white;
-        border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-        border: 2px solid transparent;
-        transition: all 0.3s ease;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
         position: relative;
         overflow: hidden;
+    }
+
+    .charts-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .chart-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+    }
+
+    .chart-card h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1.1rem;
+        color: #1a202c;
+        font-weight: 700;
     }
 
     .stat-card::before {
@@ -116,23 +139,28 @@
     .stat-card.assignments::before { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
     .stat-card.tokens::before { background: linear-gradient(135deg, #f59e0b, #d97706); }
     .stat-card.balance::before { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-card.approved-grants::before { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-card.submitted-grants::before { background: linear-gradient(135deg, #ec3750, #d63146); }
+    .stat-card.pending-projects::before { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-card.approved-projects::before { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-card.rejected-projects::before { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
     .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-        border-color: #ec3750;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        border-color: #cbd5e0;
     }
 
     .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 15px;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 1.1rem;
         color: white;
-        margin-bottom: 1.5rem;
+        margin-bottom: 0.75rem;
     }
 
     .stat-card.users .stat-icon { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
@@ -141,21 +169,25 @@
     .stat-card.assignments .stat-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
     .stat-card.tokens .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
     .stat-card.balance .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-card.approved-grants .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-card.submitted-grants .stat-icon { background: linear-gradient(135deg, #ec3750, #d63146); }
+    .stat-card.pending-projects .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .stat-card.approved-projects .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-card.rejected-projects .stat-icon { background: linear-gradient(135deg, #ef4444, #dc2626); }
 
     .stat-number {
-        font-size: 2.5rem;
-        font-weight: 900;
+        font-size: 1.75rem;
+        font-weight: 800;
         color: #1a202c;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.25rem;
         line-height: 1;
     }
 
     .stat-label {
         color: #64748b;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 0.875rem;
+        font-weight: 500;
+        font-size: 0.75rem;
+        line-height: 1.3;
     }
 
     .data-table {
@@ -1313,53 +1345,103 @@
     </div>
 
     <div class="admin-section active" id="overview">
+        <!-- Quick Stats Grid -->
         <div class="stats-grid">
             <div class="stat-card users">
-                <div class="stat-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-number" id="totalUsers">{{ total_users }}</div>
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-number">{{ total_users }}</div>
                 <div class="stat-label">Total Users</div>
             </div>
-
             <div class="stat-card clubs">
-                <div class="stat-icon">
-                    <i class="fas fa-flag"></i>
-                </div>
-                <div class="stat-number" id="totalClubs">{{ total_clubs }}</div>
+                <div class="stat-icon"><i class="fas fa-flag"></i></div>
+                <div class="stat-number">{{ total_clubs }}</div>
                 <div class="stat-label">Total Clubs</div>
             </div>
-
             <div class="stat-card posts">
-                <div class="stat-icon">
-                    <i class="fas fa-comment"></i>
-                </div>
-                <div class="stat-number" id="totalPosts">{{ total_posts }}</div>
-                <div class="stat-label">Total Posts</div>
+                <div class="stat-icon"><i class="fas fa-comment"></i></div>
+                <div class="stat-number">{{ total_posts }}</div>
+                <div class="stat-label">Posts</div>
             </div>
-
             <div class="stat-card assignments">
-                <div class="stat-icon">
-                    <i class="fas fa-tasks"></i>
-                </div>
-                <div class="stat-number" id="totalAssignments">{{ total_assignments }}</div>
-                <div class="stat-label">Total Assignments</div>
+                <div class="stat-icon"><i class="fas fa-tasks"></i></div>
+                <div class="stat-number">{{ total_assignments }}</div>
+                <div class="stat-label">Assignments</div>
             </div>
-
             <div class="stat-card tokens">
-                <div class="stat-icon">
-                    <i class="fas fa-coins"></i>
-                </div>
-                <div class="stat-number" id="totalTokens">{{ (total_club_balance * 100)|int|default(0) }}</div>
-                <div class="stat-label">Total Tokens in Circulation</div>
+                <div class="stat-icon"><i class="fas fa-coins"></i></div>
+                <div class="stat-number">{{ (total_club_balance * 100)|int|default(0) }}</div>
+                <div class="stat-label">Total Tokens</div>
             </div>
-
             <div class="stat-card balance">
-                <div class="stat-icon">
-                    <i class="fas fa-dollar-sign"></i>
-                </div>
-                <div class="stat-number" id="totalBalance">${{ "%.2f"|format(total_club_balance|default(0)) }}</div>
-                <div class="stat-label">Total USD Value</div>
+                <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
+                <div class="stat-number">${{ "%.2f"|format(total_club_balance|default(0)) }}</div>
+                <div class="stat-label">USD Value</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);"><i class="fas fa-project-diagram"></i></div>
+                <div class="stat-number">{{ total_projects|default(0) }}</div>
+                <div class="stat-label">Total Projects</div>
+            </div>
+            <div class="stat-card pending-projects">
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-number">{{ total_pending_projects|default(0) }}</div>
+                <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-card approved-projects">
+                <div class="stat-icon"><i class="fas fa-check"></i></div>
+                <div class="stat-number">{{ total_approved_projects|default(0) }}</div>
+                <div class="stat-label">Approved</div>
+            </div>
+            <div class="stat-card rejected-projects">
+                <div class="stat-icon"><i class="fas fa-times"></i></div>
+                <div class="stat-number">{{ total_rejected_projects|default(0) }}</div>
+                <div class="stat-label">Rejected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"><i class="fas fa-percentage"></i></div>
+                <div class="stat-number">{{ approval_rate|default(0) }}%</div>
+                <div class="stat-label">Approval Rate</div>
+            </div>
+            <div class="stat-card submitted-grants">
+                <div class="stat-icon"><i class="fas fa-gift"></i></div>
+                <div class="stat-number">{{ total_submitted_weighted_grants|default(0) }}</div>
+                <div class="stat-label">Submitted Grants</div>
+            </div>
+            <div class="stat-card approved-grants">
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-number">{{ total_approved_weighted_grants|default(0) }}</div>
+                <div class="stat-label">Approved Grants</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);"><i class="fas fa-hourglass-half"></i></div>
+                <div class="stat-number">{{ submitted_hours|default(0)|int }}</div>
+                <div class="stat-label">Total Hours</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);"><i class="fas fa-hourglass-end"></i></div>
+                <div class="stat-number">{{ approved_hours|default(0)|int }}</div>
+                <div class="stat-label">Approved Hours</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"><i class="fas fa-chart-line"></i></div>
+                <div class="stat-number">{{ avg_hours_per_project|default(0) }}</div>
+                <div class="stat-label">Avg Hours/Project</div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <div class="chart-card">
+                <h3>Project Status Distribution</h3>
+                <canvas id="projectStatusChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Hours Distribution</h3>
+                <canvas id="hoursChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Weighted Grants</h3>
+                <canvas id="grantsChart"></canvas>
             </div>
         </div>
 
@@ -1397,6 +1479,11 @@
                             <i class="fas fa-users"></i> Group by Club
                         </button>
                     </div>
+                    {% if can_view_users %}
+                    <button class="btn btn-primary btn-sm" onclick="exportData('users')" style="margin-left: auto;">
+                        <i class="fas fa-download"></i> Export JSON
+                    </button>
+                    {% endif %}
                 </div>
             </div>
             <div class="table-content">
@@ -1473,11 +1560,16 @@
         <div class="data-table">
             <div class="table-header">
                 <h3>Club Management</h3>
-                <div style="display: flex; gap: 1rem; align-items: center;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                     <input type="text" class="search-box" placeholder="Search clubs..." id="clubSearch">
                     <button class="btn btn-primary" onclick="openModal('createClubModal')">
                         <i class="fas fa-plus"></i> Create Club
                     </button>
+                    {% if can_view_clubs %}
+                    <button class="btn btn-primary btn-sm" onclick="exportData('clubs')" style="margin-left: auto;">
+                        <i class="fas fa-download"></i> Export JSON
+                    </button>
+                    {% endif %}
                 </div>
             </div>
             <div class="table-content">
@@ -1537,6 +1629,9 @@
                     <button onclick="refreshLogs()" class="btn btn-primary" style="padding: 0.5rem 1rem;">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
+                    <button class="btn btn-primary btn-sm" onclick="exportData('audit-logs')" style="margin-left: auto;">
+                        <i class="fas fa-download"></i> Export JSON
+                    </button>
                 </div>
             </div>
             <div class="table-content">
@@ -1564,19 +1659,6 @@
         </div>
 
 
-        <div id="logDetailsModal" class="modal-backdrop">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-info-circle"></i> Log Details</h3>
-                    <button type="button" class="modal-close" onclick="closeModal('logDetailsModal')">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div id="logDetailsContent">
-
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
     {% endif %}
 
@@ -4814,14 +4896,11 @@ function renderLogsPagination(pagination) {
 }
 
 function showLogDetails(log) {
-    const modal = document.getElementById('logDetailsModal');
-    const content = document.getElementById('logDetailsContent');
-
     // Format the details nicely
     const timestamp = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Unknown';
 
     let detailsHtml = `
-        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 2rem;">
+        <div style="display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div><strong>Timestamp:</strong></div>
             <div>${escapeHtml(timestamp)}</div>
 
@@ -4829,7 +4908,7 @@ function showLogDetails(log) {
             <div>${escapeHtml(log.username || 'System')}</div>
 
             <div><strong>Action Type:</strong></div>
-            <div><code>${escapeHtml(log.action_type)}</code></div>
+            <div><code style="font-size: 0.9rem;">${escapeHtml(log.action_type)}</code></div>
 
             <div><strong>Category:</strong></div>
             <div><span class="status-badge">${escapeHtml(log.action_category)}</span></div>
@@ -4841,7 +4920,7 @@ function showLogDetails(log) {
             <div>${escapeHtml(log.description)}</div>
 
             <div><strong>IP Address:</strong></div>
-            <div><code>${escapeHtml(log.ip_address || 'Unknown')}</code></div>
+            <div><code style="font-size: 0.9rem;">${escapeHtml(log.ip_address || 'Unknown')}</code></div>
 
             ${log.target_type ? `
                 <div><strong>Target:</strong></div>
@@ -4853,9 +4932,9 @@ function showLogDetails(log) {
     // Add detailed information if available
     if (log.details && Object.keys(log.details).length > 0) {
         detailsHtml += `
-            <div style="margin-top: 2rem;">
-                <h4 style="margin-bottom: 1rem; color: #1a202c;">Additional Details:</h4>
-                <pre style="background: #f8fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem;">${escapeHtml(JSON.stringify(log.details, null, 2))}</pre>
+            <div style="margin-top: 1.5rem;">
+                <h4 style="margin-bottom: 1rem; color: #1a202c; font-size: 1rem;">Additional Details:</h4>
+                <pre style="background: #f8fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; border: 1px solid #e2e8f0;">${escapeHtml(JSON.stringify(log.details, null, 2))}</pre>
             </div>
         `;
     }
@@ -4863,15 +4942,20 @@ function showLogDetails(log) {
     // Add user agent if available
     if (log.user_agent) {
         detailsHtml += `
-            <div style="margin-top: 1rem;">
-                <strong>User Agent:</strong>
-                <div style="font-size: 0.85rem; color: #64748b; word-break: break-all;">${escapeHtml(log.user_agent)}</div>
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                <strong style="display: block; margin-bottom: 0.5rem;">User Agent:</strong>
+                <div style="font-size: 0.85rem; color: #64748b; word-break: break-all; font-family: monospace;">${escapeHtml(log.user_agent)}</div>
             </div>
         `;
     }
 
-    content.innerHTML = detailsHtml;
-    modal.classList.add('show');
+    // Use UniversalModal for consistent styling
+    UniversalModal.show(
+        detailsHtml,
+        null,
+        null,
+        'Audit Log Details'
+    );
 }
 
 function refreshLogs() {
@@ -6690,6 +6774,243 @@ async function refreshRoleUsers() {
     await loadRoleUsers();
     showToast('success', 'User list refreshed');
 }
+
+// Export Data Function
+async function exportData(type) {
+    console.log('Export started for:', type);
+
+    // Show loading modal with progress bar
+    const loadingModal = document.createElement('div');
+    loadingModal.id = 'exportLoadingModal';
+    loadingModal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.7); display: flex; align-items: center;
+        justify-content: center; z-index: 10000;
+    `;
+    loadingModal.innerHTML = `
+        <div style="background: white; padding: 2.5rem 3rem; border-radius: 12px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3); min-width: 400px;">
+            <div class="loading-spinner" style="width: 50px; height: 50px; margin: 0 auto 1.5rem;"></div>
+            <h3 style="margin: 0 0 0.5rem 0; color: #1a202c;" id="exportStatus">Gathering Data...</h3>
+            <p style="margin: 0 0 1.5rem 0; color: #64748b; font-size: 0.9rem;" id="exportSubtext">Please wait while we prepare your export</p>
+            <div style="width: 100%; background: #e2e8f0; border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 1rem;">
+                <div id="exportProgress" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ec3750, #ff6b7a); transition: width 0.3s ease;"></div>
+            </div>
+            <p style="margin: 0; color: #94a3b8; font-size: 0.8rem;" id="exportTimer">Elapsed: 0s</p>
+        </div>
+    `;
+    document.body.appendChild(loadingModal);
+
+    // Progress simulation
+    let progress = 0;
+    let startTime = Date.now();
+    const progressBar = document.getElementById('exportProgress');
+    const timer = document.getElementById('exportTimer');
+    const statusText = document.getElementById('exportStatus');
+    const subtext = document.getElementById('exportSubtext');
+
+    const progressInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        timer.textContent = `Elapsed: ${elapsed}s`;
+
+        // Simulate progress
+        if (progress < 30) {
+            progress += Math.random() * 5;
+        } else if (progress < 60) {
+            progress += Math.random() * 3;
+        } else if (progress < 90) {
+            progress += Math.random() * 1;
+        }
+
+        progressBar.style.width = `${Math.min(progress, 95)}%`;
+
+        // Update status messages
+        if (progress < 30) {
+            statusText.textContent = 'Connecting to server...';
+        } else if (progress < 60) {
+            statusText.textContent = 'Fetching data...';
+        } else {
+            statusText.textContent = 'Processing export...';
+        }
+    }, 200);
+
+    try {
+        console.log('Making request to:', `/api/admin/export/${type}`);
+
+        // Use makeSecureRequest for proper auth handling
+        const response = await makeSecureRequest(`/api/admin/export/${type}`, {
+            method: 'GET',
+            credentials: 'same-origin'
+        });
+
+        console.log('Response status:', response.status);
+
+        if (!response.ok) {
+            let errorMsg = 'Export failed';
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorMsg;
+            } catch (e) {
+                errorMsg = `Server error: ${response.status}`;
+            }
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+        console.log('Export data received:', data.count, 'records');
+
+        // Complete progress
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        statusText.textContent = 'Creating download...';
+        subtext.textContent = `Preparing ${data.count} records`;
+
+        // Small delay to show completion
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Create downloadable file
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${type}_export_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        // Remove loading modal
+        document.body.removeChild(loadingModal);
+
+        // Show success message
+        if (typeof showToast === 'function') {
+            showToast('success', `Successfully exported ${data.count} ${type}`);
+        } else {
+            alert(`Successfully exported ${data.count} ${type}`);
+        }
+
+    } catch (error) {
+        console.error('Export error:', error);
+        clearInterval(progressInterval);
+
+        // Show error in modal
+        statusText.textContent = 'Export Failed';
+        statusText.style.color = '#ef4444';
+        subtext.textContent = error.message || 'An error occurred';
+        subtext.style.color = '#ef4444';
+        progressBar.style.background = '#ef4444';
+
+        // Remove modal after delay
+        setTimeout(() => {
+            if (document.body.contains(loadingModal)) {
+                document.body.removeChild(loadingModal);
+            }
+        }, 3000);
+
+        if (typeof showToast === 'function') {
+            showToast('error', error.message || 'Failed to export data');
+        } else {
+            alert('Error: ' + (error.message || 'Failed to export data'));
+        }
+    }
+}
+
+// Initialize Charts
+document.addEventListener('DOMContentLoaded', function() {
+    // Project Status Chart
+    const projectStatusCtx = document.getElementById('projectStatusChart');
+    if (projectStatusCtx) {
+        new Chart(projectStatusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Approved', 'Pending', 'Rejected'],
+                datasets: [{
+                    data: [{{ total_approved_projects|default(0) }}, {{ total_pending_projects|default(0) }}, {{ total_rejected_projects|default(0) }}],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Hours Distribution Chart
+    const hoursCtx = document.getElementById('hoursChart');
+    if (hoursCtx) {
+        new Chart(hoursCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Total Hours', 'Approved Hours'],
+                datasets: [{
+                    label: 'Hours',
+                    data: [{{ submitted_hours|default(0) }}, {{ approved_hours|default(0) }}],
+                    backgroundColor: ['#06b6d4', '#10b981'],
+                    borderWidth: 0,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#e2e8f0' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Weighted Grants Chart
+    const grantsCtx = document.getElementById('grantsChart');
+    if (grantsCtx) {
+        new Chart(grantsCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Approved Grants', 'Pending Grants'],
+                datasets: [{
+                    data: [
+                        {{ total_approved_weighted_grants|default(0) }},
+                        {{ (total_submitted_weighted_grants|default(0) - total_approved_weighted_grants|default(0))|abs }}
+                    ],
+                    backgroundColor: ['#10b981', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 11 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
 </script>
 
 {% endblock %}
