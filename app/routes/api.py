@@ -286,16 +286,30 @@ def admin_search_users():
 @permission_required('clubs.view')
 @limiter.limit("100 per minute")
 def admin_get_clubs():
-    """Get all clubs (admin only)"""
+    """Get all clubs (admin only) - includes dashboard clubs and Airtable-only clubs"""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
+    search = request.args.get('search', '').strip().lower()
     per_page = min(per_page, 100)
 
-    clubs_pagination = Club.query.order_by(Club.created_at.desc()).paginate(
+    # Get dashboard clubs
+    query = Club.query
+
+    if search:
+        query = query.filter(
+            db.or_(
+                Club.name.ilike(f'%{search}%'),
+                Club.location.ilike(f'%{search}%')
+            )
+        )
+
+    clubs_pagination = query.order_by(Club.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
 
     clubs_data = []
+    dashboard_club_names = set()
+
     for club in clubs_pagination.items:
         leader_username = club.leader.username if club.leader else 'Unknown'
         leader_email = club.leader.email if club.leader else 'Unknown'
@@ -313,8 +327,44 @@ def admin_get_clubs():
             'location': club.location,
             'tokens': club.tokens,
             'balance': club.balance,
-            'created_at': club.created_at.isoformat() if club.created_at else None
+            'created_at': club.created_at.isoformat() if club.created_at else None,
+            'is_suspended': club.is_suspended,
+            'airtable_id': getattr(club, 'airtable_id', None),
+            'is_airtable_only': False
         })
+        dashboard_club_names.add(club.name.lower().strip())
+
+    # Get Airtable clubs if searching
+    if search:
+        try:
+            airtable_clubs = airtable_service.get_all_clubs()
+
+            # Filter Airtable clubs by search and exclude already-linked clubs
+            for airtable_club in airtable_clubs:
+                club_name = airtable_club['name'].lower().strip()
+
+                # Check if this club matches the search and isn't already in dashboard
+                if (search in club_name or search in airtable_club['location'].lower()) and \
+                   club_name not in dashboard_club_names:
+
+                    clubs_data.append({
+                        'id': None,  # No dashboard ID
+                        'name': airtable_club['name'],
+                        'description': None,
+                        'leader': None,
+                        'leader_email': airtable_club['leader_emails'],
+                        'member_count': None,
+                        'location': airtable_club['location'],
+                        'tokens': None,
+                        'balance': None,
+                        'created_at': None,
+                        'is_suspended': airtable_club['suspended'],
+                        'airtable_id': airtable_club['airtable_id'],
+                        'is_airtable_only': True
+                    })
+
+        except Exception as e:
+            current_app.logger.error(f"Error fetching Airtable clubs: {str(e)}")
 
     return jsonify({
         'clubs': clubs_data,
@@ -323,6 +373,92 @@ def admin_get_clubs():
         'per_page': per_page,
         'pages': clubs_pagination.pages
     })
+
+
+@api_bp.route('/admin/clubs/suspend', methods=['POST'])
+@login_required
+@permission_required('clubs.suspend')
+def suspend_club():
+    """Suspend or unsuspend a club (dashboard or Airtable-only)"""
+    data = request.get_json()
+    club_id = data.get('club_id')  # Dashboard club ID (if exists)
+    airtable_id = data.get('airtable_id')  # Airtable record ID
+    suspended = data.get('suspended', True)
+    is_airtable_only = data.get('is_airtable_only', False)
+
+    current_user = get_current_user()
+
+    try:
+        # Handle dashboard clubs
+        if club_id and not is_airtable_only:
+            club = Club.query.get_or_404(club_id)
+            club.is_suspended = suspended
+            db.session.commit()
+
+            # Also sync to Airtable if it has an airtable_id
+            airtable_data = club.get_airtable_data()
+            airtable_club_id = airtable_data.get('airtable_id') if airtable_data else airtable_id
+            if airtable_club_id:
+                airtable_service.update_club_suspension(airtable_club_id, suspended, club_name=club.name)
+
+            # Log suspension action
+            create_audit_log(
+                action_type='club_suspended' if suspended else 'club_unsuspended',
+                description=f'Admin {current_user.username} {"suspended" if suspended else "unsuspended"} club: {club.name}',
+                user=current_user,
+                target_type='club',
+                target_id=club_id,
+                severity='warning' if suspended else 'info',
+                category='admin',
+                admin_action=True
+            )
+
+            return jsonify({
+                'success': True,
+                'message': f'Club {"suspended" if suspended else "unsuspended"} successfully'
+            })
+
+        # Handle Airtable-only clubs
+        elif airtable_id and is_airtable_only:
+            club_name = data.get('club_name', 'Unknown')
+            success = airtable_service.update_club_suspension(airtable_id, suspended, club_name=club_name)
+
+            if success:
+
+                create_audit_log(
+                    action_type='airtable_club_suspended' if suspended else 'airtable_club_unsuspended',
+                    description=f'Admin {current_user.username} {"suspended" if suspended else "unsuspended"} Airtable club: {club_name}',
+                    user=current_user,
+                    target_type='airtable_club',
+                    target_id=airtable_id,
+                    severity='warning' if suspended else 'info',
+                    category='admin',
+                    admin_action=True,
+                    details={'airtable_id': airtable_id}
+                )
+
+                return jsonify({
+                    'success': True,
+                    'message': f'Airtable club {"suspended" if suspended else "unsuspended"} successfully'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to update suspension status in Airtable'
+                }), 500
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid club identifiers provided'
+            }), 400
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error suspending club: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @api_bp.route('/admin/stats', methods=['GET'])
@@ -684,7 +820,19 @@ def admin_delete_user(user_id):
     username = user.username
     email = user.email
 
-    db.session.delete(user)
+    with db.session.no_autoflush:
+        # Handle clubs where user is leader - delete the clubs
+        led_clubs = Club.query.filter_by(leader_id=user_id).all()
+        for club in led_clubs:
+            db.session.delete(club)
+        
+        # Handle clubs where user is co-leader - remove co-leader
+        co_led_clubs = Club.query.filter_by(co_leader_id=user_id).all()
+        for club in co_led_clubs:
+            club.co_leader_id = None
+
+        db.session.delete(user)
+    
     db.session.commit()
 
     create_audit_log(
@@ -900,24 +1048,36 @@ def admin_reset_password(user_id):
             'email': user.email
         }
     })
+
+
 @api_bp.route('/admin/clubs/<int:club_id>', methods=['PUT'])
 @login_required
 @permission_required('clubs.edit')
 def admin_update_club(club_id):
     """Update club details (requires clubs.edit permission)"""
+    from app.services.airtable import AirtableService
+    from datetime import datetime, timezone
+    
     club = Club.query.get_or_404(club_id)
     current_user = get_current_user()
 
     data = request.get_json()
 
+    # Track what changed for Airtable sync
+    old_name = club.name
+    changes = {}
+
     if 'name' in data:
         club.name = sanitize_string(data['name'], max_length=100)
+        changes['name'] = club.name
 
     if 'description' in data:
         club.description = sanitize_string(data['description'], max_length=1000)
+        changes['description'] = club.description
 
     if 'location' in data:
         club.location = sanitize_string(data['location'], max_length=200)
+        changes['location'] = club.location
 
     if 'tokens' in data:
         club.tokens = int(data['tokens'])
@@ -925,7 +1085,27 @@ def admin_update_club(club_id):
     if 'balance' in data:
         club.balance = int(data['balance'])
 
+    club.updated_at = datetime.now(timezone.utc)
     db.session.commit()
+
+    # Sync changes to Airtable (only name, description, location)
+    airtable_synced = False
+    if changes:
+        airtable_data = club.get_airtable_data()
+        airtable_id = airtable_data.get('airtable_id') if airtable_data else None
+
+        if airtable_id:
+            try:
+                airtable_service = AirtableService()
+                airtable_synced = airtable_service.update_club_info(
+                    airtable_id,
+                    changes,
+                    club_name=old_name  # Use old name for fallback search
+                )
+                if not airtable_synced:
+                    current_app.logger.warning(f"Failed to sync club info to Airtable for club {club_id}")
+            except Exception as e:
+                current_app.logger.error(f"Error syncing club info to Airtable: {str(e)}")
 
     create_audit_log(
         action_type='club_update',
@@ -933,15 +1113,17 @@ def admin_update_club(club_id):
         user=current_user,
         target_type='club',
         target_id=club_id,
-        details={'updated_fields': list(data.keys())},
+        details={'updated_fields': list(data.keys()), 'airtable_synced': airtable_synced},
         severity='info',
         admin_action=True,
         category='admin'
     )
 
+    sync_message = ' and synced to Airtable' if airtable_synced and changes else ''
+    
     return jsonify({
         'success': True,
-        'message': 'Club updated successfully',
+        'message': f'Club updated successfully{sync_message}',
         'club': {
             'id': club.id,
             'name': club.name,
@@ -958,30 +1140,115 @@ def admin_update_club(club_id):
 @permission_required('clubs.delete')
 def admin_delete_club(club_id):
     """Delete a club (requires clubs.delete permission)"""
+    from app.services.airtable import AirtableService
+    
     club = Club.query.get_or_404(club_id)
     current_user = get_current_user()
 
     club_name = club.name
+    
+    try:
+        # Try to unmark club as onboarded in Airtable if it has an Airtable ID
+        airtable_data = club.get_airtable_data()
+        airtable_id = airtable_data.get('airtable_id') if airtable_data else None
+        
+        if airtable_id:
+            try:
+                airtable_service = AirtableService()
+                airtable_service.unmark_club_onboarded(airtable_id, club_name=club.name)
+            except Exception as e:
+                current_app.logger.warning(f"Failed to update Airtable when deleting club {club_name}: {str(e)}")
+                # Continue with deletion even if Airtable update fails
 
-    db.session.delete(club)
-    db.session.commit()
+        db.session.delete(club)
+        db.session.commit()
 
-    create_audit_log(
-        action_type='club_delete',
-        description=f'Admin {current_user.username} deleted club {club_name}',
-        user=current_user,
-        target_type='club',
-        target_id=club_id,
-        details={'club_name': club_name},
-        severity='warning',
-        admin_action=True,
-        category='admin'
-    )
+        create_audit_log(
+            action_type='club_delete',
+            description=f'Admin {current_user.username} deleted club {club_name}',
+            user=current_user,
+            target_type='club',
+            target_id=club_id,
+            details={'club_name': club_name, 'airtable_updated': airtable_id is not None},
+            severity='warning',
+            admin_action=True,
+            category='admin'
+        )
 
-    return jsonify({
-        'success': True,
-        'message': 'Club deleted successfully'
-    })
+        return jsonify({
+            'success': True,
+            'message': 'Club deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting club {club_name}: {str(e)}")
+        return jsonify({
+            'error': 'Failed to delete club',
+            'details': str(e)
+        }), 500
+
+
+@api_bp.route('/api/admin/clubs/<int:club_id>/sync-from-airtable', methods=['POST'])
+@login_required
+@permission_required('clubs.edit')
+def admin_sync_club_from_airtable(club_id):
+    """Manually sync a club from Airtable to refresh data including team notes"""
+    from app.services.airtable import AirtableService
+    
+    club = Club.query.get_or_404(club_id)
+    current_user = get_current_user()
+    
+    try:
+        airtable_service = AirtableService()
+        
+        # Get the club's Airtable data
+        airtable_data = club.get_airtable_data()
+        airtable_id = airtable_data.get('airtable_id') if airtable_data else None
+        
+        if not airtable_id:
+            return jsonify({'error': 'Club does not have an Airtable ID'}), 400
+        
+        # Fetch fresh club data using leader email (gets full data)
+        if club.leader:
+            clubs = airtable_service.get_clubs_by_leader_email(club.leader.email)
+            matching_club = None
+            for c in clubs:
+                if c.get('airtable_id') == airtable_id:
+                    matching_club = c.get('airtable_data', c)  # Use nested airtable_data if available
+                    break
+            
+            if matching_club:
+                # Sync the club
+                success = airtable_service.sync_club_with_airtable(club.id, matching_club)
+                
+                if success:
+                    create_audit_log(
+                        action_type='club_synced_from_airtable',
+                        description=f'Manually synced club {club.name} from Airtable',
+                        user=current_user,
+                        target_type='club',
+                        target_id=club_id,
+                        category='club'
+                    )
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f'Successfully synced {club.name} from Airtable'
+                    })
+                else:
+                    return jsonify({'error': 'Failed to sync club from Airtable'}), 500
+            else:
+                return jsonify({'error': 'Club not found in Airtable'}), 404
+        else:
+            return jsonify({'error': 'Club does not have a leader'}), 400
+            
+    except Exception as e:
+        current_app.logger.error(f"Error syncing club {club.name} from Airtable: {str(e)}")
+        return jsonify({
+            'error': 'Failed to sync club',
+            'details': str(e)
+        }), 500
 
 
 @api_bp.route('/admin/clubs/<int:club_id>/sync-immune', methods=['POST'])

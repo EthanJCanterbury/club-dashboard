@@ -45,7 +45,19 @@ def dashboard():
     total_assignments = ClubAssignment.query.count()
 
     airtable_service = AirtableService()
-    all_projects = airtable_service.get_ysws_project_submissions()
+    
+    # Fetch Airtable projects and check connection status
+    airtable_status = 'operational'
+    airtable_error = None
+    all_projects = []
+    
+    try:
+        all_projects = airtable_service.get_ysws_project_submissions()
+        airtable_status = 'operational'
+    except Exception as e:
+        airtable_status = 'error'
+        airtable_error = str(e)
+        all_projects = []
 
     # Count projects by status
     pending_projects = len([p for p in all_projects if p.get('status', '').lower() in ['pending', '']])
@@ -85,6 +97,9 @@ def dashboard():
 
     total_club_balance = db.session.query(db.func.sum(Club.balance)).scalar() or 0
 
+    # Calculate users to clubs ratio
+    users_to_clubs_ratio = round(total_users / total_clubs, 2) if total_clubs > 0 else 0
+
     recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
     recent_clubs = Club.query.order_by(Club.created_at.desc()).limit(10).all()
 
@@ -117,6 +132,9 @@ def dashboard():
                          avg_hours_approved=avg_hours_approved,
                          approval_rate=approval_rate,
                          total_club_balance=total_club_balance,
+                         users_to_clubs_ratio=users_to_clubs_ratio,
+                         airtable_status=airtable_status,
+                         airtable_error=airtable_error,
                          recent_users=recent_users,
                          recent_clubs=recent_clubs,
                          can_view_users=can_view_users,
@@ -338,8 +356,9 @@ def recent_clubs():
 @login_required
 @permission_required('clubs.view')
 def search_clubs():
-    """Search clubs by name"""
-    query = request.args.get('q', '').strip()
+    """Search clubs by name - optionally includes Airtable-only clubs"""
+    query = request.args.get('q', '').strip().lower()
+    include_airtable = request.args.get('include_airtable', 'false').lower() == 'true'
 
     if not query:
         return jsonify({'results': []})
@@ -348,9 +367,11 @@ def search_clubs():
     clubs = Club.query.filter(Club.name.ilike(search_term)).limit(50).all()
 
     results = []
+    dashboard_club_names = set()
+
+    # Add dashboard clubs
     for c in clubs:
         leader_user = c.leader if c.leader_id else None
-
         member_count = ClubMembership.query.filter_by(club_id=c.id).count()
 
         results.append({
@@ -365,8 +386,44 @@ def search_clubs():
             'leader_email': leader_user.email if leader_user else 'N/A',
             'leader_id': leader_user.id if leader_user else None,
             'member_count': member_count,
-            'sync_immune': c.sync_immune if hasattr(c, 'sync_immune') else False
+            'sync_immune': c.sync_immune if hasattr(c, 'sync_immune') else False,
+            'airtable_id': getattr(c, 'airtable_id', None),
+            'is_airtable_only': False
         })
+        dashboard_club_names.add(c.name.lower().strip())
+
+    # Only search Airtable clubs if explicitly requested (resource intensive)
+    if include_airtable:
+        try:
+            airtable_clubs = AirtableService().get_all_clubs()
+
+            # Filter by search and exclude already-linked clubs
+            for airtable_club in airtable_clubs:
+                club_name = airtable_club['name'].lower().strip()
+
+                # Check if matches search and isn't already in dashboard
+                if (query in club_name or query in airtable_club['location'].lower()) and \
+                   club_name not in dashboard_club_names:
+
+                    results.append({
+                        'id': None,
+                        'name': airtable_club['name'],
+                        'location': airtable_club['location'],
+                        'balance': None,
+                        'tokens': None,
+                        'is_suspended': airtable_club['suspended'],
+                        'created_at': None,
+                        'leader': None,
+                        'leader_email': airtable_club['leader_emails'],
+                        'leader_id': None,
+                        'member_count': None,
+                        'sync_immune': False,
+                        'airtable_id': airtable_club['airtable_id'],
+                        'is_airtable_only': True
+                    })
+
+        except Exception as e:
+            current_app.logger.error(f"Error fetching Airtable clubs in search: {str(e)}")
 
     return jsonify({'results': results})
 
@@ -375,25 +432,34 @@ def search_clubs():
 @login_required
 @permission_required('clubs.view')
 def clubs():
-    """Club management - returns HTML"""
-    page = request.args.get('page', 1, type=int)
-    per_page = 50
+    """Club management - DEPRECATED: Use admin dashboard clubs tab instead"""
+    # Redirect to admin dashboard with clubs tab
+    return redirect(url_for('admin.dashboard') + '#clubs')
 
-    search = request.args.get('search', '')
-    if search:
-        search_term = f"%{search}%"
-        clubs_query = Club.query.filter(Club.name.ilike(search_term))
-    else:
-        clubs_query = Club.query
 
-    clubs_pagination = clubs_query.order_by(Club.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-
-    return render_template('admin_clubs.html',
-                         clubs=clubs_pagination.items,
-                         pagination=clubs_pagination,
-                         search=search)
+# @admin_bp.route('/clubs')
+# @login_required
+# @permission_required('clubs.view')
+# def clubs():
+#     """Club management - returns HTML"""
+#     page = request.args.get('page', 1, type=int)
+#     per_page = 50
+#
+#     search = request.args.get('search', '')
+#     if search:
+#         search_term = f"%{search}%"
+#         clubs_query = Club.query.filter(Club.name.ilike(search_term))
+#     else:
+#         clubs_query = Club.query
+#
+#     clubs_pagination = clubs_query.order_by(Club.created_at.desc()).paginate(
+#         page=page, per_page=per_page, error_out=False
+#     )
+#
+#     return render_template('admin_clubs.html',
+#                          clubs=clubs_pagination.items,
+#                          pagination=clubs_pagination,
+#                          search=search)
 
 
 @admin_bp.route('/clubs/<int:club_id>')

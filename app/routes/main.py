@@ -35,6 +35,9 @@ def dashboard():
     memberships = ClubMembership.query.filter_by(user_id=user.id).all()
     led_clubs = Club.query.filter_by(leader_id=user.id).all()
 
+    # Don't filter suspended clubs - let them show but redirect on click
+    # Admins still see all clubs normally
+    
     all_club_ids = set([club.id for club in led_clubs] + [m.club.id for m in memberships])
     if len(all_club_ids) == 1:
         club_id = list(all_club_ids)[0]
@@ -75,9 +78,16 @@ def club_dashboard(club_id=None):
         flash('You are not a member of this club', 'error')
         return redirect(url_for('main.dashboard'))
 
-    if club.is_suspended and not user.is_admin:
-        flash('This club has been suspended', 'error')
-        return redirect(url_for('main.dashboard'))
+    # Sync suspension status FROM Airtable before checking (bidirectional sync)
+    from app.services.airtable import airtable_service
+    try:
+        airtable_service.sync_club_suspension_from_airtable(club)
+    except Exception as e:
+        logger.warning(f"Failed to sync suspension status from Airtable: {str(e)}")
+
+    # Redirect to suspension page if club is suspended (unless admin)
+    if club.is_suspended and not (user.is_admin or is_admin_access):
+        return redirect(url_for('main.club_suspended', club_id=club_id))
 
     from app.services.airtable import AirtableService
     try:
@@ -89,6 +99,10 @@ def club_dashboard(club_id=None):
 
     airtable_data = club.get_airtable_data()
     is_connected_to_directory = airtable_data and airtable_data.get('airtable_id')
+    
+    # Economy is only enabled if connected to directory
+    # Sync-immune clubs without connection should have economy disabled
+    economy_enabled = is_connected_to_directory
 
     if not is_connected_to_directory and not club.sync_immune and not user.is_admin:
         return render_template('club_connection_required.html', club=club, current_user=user)
@@ -123,7 +137,8 @@ def club_dashboard(club_id=None):
                          effective_is_co_leader=effective_is_co_leader,
                          effective_can_manage=effective_can_manage,
                          banner_settings=banner_settings,
-                         is_connected_to_directory=is_connected_to_directory)
+                         is_connected_to_directory=is_connected_to_directory,
+                         economy_enabled=economy_enabled)
 
 
 @main_bp.route('/gallery')
@@ -204,6 +219,11 @@ def join_club_redirect():
         flash('Invalid join code', 'error')
         return redirect(url_for('main.dashboard'))
 
+    # Check if club is suspended
+    if club.is_suspended:
+        flash('This club has been suspended and is not accepting new members', 'error')
+        return redirect(url_for('main.dashboard'))
+
     existing_membership = ClubMembership.query.filter_by(
         club_id=club.id,
         user_id=user.id
@@ -233,6 +253,31 @@ def join_club_redirect():
 def maintenance():
     """Maintenance mode page"""
     return render_template('maintenance.html'), 503
+
+
+@main_bp.route('/club-suspended/<int:club_id>')
+@login_required
+def club_suspended(club_id):
+    """Club suspension page"""
+    club = Club.query.get_or_404(club_id)
+    user = get_current_user()
+    
+    # Verify user is actually a member/leader
+    from app.models.club import ClubMembership
+    is_leader = club.leader_id == user.id
+    is_co_leader = club.co_leader_id == user.id
+    membership = ClubMembership.query.filter_by(club_id=club.id, user_id=user.id).first()
+    is_member = membership is not None
+    
+    if not is_leader and not is_co_leader and not is_member and not user.is_admin:
+        flash('You are not a member of this club', 'error')
+        return redirect(url_for('main.dashboard'))
+    
+    # If admin or club is not suspended, redirect to normal dashboard
+    if not club.is_suspended or user.is_admin:
+        return redirect(url_for('main.club_dashboard', club_id=club_id))
+    
+    return render_template('club_suspended.html', club=club)
 
 
 @main_bp.route('/suspended')

@@ -30,6 +30,7 @@ class Club(db.Model):
     background_image_url = db.Column(db.String(500), nullable=True)  # Custom background image URL
     background_blur = db.Column(db.Integer, default=0)  # Blur intensity (0-100)
     airtable_data = db.Column(db.Text)  # JSON field for additional Airtable metadata
+    team_notes = db.Column(db.Text, nullable=True)  # Internal team notes for club leaders
 
     leader = db.relationship('User', foreign_keys=[leader_id], backref='led_clubs')
     co_leader = db.relationship('User', foreign_keys=[co_leader_id], backref='co_led_clubs')
@@ -77,7 +78,7 @@ class ClubCosmetic(db.Model):
     expires_at = db.Column(db.DateTime)  # For time-limited cosmetics
     is_active = db.Column(db.Boolean, default=True, nullable=False)
 
-    club = db.relationship('Club', backref=db.backref('cosmetics', lazy=True))
+    club = db.relationship('Club', backref=db.backref('cosmetics', lazy=True, cascade='all, delete-orphan'))
 
 
 class MemberCosmetic(db.Model):
@@ -90,6 +91,6 @@ class MemberCosmetic(db.Model):
     is_active = db.Column(db.Boolean, default=True, nullable=False)
 
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('member_cosmetics', lazy=True))
-    club = db.relationship('Club', backref=db.backref('member_cosmetics', lazy=True))
-    club_cosmetic = db.relationship('ClubCosmetic', backref=db.backref('member_assignments', lazy=True))
+    club = db.relationship('Club', backref=db.backref('member_cosmetics_list', lazy=True, cascade='all, delete-orphan'))
+    club_cosmetic = db.relationship('ClubCosmetic', backref=db.backref('member_assignments', lazy=True, cascade='all, delete-orphan'))
     assigned_by_user = db.relationship('User', foreign_keys=[assigned_by])

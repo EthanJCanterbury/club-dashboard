@@ -3,9 +3,9 @@ Club routes blueprint for the Hack Club Dashboard.
 Handles club management, shop, poster editor, and club-specific features.
 """
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, send_file
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, send_file, current_app
 from extensions import db
-from app.decorators.auth import login_required
+from app.decorators.auth import login_required, club_not_suspended
 from app.decorators.economy import economy_required
 from app.utils.auth_helpers import get_current_user
 from app.utils.club_helpers import verify_club_leadership, is_user_co_leader
@@ -20,6 +20,7 @@ clubs_bp = Blueprint('clubs', __name__)
 
 @clubs_bp.route('/club-connection-required/<int:club_id>')
 @login_required
+@club_not_suspended
 def club_connection_required(club_id):
     """Page shown when club connection is required"""
     club = Club.query.get_or_404(club_id)
@@ -39,7 +40,9 @@ def club_connection_required(club_id):
 
 @clubs_bp.route('/club/<int:club_id>/shop')
 @login_required
+@club_not_suspended
 @economy_required
+@club_not_suspended
 def club_shop(club_id):
     """Club token shop"""
     club = Club.query.get_or_404(club_id)
@@ -63,6 +66,7 @@ def club_shop(club_id):
 
 @clubs_bp.route('/club/<int:club_id>/orders')
 @login_required
+@club_not_suspended
 def club_orders(club_id):
     """View club orders"""
     club = Club.query.get_or_404(club_id)
@@ -77,6 +81,7 @@ def club_orders(club_id):
 
 @clubs_bp.route('/club/<int:club_id>/poster-editor')
 @login_required
+@club_not_suspended
 def poster_editor(club_id):
     """Club poster editor"""
     club = Club.query.get_or_404(club_id)
@@ -98,6 +103,7 @@ def poster_editor(club_id):
 
 @clubs_bp.route('/club/<int:club_id>/project-submission', methods=['GET', 'POST'])
 @login_required
+@club_not_suspended
 def project_submission(club_id):
     """Submit a project for club"""
     club = Club.query.get_or_404(club_id)
@@ -141,6 +147,7 @@ def project_submission(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/members')
 @login_required
+@club_not_suspended
 def get_club_members(club_id):
     """Get club members API endpoint"""
     club = Club.query.get_or_404(club_id)
@@ -182,6 +189,7 @@ def get_club_members(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/background', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@club_not_suspended
 def club_background(club_id):
     """Get, update, or remove club background"""
     from app.utils.sanitization import sanitize_string
@@ -326,10 +334,12 @@ def club_background(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/update-email', methods=['POST'])
 @login_required
+@club_not_suspended
 def update_club_email(club_id):
-    """Update club email"""
+    """Update club leader email and sync to Airtable"""
     from app.utils.sanitization import sanitize_string
     from app.models.user import create_audit_log
+    from app.services.airtable import AirtableService
 
     club = Club.query.get_or_404(club_id)
     user = get_current_user()
@@ -348,7 +358,7 @@ def update_club_email(club_id):
                 'details': 'Request must include JSON data with an email field'
             }), 400
 
-        new_email = data.get('email', '').strip()
+        new_email = data.get('email', '').strip().lower()
 
         if not new_email:
             return jsonify({
@@ -364,13 +374,42 @@ def update_club_email(club_id):
 
         new_email = sanitize_string(new_email, max_length=120)
 
-        old_email = club.email
-        club.email = new_email
+        # Get the club leader
+        leader = club.leader
+        if not leader:
+            return jsonify({
+                'error': 'Club has no leader',
+                'details': 'Cannot update email for club without a leader'
+            }), 400
+
+        old_email = leader.email
+
+        # Update leader's email in database
+        leader.email = new_email
         db.session.commit()
+
+        # Sync to Airtable - get club's linked leader and update that leader's email
+        airtable_synced = False
+        airtable_data = club.get_airtable_data()
+        airtable_id = airtable_data.get('airtable_id') if airtable_data else None
+
+        if airtable_id:
+            try:
+                airtable_service = AirtableService()
+                # Pass club name as fallback in case airtable_id is outdated
+                airtable_synced = airtable_service.update_club_leader_email_direct(
+                    airtable_id,
+                    new_email,
+                    club_name=club.name
+                )
+                if not airtable_synced:
+                    current_app.logger.warning(f"Failed to sync email to Airtable for club {club_id}")
+            except Exception as e:
+                current_app.logger.error(f"Error syncing email to Airtable: {str(e)}")
 
         create_audit_log(
             action_type='club_email_update',
-            description=f'Club {club.name} email updated from {old_email} to {new_email}',
+            description=f'Club {club.name} leader email updated from {old_email} to {new_email}',
             user=user,
             target_type='club',
             target_id=club_id,
@@ -379,18 +418,87 @@ def update_club_email(club_id):
 
         return jsonify({
             'success': True,
-            'message': 'Email updated successfully',
+            'message': 'Email updated successfully and synced to Airtable' if airtable_synced else 'Email updated successfully',
             'email': new_email
         })
     except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating club email: {str(e)}")
         return jsonify({
             'error': 'Failed to update email',
             'details': str(e)
         }), 400
 
 
+@clubs_bp.route('/api/clubs/<int:club_id>/unlink-dashboard', methods=['POST'])
+@login_required
+@club_not_suspended
+def unlink_club_from_dashboard(club_id):
+    """Unlink club from dashboard by removing Onboarded to Dashboard status and deleting the club"""
+    from app.models.user import create_audit_log
+    from app.services.airtable import AirtableService
+    
+    club = Club.query.get_or_404(club_id)
+    user = get_current_user()
+    
+    # Only leader can unlink
+    if club.leader_id != user.id and not user.is_admin:
+        return jsonify({'error': 'Only club leaders can unlink the club from dashboard'}), 403
+    
+    try:
+        # Get Airtable ID from club data
+        airtable_data = club.get_airtable_data()
+        airtable_id = airtable_data.get('airtable_id') if airtable_data else None
+        
+        if not airtable_id:
+            return jsonify({
+                'error': 'Club is not connected to Airtable',
+                'details': 'This club does not have an Airtable ID'
+            }), 400
+        
+        # Unmark club as onboarded in Airtable
+        airtable_service = AirtableService()
+        success = airtable_service.unmark_club_onboarded(airtable_id, club_name=club.name)
+        
+        if not success:
+            return jsonify({
+                'error': 'Failed to unlink club from dashboard',
+                'details': 'Could not update Airtable record'
+            }), 500
+        
+        club_name = club.name
+        
+        # Create audit log before deleting
+        create_audit_log(
+            action_type='club_dashboard_unlink_and_delete',
+            description=f'Club {club_name} was unlinked from dashboard and deleted',
+            user=user,
+            target_type='club',
+            target_id=club_id,
+            category='club'
+        )
+        
+        # Delete the club (cascade will handle memberships and related data)
+        db.session.delete(club)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Club successfully unlinked and deleted from dashboard'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error unlinking club from dashboard: {str(e)}")
+        return jsonify({
+            'error': 'Failed to unlink club',
+            'details': str(e)
+        }), 500
+
+
 @clubs_bp.route('/api/club/<int:club_id>/orders', methods=['GET'])
 @login_required
+@club_not_suspended
 def get_club_orders(club_id):
     """Get orders for a club from Airtable"""
     from app.services.airtable import AirtableService
@@ -425,6 +533,7 @@ def get_club_orders(club_id):
 
 @clubs_bp.route('/api/club/<int:club_id>/cosmetics', methods=['GET'])
 @login_required
+@club_not_suspended
 def get_club_cosmetics(club_id):
     """Get available cosmetics for a club"""
     from app.models.club import ClubCosmetic, MemberCosmetic
@@ -463,6 +572,7 @@ def get_club_cosmetics(club_id):
 
 @clubs_bp.route('/api/club/<int:club_id>/cosmetics/purchase', methods=['POST'])
 @login_required
+@club_not_suspended
 def purchase_cosmetic(club_id):
     """Purchase a cosmetic for the club"""
     from app.models.club import ClubCosmetic, MemberCosmetic
@@ -532,6 +642,7 @@ def purchase_cosmetic(club_id):
 
 @clubs_bp.route('/api/club/<int:club_id>/shop-items', methods=['GET'])
 @login_required
+@club_not_suspended
 def get_club_shop_items(club_id):
     """Get shop items available for purchase from Airtable"""
     import requests
@@ -616,6 +727,7 @@ def get_club_shop_items(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/project-submission', methods=['POST'])
 @login_required
+@club_not_suspended
 def submit_club_project(club_id):
     """Submit a project for the club"""
     from app.models.economy import ProjectSubmission
@@ -668,6 +780,7 @@ def submit_club_project(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/members/<int:user_id>', methods=['DELETE'])
 @login_required
+@club_not_suspended
 def remove_club_member(club_id, user_id):
     """Remove a member from the club or allow member to leave"""
     from app.models.user import create_audit_log
@@ -737,6 +850,7 @@ def remove_club_member(club_id, user_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/co-leader', methods=['POST', 'DELETE'])
 @login_required
+@club_not_suspended
 def manage_co_leader(club_id):
     """Make a user co-leader or remove co-leader status"""
     from app.models.user import create_audit_log, User
@@ -885,6 +999,7 @@ def manage_co_leader(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/remove-co-leader', methods=['POST'])
 @login_required
+@club_not_suspended
 def remove_co_leader_legacy(club_id):
     """Remove co-leader (legacy route for backwards compatibility)"""
     from app.models.user import create_audit_log, User
@@ -974,6 +1089,7 @@ def remove_co_leader_legacy(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/join-code', methods=['POST'])
 @login_required
+@club_not_suspended
 def generate_club_join_code(club_id):
     """Generate a new join code for the club"""
     from app.models.user import create_audit_log
@@ -1008,6 +1124,7 @@ def generate_club_join_code(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/settings', methods=['PUT'])
 @login_required
+@club_not_suspended
 def update_club_settings(club_id):
     """Update club settings (name, description, location)"""
     from app.models.user import create_audit_log
@@ -1023,15 +1140,40 @@ def update_club_settings(club_id):
 
     data = request.get_json()
 
+    # Track what changed for Airtable sync
+    old_name = club.name
+    changes = {}
+
     if 'name' in data:
         club.name = data['name'].strip()
+        changes['name'] = club.name
     if 'description' in data:
         club.description = data['description'].strip() if data['description'] else None
+        changes['description'] = club.description
     if 'location' in data:
         club.location = data['location'].strip() if data['location'] else None
+        changes['location'] = club.location
 
     club.updated_at = datetime.now(timezone.utc)
     db.session.commit()
+
+    # Sync changes to Airtable
+    airtable_data = club.get_airtable_data()
+    airtable_id = airtable_data.get('airtable_id') if airtable_data else None
+
+    if airtable_id and changes:
+        try:
+            from app.services.airtable import AirtableService
+            airtable_service = AirtableService()
+            airtable_synced = airtable_service.update_club_info(
+                airtable_id,
+                changes,
+                club_name=old_name  # Use old name for fallback search
+            )
+            if not airtable_synced:
+                current_app.logger.warning(f"Failed to sync club info to Airtable for club {club_id}")
+        except Exception as e:
+            current_app.logger.error(f"Error syncing club info to Airtable: {str(e)}")
 
     create_audit_log(
         action_type='club_settings_updated',
@@ -1044,7 +1186,7 @@ def update_club_settings(club_id):
 
     return jsonify({
         'success': True,
-        'message': 'Club settings updated successfully',
+        'message': 'Club settings updated successfully and synced to Airtable' if (airtable_id and changes) else 'Club settings updated successfully',
         'club': {
             'name': club.name,
             'description': club.description,
@@ -1055,6 +1197,7 @@ def update_club_settings(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/transfer-leadership', methods=['POST'])
 @login_required
+@club_not_suspended
 def transfer_leadership(club_id):
     """Transfer club leadership to another member"""
     from app.models.user import create_audit_log, User
@@ -1137,6 +1280,7 @@ def transfer_leadership(club_id):
 
 @clubs_bp.route('/api/clubs/<int:club_id>/transactions', methods=['GET'])
 @login_required
+@club_not_suspended
 def get_club_transactions(club_id):
     """Get all transactions for a club"""
     from app.models.economy import ClubTransaction
@@ -1290,4 +1434,117 @@ def get_piggy_bank_transactions(club_id):
             'has_prev': pagination.has_prev,
             'has_next': pagination.has_next
         }
+    })
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/team-notes', methods=['GET'])
+@login_required
+@club_not_suspended
+def get_team_notes(club_id):
+    """Get team notes for a club"""
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_co_leader = is_user_co_leader(club, current_user)
+    
+    # Check if user has permission or is a club leader/co-leader
+    has_permission = (current_user.has_permission('clubs.view_team_notes') or 
+                     is_leader or is_co_leader or current_user.is_admin)
+    
+    if not has_permission:
+        return jsonify({'error': 'You do not have permission to view team notes'}), 403
+
+    # ALWAYS get team notes from Airtable first (source of truth)
+    team_notes = ''
+    airtable_data = club.get_airtable_data()
+    
+    if airtable_data and 'team_notes' in airtable_data:
+        team_notes = airtable_data.get('team_notes', '')
+    else:
+        # Fallback to database if Airtable doesn't have it
+        team_notes = club.team_notes or ''
+
+    return jsonify({
+        'success': True,
+        'team_notes': team_notes,
+        'club_id': club_id,
+        'club_name': club.name
+    })
+
+
+@clubs_bp.route('/api/clubs/<int:club_id>/team-notes', methods=['PUT'])
+@login_required
+@club_not_suspended
+def update_team_notes(club_id):
+    """Update team notes for a club"""
+    from app.models.user import create_audit_log
+    from app.services.airtable import AirtableService
+    from app.utils.sanitization import sanitize_string
+    
+    current_user = get_current_user()
+    club = Club.query.get_or_404(club_id)
+
+    is_leader = club.leader_id == current_user.id
+    is_co_leader = is_user_co_leader(club, current_user)
+    
+    # Check if user has permission or is a club leader/co-leader
+    has_permission = (current_user.has_permission('clubs.edit_team_notes') or 
+                     is_leader or is_co_leader or current_user.is_admin)
+    
+    if not has_permission:
+        return jsonify({'error': 'You do not have permission to edit team notes'}), 403
+
+    data = request.get_json()
+    team_notes = data.get('team_notes', '').strip()
+    
+    # Sanitize input (but allow more text since it's internal notes)
+    if len(team_notes) > 10000:
+        return jsonify({'error': 'Team notes are too long (max 10,000 characters)'}), 400
+
+    # Update in database
+    club.team_notes = team_notes
+    club.updated_at = datetime.now(timezone.utc)
+
+    # Sync to Airtable
+    airtable_synced = False
+    airtable_data = club.get_airtable_data()
+    airtable_id = airtable_data.get('airtable_id') if airtable_data else None
+
+    if airtable_id:
+        try:
+            airtable_service = AirtableService()
+            airtable_synced = airtable_service.update_club_team_notes(
+                airtable_id,
+                team_notes,
+                club_name=club.name
+            )
+            if airtable_synced:
+                # Update the airtable_data field with the new team notes
+                airtable_data['team_notes'] = team_notes
+                club.set_airtable_data(airtable_data)
+            else:
+                current_app.logger.warning(f"Failed to sync team notes to Airtable for club {club_id}")
+        except Exception as e:
+            current_app.logger.error(f"Error syncing team notes to Airtable: {str(e)}")
+    
+    db.session.commit()
+
+    create_audit_log(
+        action_type='team_notes_updated',
+        description=f'Updated team notes for club {club.name}',
+        user=current_user,
+        target_type='club',
+        target_id=club_id,
+        details={'airtable_synced': airtable_synced},
+        category='club'
+    )
+
+    sync_message = ' and synced to Airtable' if airtable_synced else ''
+    
+    return jsonify({
+        'success': True,
+        'message': f'Team notes updated successfully{sync_message}',
+        'team_notes': team_notes,
+        'club_id': club_id
     })

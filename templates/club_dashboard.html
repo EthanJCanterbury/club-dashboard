@@ -527,6 +527,17 @@ endblock %} {% block extra_head %}
                                     <i class="fas fa-cogs"></i> Settings
                                 </a>
                             </li>
+                            {% if current_user.has_permission('clubs.view_team_notes') or current_user.id == club.leader_id or is_co_leader or current_user.is_admin %}
+                            <li>
+                                <a
+                                    href="#team-notes"
+                                    class="nav-link"
+                                    data-section="team-notes"
+                                >
+                                    <i class="fas fa-sticky-note"></i> Team Notes
+                                </a>
+                            </li>
+                            {% endif %}
                         </ul>
                     </div>
                     {% endif %}
@@ -2454,6 +2465,59 @@ console.log('Hello, world!');
                         </div>
                     </div>
 
+                    {% if current_user.id == club.leader_id and is_connected_to_directory %}
+                    <div class="card" style="margin-top: 2rem">
+                        <div class="card-header">
+                            <h3 style="color: #dc3545">
+                                <i class="fas fa-trash-alt"></i> Delete Club
+                            </h3>
+                            <p
+                                style="
+                                    margin: 0.5rem 0 0 0;
+                                    color: #6b7280;
+                                    font-size: 0.9rem;
+                                "
+                            >
+                                Permanently delete this club from the dashboard
+                            </p>
+                        </div>
+                        <div class="card-body">
+                            <div
+                                style="
+                                    background: #fff3cd;
+                                    border: 1px solid #ffeaa7;
+                                    border-radius: 8px;
+                                    padding: 1rem;
+                                    margin-bottom: 1.5rem;
+                                "
+                            >
+                                <p
+                                    style="
+                                        margin: 0;
+                                        color: #856404;
+                                        font-size: 0.9rem;
+                                    "
+                                >
+                                    <i
+                                        class="fas fa-exclamation-triangle"
+                                        style="
+                                            color: #f39c12;
+                                            margin-right: 0.5rem;
+                                        "
+                                    ></i>
+                                    <strong>Warning:</strong> Unlinking your club will remove the "Onboarded to Dashboard" status in Airtable and <strong style="color: #dc3545;">permanently delete</strong> your club from the dashboard, including all data, members, posts, and economy data. You will need to reconnect and recreate the club to access dashboard features again.
+                                </p>
+                            </div>
+                            <button
+                                class="btn"
+                                style="background-color: #dc3545; color: white"
+                                onclick="initiateUnlinkClub()"
+                            >
+                                <i class="fas fa-trash-alt"></i> Delete Club from Dashboard
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <div class="card" style="margin-top: 2rem">
                         <div class="card-header">
@@ -2592,6 +2656,77 @@ console.log('Hello, world!');
                     </div>
                 </section>
                 {% endif %}
+
+                <!-- Team Notes Section -->
+                {% if current_user.has_permission('clubs.view_team_notes') or current_user.id == club.leader_id or is_co_leader or current_user.is_admin %}
+                <section id="team-notes" class="club-section fade-in">
+                    <div class="content-header">
+                        <div>
+                            <h2><i class="fas fa-sticky-note"></i> Team Notes</h2>
+                            <p>Internal notes for club leaders and administrators</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Team Notes</h3>
+                        </div>
+                        <div class="card-body">
+                            <div
+                                style="
+                                    background: #e3f2fd;
+                                    border: 1px solid #bbdefb;
+                                    border-radius: 8px;
+                                    padding: 1rem;
+                                    margin-bottom: 1.5rem;
+                                "
+                            >
+                                <p
+                                    style="
+                                        margin: 0;
+                                        color: #1565c0;
+                                        font-size: 0.9rem;
+                                        font-weight: 600;
+                                    "
+                                >
+                                    <i
+                                        class="fas fa-info-circle"
+                                        style="
+                                            color: #1976d2;
+                                            margin-right: 0.5rem;
+                                        "
+                                    ></i>
+                                    <strong>Private Notes:</strong> These notes are visible only to club leaders, co-leaders, and administrators. They sync with Airtable's "Team Notes" field.
+                                </p>
+                            </div>
+
+                            <form id="teamNotesForm">
+                                <div class="form-group">
+                                    <label class="form-label">Notes</label>
+                                    <textarea
+                                        class="form-control"
+                                        id="teamNotesContent"
+                                        rows="10"
+                                        placeholder="Add internal notes about your club here..."
+                                        {% if not (current_user.has_permission('clubs.edit_team_notes') or current_user.id == club.leader_id or is_co_leader or current_user.is_admin) %}disabled{% endif %}
+                                    >{{ club.team_notes or '' }}</textarea>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i>
+                                        Use this space for planning, meeting notes, important reminders, or any internal club information.
+                                    </small>
+                                </div>
+                                {% if current_user.has_permission('clubs.edit_team_notes') or current_user.id == club.leader_id or is_co_leader or current_user.is_admin %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Team Notes
+                                </button>
+                                {% endif %}
+                            </form>
+
+                            <div id="teamNotesStatus" style="margin-top: 1rem;"></div>
+                        </div>
+                    </div>
+                </section>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -2672,6 +2807,49 @@ console.log('Hello, world!');
             </button>
             <button id="confirmRemoveBackground" class="btn-modal btn-danger">
                 <i class="fas fa-trash-alt"></i> Remove Background
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<div id="unlinkClubModal" class="modal" style="display: none">
+    <div class="modal-content">
+        <div class="modal-header error">
+            <h3>
+                <i class="fas fa-exclamation-triangle"></i>
+                Unlink and Delete Club
+            </h3>
+            <button
+                onclick="closeModal('unlinkClubModal')"
+                class="modal-close"
+            >
+                &times;
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>
+                Are you sure you want to unlink this club from the dashboard? This action will:
+            </p>
+            <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                <li>Remove the "Onboarded to Dashboard" status in Airtable</li>
+                <li><strong style="color: #dc3545;">Permanently delete the club from the dashboard</strong></li>
+                <li>Remove all club data, members, posts, and economy data</li>
+                <li>Require you to reconnect and recreate the club to access dashboard features again</li>
+            </ul>
+            <p style="color: #dc3545; font-weight: 600;">
+                This action cannot be undone!
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button
+                onclick="closeModal('unlinkClubModal')"
+                class="btn-modal btn-secondary"
+            >
+                Cancel
+            </button>
+            <button id="confirmUnlinkClub" class="btn-modal btn-danger">
+                <i class="fas fa-trash-alt"></i> Delete Club
             </button>
         </div>
     </div>
@@ -5518,6 +5696,67 @@ console.log('Hello, world!');
                     "error",
                     error.message ||
                         "Failed to update email. Please try again.",
+                    "Error",
+                );
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+    }
+
+    // Unlink Club from Dashboard Functions
+    function initiateUnlinkClub() {
+        openModal('unlinkClubModal');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const confirmUnlinkBtn = document.getElementById('confirmUnlinkClub');
+        if (confirmUnlinkBtn) {
+            confirmUnlinkBtn.addEventListener('click', function() {
+                unlinkClubFromDashboard();
+            });
+        }
+    });
+
+    function unlinkClubFromDashboard() {
+        const btn = document.getElementById('confirmUnlinkClub');
+        const originalText = btn.innerHTML;
+
+        // Disable button and show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Unlinking...';
+
+        const clubId = document.querySelector(".club-dashboard").dataset.clubId;
+
+        fetch(`/api/clubs/${clubId}/unlink-dashboard`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            credentials: "same-origin"
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success) {
+                    showToast(
+                        "success",
+                        "Club unlinked and deleted successfully! Redirecting...",
+                        "Deleted",
+                    );
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1500);
+                } else {
+                    const errorMsg = data.details ? `${data.error}: ${data.details}` : data.error;
+                    throw new Error(errorMsg || "Failed to unlink club");
+                }
+            })
+            .catch((error) => {
+                console.error("Error unlinking club:", error);
+                showToast(
+                    "error",
+                    error.message ||
+                        "Failed to unlink club. Please try again.",
                     "Error",
                 );
                 btn.innerHTML = originalText;

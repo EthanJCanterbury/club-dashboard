@@ -38,6 +38,56 @@
         {% endif %}
     </div>
 
+    {% if current_user and (current_user.has_permission('clubs.view_team_notes') or current_user.is_admin) %}
+    <div style="background: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2>Team Notes</h2>
+        <p style="color: #64748b; margin-bottom: 1rem;">Internal notes for administrators and club leaders</p>
+        <textarea id="teamNotesText" rows="8" style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; font-family: inherit; margin-bottom: 1rem;"
+            {% if current_user and not (current_user.has_permission('clubs.edit_team_notes') or current_user.is_admin) %}disabled{% endif %}
+            placeholder="Add internal notes about this club here...">{{ club.team_notes or '' }}</textarea>
+        {% if current_user and (current_user.has_permission('clubs.edit_team_notes') or current_user.is_admin) %}
+        <button onclick="saveTeamNotes()" style="background: #8b5cf6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer;">
+            <i class="fas fa-save"></i> Save Team Notes
+        </button>
+        {% endif %}
+        <div id="teamNotesStatus" style="margin-top: 1rem;"></div>
+    </div>
+    {% endif %}
+
+    <script>
+        function saveTeamNotes() {
+            const teamNotes = document.getElementById('teamNotesText').value;
+            
+            fetch('/api/clubs/{{ club.id }}/team-notes', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ team_notes: teamNotes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatus(data.message || 'Team notes saved successfully!', 'success');
+                } else {
+                    showStatus(data.error || 'Error saving team notes', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving team notes:', error);
+                showStatus('Error saving team notes', 'error');
+            });
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('teamNotesStatus');
+            statusDiv.innerHTML = `<div style="padding: 0.75rem; border-radius: 5px; background: ${type === 'success' ? '#d1fae5' : '#fee2e2'}; color: ${type === 'success' ? '#059669' : '#dc2626'};">${message}</div>`;
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 3000);
+        }
+    </script>
+
     <div style="margin-top: 2rem;">
         <a href="{{ url_for('admin.clubs') }}" style="color: #3b82f6;">← Back to Clubs List</a>
     </div>

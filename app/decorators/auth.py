@@ -192,6 +192,54 @@ def admin_required(f):
     return decorated_function
 
 
+def club_not_suspended(f):
+    """
+    Decorator to block access to suspended clubs (except for system admins).
+    
+    This should be used on club-related routes to prevent members/leaders
+    from accessing or modifying suspended clubs.
+    
+    Args:
+        f: The function to decorate (must have club_id parameter)
+    
+    Returns:
+        The decorated function
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from app.utils.auth_helpers import get_current_user
+        from app.models.club import Club
+        from flask import current_app
+        
+        club_id = kwargs.get('club_id')
+        if not club_id:
+            # If no club_id, let the route handle it
+            return f(*args, **kwargs)
+        
+        club = Club.query.get(club_id)
+        if not club:
+            # If club doesn't exist, let the route handle 404
+            return f(*args, **kwargs)
+        
+        current_user = get_current_user()
+        
+        # Allow system admins and admin access mode
+        is_admin_access = request.args.get('admin') == 'true' and (current_user and current_user.is_admin)
+        if current_user and (current_user.is_admin or is_admin_access):
+            return f(*args, **kwargs)
+        
+        # Block access to suspended clubs
+        if club.is_suspended:
+            current_app.logger.warning(f"Blocked access to suspended club {club_id} by user {current_user.id if current_user else 'anonymous'}")
+            if request.is_json:
+                return jsonify({'error': 'This club has been suspended and cannot be accessed'}), 403
+            flash('This club has been suspended by administrators and cannot be accessed at this time. Please contact clubs@hackclub.com for assistance.', 'error')
+            return redirect(url_for('main.dashboard'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def reviewer_required(f):
     """
     Reviewer access decorator - checks for RBAC reviewer permissions.

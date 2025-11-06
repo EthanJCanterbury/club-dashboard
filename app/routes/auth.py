@@ -379,15 +379,293 @@ def disconnect_identity():
 @limiter.limit("10 per minute")
 def verify_leader():
     """Verify club leader with Airtable"""
-    return render_template('verify_leader.html')
+    if request.method == 'GET':
+        return render_template('verify_leader.html')
+    
+    # Handle POST requests with JSON data
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        step = data.get('step')
+        
+        if step == 'send_verification':
+            email = data.get('email', '').strip().lower()
+            if not email or '@' not in email:
+                return jsonify({'success': False, 'error': 'Valid email is required'}), 400
+            
+            # Use Airtable service to send verification code
+            from app.services.airtable import AirtableService
+            airtable_service = AirtableService()
+            
+            result = airtable_service.send_email_verification(email)
+            if result:
+                return jsonify({
+                    'success': True,
+                    'message': 'Verification code sent to your email'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to send verification code. Please try again.'
+                }), 500
+        
+        elif step == 'verify_email':
+            email = data.get('email', '').strip().lower()
+            code = data.get('verification_code', '').strip()
+            
+            if not email or not code:
+                return jsonify({'success': False, 'error': 'Email and code are required'}), 400
+            
+            from app.services.airtable import AirtableService
+            airtable_service = AirtableService()
+            
+            is_valid = airtable_service.verify_email_code(email, code)
+            if is_valid:
+                # Store verified email in session
+                session['verified_leader_email'] = email
+                return jsonify({
+                    'success': True,
+                    'message': 'Email verified successfully'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Invalid or expired verification code'
+                }), 400
+        
+        elif step == 'get_clubs':
+            email = data.get('email', '').strip().lower()
+            
+            # Check if email is verified in session
+            if session.get('verified_leader_email') != email:
+                return jsonify({
+                    'success': False,
+                    'error': 'Email not verified. Please verify your email first.'
+                }), 403
+            
+            from app.services.airtable import AirtableService
+            airtable_service = AirtableService()
+            
+            # Get clubs from Airtable for this email
+            clubs = airtable_service.get_clubs_by_leader_email(email)
+            if clubs:
+                return jsonify({
+                    'success': True,
+                    'clubs': clubs
+                })
+            else:
+                return jsonify({
+                    'success': True,
+                    'clubs': [],
+                    'message': 'No clubs found for this email'
+                })
+        
+        elif step == 'link_club':
+            email = data.get('email', '').strip().lower()
+            club_name = data.get('club_name', '').strip()
+            
+            # Check if email is verified in session
+            if session.get('verified_leader_email') != email:
+                return jsonify({
+                    'success': False,
+                    'error': 'Email not verified. Please verify your email first.'
+                }), 403
+            
+            if not club_name:
+                return jsonify({'success': False, 'error': 'Club name is required'}), 400
+            
+            from app.services.airtable import AirtableService
+            airtable_service = AirtableService()
+            
+            # Get club details to check suspension status
+            clubs = airtable_service.get_clubs_by_leader_email(email)
+            club_data = next((c for c in clubs if c['name'] == club_name), None)
+            
+            if not club_data:
+                return jsonify({
+                    'success': False,
+                    'error': 'Club not found for this email'
+                }), 404
+            
+            # Check if club is suspended
+            if club_data.get('suspended', False):
+                return jsonify({
+                    'success': False,
+                    'error': 'This club is currently suspended and cannot be linked'
+                }), 403
+            
+            # Verify this email is a leader of this club
+            is_leader = airtable_service.verify_club_leader(email, club_name)
+            if not is_leader:
+                return jsonify({
+                    'success': False,
+                    'error': 'Unable to verify leadership for this club'
+                }), 403
+            
+            # Store the club info in session for completion
+            session['leader_club_name'] = club_name
+            session['leader_verified'] = True
+            
+            return jsonify({
+                'success': True,
+                'message': 'Club linked successfully'
+            })
+        
+        else:
+            return jsonify({'success': False, 'error': 'Invalid step'}), 400
+            
+    except Exception as e:
+        current_app.logger.error(f'Error in verify_leader: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': 'An error occurred. Please try again.'
+        }), 500
 
 
 @auth_bp.route('/complete-leader-signup')
-@login_required
 def complete_leader_signup():
     """Complete signup for verified leaders"""
-    flash('Leader signup completion is not yet implemented', 'warning')
-    return redirect(url_for('main.dashboard'))
+    from app.utils.auth_helpers import get_current_user
+    from app.services.airtable import AirtableService
+    import secrets
+    import string
+    import json
+    
+    # Check if leader verification is complete
+    if not session.get('leader_verified'):
+        flash('Please complete the leader verification process first', 'error')
+        return redirect(url_for('auth.verify_leader'))
+    
+    club_name = session.get('leader_club_name')
+    verified_email = session.get('verified_leader_email')
+    
+    if not club_name or not verified_email:
+        flash('Verification session expired. Please verify again.', 'error')
+        return redirect(url_for('auth.verify_leader'))
+    
+    # Check if user is logged in
+    if not is_authenticated():
+        # Store club info in session and redirect to signup/login
+        session['pending_leader_verification'] = True
+        flash('Please create an account or log in to complete the verification', 'info')
+        return redirect(url_for('auth.signup'))
+    
+    user = get_current_user()
+    
+    try:
+        # Fetch club details from Airtable first
+        airtable_service = AirtableService()
+        clubs = airtable_service.get_clubs_by_leader_email(verified_email)
+        club_data = next((c for c in clubs if c['name'] == club_name), None)
+        
+        if not club_data:
+            flash('Unable to fetch club details from Airtable or club is suspended', 'error')
+            return redirect(url_for('auth.verify_leader'))
+        
+        # Double-check suspension status
+        if club_data.get('suspended', False):
+            flash('This club is currently suspended and cannot be linked', 'error')
+            return redirect(url_for('auth.verify_leader'))
+        
+        # Check if club already exists in database
+        club = Club.query.filter_by(name=club_name).first()
+        
+        if club:
+            # Club exists, update leader and sync with Airtable
+            if club.leader_id != user.id:
+                # Check if club is suspended in our database
+                if club.is_suspended:
+                    flash('This club is currently suspended and cannot be linked', 'error')
+                    return redirect(url_for('auth.verify_leader'))
+                
+                old_leader_id = club.leader_id
+                club.leader_id = user.id
+                
+                from app.models.user import create_audit_log
+                create_audit_log(
+                    action_type='club_leader_verified',
+                    description=f'User {user.username} verified as leader of club {club.name}',
+                    user=user,
+                    category='club',
+                    severity='info'
+                )
+                
+                flash(f'Successfully verified as leader of {club.name}!', 'success')
+            else:
+                flash(f'You are already the leader of {club.name}!', 'info')
+            
+            # Update Airtable data regardless
+            airtable_data_dict = club_data.get('airtable_data', {})
+            club.airtable_data = json.dumps(airtable_data_dict)
+            club.location = club_data.get('location', club.location)
+            # Sync suspension status from Airtable
+            club.is_suspended = club_data.get('suspended', False)
+            
+        else:
+            # Create new club with generated join code and sync with Airtable
+            join_code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+            
+            # Ensure join code is unique
+            while Club.query.filter_by(join_code=join_code).first():
+                join_code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+            
+            # Get Airtable data
+            airtable_data_dict = club_data.get('airtable_data', {})
+            
+            club = Club(
+                name=club_name,
+                leader_id=user.id,
+                location=club_data.get('location', ''),
+                description=f"Club imported from Hack Club directory",
+                join_code=join_code,
+                is_suspended=club_data.get('suspended', False),
+                airtable_data=json.dumps(airtable_data_dict)
+            )
+            
+            db.session.add(club)
+            db.session.flush()  # Get the club ID before commit
+            
+            # Mark club as onboarded in Airtable
+            if airtable_data_dict.get('airtable_id'):
+                airtable_service.mark_club_onboarded(airtable_data_dict['airtable_id'], club_name=club.name)
+            
+            from app.models.user import create_audit_log
+            create_audit_log(
+                action_type='club_created',
+                description=f'Club {club.name} created and linked to verified leader {user.username}',
+                user=user,
+                category='club',
+                severity='info'
+            )
+            
+            flash(f'Successfully created and verified as leader of {club.name}!', 'success')
+        
+        # Update user's verified email if different
+        if user.email != verified_email:
+            user.email = verified_email
+        
+        # Mark user as verified leader
+        user.is_verified = True
+        
+        db.session.commit()
+        
+        # Clear session data
+        session.pop('leader_verified', None)
+        session.pop('leader_club_name', None)
+        session.pop('verified_leader_email', None)
+        session.pop('pending_leader_verification', None)
+        
+        return redirect(url_for('main.dashboard'))
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error completing leader signup: {str(e)}')
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash('An error occurred while completing signup. Please try again.', 'error')
+        return redirect(url_for('auth.verify_leader'))
 
 
 @auth_bp.route('/setup-hackatime', methods=['GET', 'POST'])

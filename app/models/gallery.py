@@ -16,7 +16,7 @@ class GalleryPost(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     featured = db.Column(db.Boolean, default=False)
 
-    club = db.relationship('Club', backref='gallery_posts')
+    club = db.relationship('Club', backref=db.backref('gallery_posts', cascade='all, delete-orphan'))
     user = db.relationship('User', backref='gallery_posts')
 
     def get_images(self):

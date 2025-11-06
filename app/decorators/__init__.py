@@ -12,7 +12,8 @@ from app.decorators.auth import (
     admin_required,
     reviewer_required,
     api_key_required,
-    oauth_required
+    oauth_required,
+    club_not_suspended
 )
 from app.decorators.economy import economy_required
 
@@ -25,4 +26,5 @@ __all__ = [
     'api_key_required',
     'oauth_required',
     'economy_required',
+    'club_not_suspended',
 ]

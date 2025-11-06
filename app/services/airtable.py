@@ -34,9 +34,12 @@ class AirtableService:
         self.api_token = os.environ.get('AIRTABLE_TOKEN')
         self.base_id = os.environ.get('AIRTABLE_BASE_ID', 'appSnnIu0BhjI3E1p')
         self.table_name = os.environ.get('AIRTABLE_TABLE_NAME', 'Grants')
-        self.clubs_base_id = os.environ.get('AIRTABLE_CLUBS_BASE_ID', 'appSUAc40CDu6bDAp')
-        self.clubs_table_id = os.environ.get('AIRTABLE_CLUBS_TABLE_ID', 'tbl5saCV1f7ZWjsn0')
-        self.clubs_table_name = os.environ.get('AIRTABLE_CLUBS_TABLE_NAME', 'Clubs Dashboard')
+        # New Clubs base configuration
+        self.clubs_base_id = os.environ.get('AIRTABLE_CLUBS_BASE_ID', 'appUfrUFraxH3D5Ob')
+        self.clubs_table_id = os.environ.get('AIRTABLE_CLUBS_TABLE_ID', 'tblsA5iv6Fz0qxHFC')
+        self.clubs_table_name = os.environ.get('AIRTABLE_CLUBS_TABLE_NAME', 'Clubs')
+        self.leaders_table_id = os.environ.get('AIRTABLE_LEADERS_TABLE_ID', 'tblGjo7FkEXxF6BQt')
+        self.leaders_table_name = os.environ.get('AIRTABLE_LEADERS_TABLE_NAME', 'Leaders')
         self.email_verification_table_name = 'Dashboard Email Verification'
         self.headers = {
             'Authorization': f'Bearer {self.api_token}',
@@ -46,6 +49,7 @@ class AirtableService:
         self.base_url = f'https://api.airtable.com/v0/{self.base_id}/{encoded_table_name}'
 
         self.clubs_base_url = f'https://api.airtable.com/v0/{self.clubs_base_id}/{self.clubs_table_id}'
+        self.leaders_base_url = f'https://api.airtable.com/v0/{self.clubs_base_id}/{self.leaders_table_id}'
         self.email_verification_url = f'https://api.airtable.com/v0/{self.clubs_base_id}/{urllib.parse.quote(self.email_verification_table_name)}'
 
     def _validate_airtable_url(self, url):
@@ -112,8 +116,9 @@ class AirtableService:
             return False
 
         try:
+            # Note: Leader Email is a lookup field from the Leaders table
             email_filter_params = {
-                'filterByFormula': f'{{Current Leaders\' Emails}} = "{escaped_email}"'
+                'filterByFormula': f'{{Leader Email}} = "{escaped_email}"'
             }
 
             logger.info(f"Verifying club leader: email={email}, club={club_name}")
@@ -183,6 +188,83 @@ class AirtableService:
         except Exception as e:
             logger.error(f"Exception during Airtable verification: {str(e)}")
             return False
+
+    def get_clubs_by_leader_email(self, email):
+        """Get all clubs for a given leader email (includes suspended clubs with status)"""
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return []
+
+        if not self.clubs_base_id or not self.clubs_table_name:
+            logger.error("Airtable clubs base ID or table name not configured")
+            return []
+
+        if not email or '@' not in email or len(email) < 3:
+            logger.error("Invalid email format")
+            return []
+
+        escaped_email = email.replace('"', '""').replace("'", "''")
+
+        try:
+            # Note: Leader Email is a lookup field from the Leaders table
+            email_filter_params = {
+                'filterByFormula': f'{{Leader Email}} = "{escaped_email}"'
+            }
+
+            logger.info(f"Getting clubs for leader email: {email}")
+            
+            response = self._safe_request('GET', self.clubs_base_url, headers=self.headers, params=email_filter_params)
+
+            if response.status_code == 200:
+                data = response.json()
+                records = data.get('records', [])
+                logger.info(f"Found {len(records)} clubs for email {email}")
+                
+                clubs = []
+                for record in records:
+                    fields = record.get('fields', {})
+                    club_name = fields.get('Club Name', 'Unknown Club')
+                    # New base uses Venue Name for location
+                    location = fields.get('Venue Name', '') or fields.get('Venue City', '')
+                    is_suspended = fields.get('Suspension Status', False)
+
+                    clubs.append({
+                        'name': club_name,
+                        'location': location,
+                        'suspended': is_suspended,
+                        'airtable_id': record.get('id'),
+                        'airtable_data': {
+                            'airtable_id': record.get('id'),
+                            'name': club_name,
+                            'location': location,
+                            'venue': fields.get('Venue Name', ''),
+                            'suspended': is_suspended,
+                            'status': fields.get('Club Status', ''),
+                            'meeting_day': fields.get('Est. Day(s) of Meetings', ''),
+                            'meeting_time': fields.get('Est. Meeting Length', ''),
+                            'website': fields.get('Website', ''),
+                            'slack_channel': fields.get('Slack Channel', ''),
+                            'github': fields.get('GitHub', ''),
+                            'latitude': fields.get('venue_lat'),
+                            'longitude': fields.get('venue_lng'),
+                            'country': fields.get('Venue Country', ''),
+                            'leader_emails': fields.get("Leader Email", ''),
+                            'team_notes': fields.get('Team Notes', '').strip() if fields.get('Team Notes') else '',
+                        }
+                    })
+                    
+                    if is_suspended:
+                        logger.info(f"Club {club_name} is marked as suspended")
+                
+                logger.info(f"Returning {len(clubs)} clubs (including {sum(1 for c in clubs if c.get('suspended'))} suspended)")
+                return clubs
+            else:
+                logger.error(f"Airtable API error {response.status_code}: {response.text}")
+                return []
+
+        except Exception as e:
+            logger.error(f"Exception getting clubs by email: {str(e)}")
+            return []
 
     def log_pizza_grant(self, submission_data):
         if not self.api_token:
@@ -520,27 +602,32 @@ class AirtableService:
                 fields = record.get('fields', {})
                 logger.debug(f"Processing record {i+1}/{len(all_records)}: ID={record.get('id')}, Fields keys: {list(fields.keys())}")
 
+                # Leader Email is a lookup field that returns an array
+                leader_email_field = fields.get("Leader Email", [])
+                leader_email = leader_email_field[0] if isinstance(leader_email_field, list) and leader_email_field else (leader_email_field if isinstance(leader_email_field, str) else '')
+
                 club_data = {
                     'airtable_id': record['id'],
                     'name': fields.get('Club Name', '').strip(),
-                    'leader_email': fields.get("Current Leaders' Emails", '').split(',')[0].strip() if fields.get("Current Leaders' Emails") else '',
-                    'location': fields.get('Location', '').strip(),
+                    'leader_email': leader_email.strip() if leader_email else '',
+                    'location': (fields.get('Venue Name', '') or fields.get('Venue City', '')).strip(),
                     'description': fields.get('Description', '').strip(),
-                    'status': fields.get('Status', '').strip(),
-                    'meeting_day': fields.get('Meeting Day', '').strip(),
-                    'meeting_time': fields.get('Meeting Time', '').strip(),
+                    'status': fields.get('Club Status', '').strip(),
+                    'meeting_day': str(fields.get('Est. Day(s) of Meetings', '')).strip(),
+                    'meeting_time': fields.get('Est. Meeting Length', '').strip(),
                     'website': fields.get('Website', '').strip(),
                     'slack_channel': fields.get('Slack Channel', '').strip(),
                     'github': fields.get('GitHub', '').strip(),
-                    'latitude': fields.get('Latitude'),
-                    'longitude': fields.get('Longitude'),
-                    'country': fields.get('Country', '').strip(),
-                    'region': fields.get('Region', '').strip(),
-                    'timezone': fields.get('Timezone', '').strip(),
-                    'primary_leader': fields.get('Primary Leader', '').strip(),
-                    'co_leaders': fields.get('Co-Leaders', '').strip(),
-                    'meeting_notes': fields.get('Meeting Notes', '').strip(),
-                    'club_applications_link': fields.get('Club Applications Link', '').strip(),
+                    'latitude': fields.get('venue_lat'),
+                    'longitude': fields.get('venue_lng'),
+                    'country': fields.get('Venue Country', '').strip(),
+                    'region': '',  # Not available in new schema
+                    'timezone': '',  # Not available in new schema
+                    'primary_leader': '',  # Leader info is in separate table
+                    'co_leaders': '',  # Co-leader info is in separate table
+                    'meeting_notes': fields.get('Description', '').strip(),
+                    'club_applications_link': '',  # Not available in new schema
+                    'team_notes': fields.get('Team Notes', '').strip(),
                 }
 
                 if club_data['name'] and club_data['leader_email']:
@@ -565,6 +652,11 @@ class AirtableService:
             club = Club.query.get(club_id)
             if not club:
                 logger.error(f"Club with ID {club_id} not found in database")
+                return False
+
+            # Check if the Airtable club is suspended
+            if airtable_data.get('suspended', False):
+                logger.warning(f"Cannot sync club {club_id} - club is suspended in Airtable")
                 return False
 
             logger.debug(f"Found club: {club.name} (current location: {club.location})")
@@ -598,12 +690,22 @@ class AirtableService:
                 'co_leaders': airtable_data.get('co_leaders'),
                 'meeting_notes': airtable_data.get('meeting_notes'),
                 'club_applications_link': airtable_data.get('club_applications_link'),
+                'team_notes': airtable_data.get('team_notes'),
             })
+
+            # Sync suspension status from Airtable
+            club.is_suspended = airtable_data.get('suspended', False)
 
             club.updated_at = datetime.now(timezone.utc)
             logger.debug(f"Updated club fields for {club.name}")
 
             db.session.commit()
+            
+            # Mark club as onboarded in Airtable
+            airtable_id = airtable_data.get('airtable_id')
+            if airtable_id:
+                self.mark_club_onboarded(airtable_id)
+            
             logger.info(f"Successfully synced club {club_id} ({club.name}) with Airtable data")
             return True
 
@@ -661,6 +763,7 @@ class AirtableService:
                 description=filtered_description,
                 location=airtable_data.get('location'),
                 leader_id=leader.id,
+                is_suspended=airtable_data.get('suspended', False),
                 airtable_data=json.dumps({
                     'airtable_id': airtable_data.get('airtable_id'),
                     'status': airtable_data.get('status'),
@@ -1502,6 +1605,921 @@ class AirtableService:
 
         except Exception as e:
             logger.error(f"AIRTABLE: Exception in delete_pizza_grant: {str(e)}")
+            return False
+
+    def get_all_clubs(self):
+        """Fetch all clubs from Airtable Clubs Dashboard table"""
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return []
+
+        if not self.clubs_base_id or not self.clubs_table_id:
+            logger.error("Airtable clubs base ID or table ID not configured")
+            return []
+
+        try:
+            clubs = []
+            offset = None
+
+            while True:
+                params = {'pageSize': 100}
+                if offset:
+                    params['offset'] = offset
+
+                response = self._safe_request('GET', self.clubs_base_url, headers=self.headers, params=params)
+
+                if response.status_code == 200:
+                    data = response.json()
+                    records = data.get('records', [])
+
+                    for record in records:
+                        fields = record.get('fields', {})
+                        # Leader Email is a lookup field that returns an array
+                        leader_email_field = fields.get("Leader Email", [])
+                        leader_emails = leader_email_field[0] if isinstance(leader_email_field, list) and leader_email_field else (leader_email_field if isinstance(leader_email_field, str) else '')
+
+                        club_data = {
+                            'airtable_id': record.get('id'),
+                            'name': fields.get('Club Name', ''),
+                            'location': fields.get('Venue Name', '') or fields.get('Venue City', ''),
+                            'leader_emails': leader_emails,
+                            'suspended': fields.get('Suspension Status', False),
+                            'is_airtable_only': True,  # Mark as Airtable-only
+                            'team_notes': fields.get('Team Notes', '').strip() if fields.get('Team Notes') else '',
+                        }
+                        clubs.append(club_data)
+
+                    # Check if there are more pages
+                    offset = data.get('offset')
+                    if not offset:
+                        break
+                else:
+                    logger.error(f"Failed to fetch clubs from Airtable: {response.status_code} - {response.text}")
+                    break
+
+            logger.info(f"Fetched {len(clubs)} clubs from Airtable")
+            return clubs
+
+        except Exception as e:
+            logger.error(f"Exception fetching clubs from Airtable: {str(e)}")
+            return []
+
+    def _get_club_airtable_id_by_name(self, club_name):
+        """Helper: Get club's Airtable ID by searching for its name
+        Returns: (airtable_id, club_fields) or (None, None) if not found
+        """
+        try:
+            logger.info(f"🔍 Searching for club by name: {club_name}")
+            all_clubs = self.get_all_clubs()
+
+            club_name_lower = club_name.lower().strip()
+            for club in all_clubs:
+                if club.get('name', '').lower().strip() == club_name_lower:
+                    airtable_id = club.get('airtable_id')
+                    logger.info(f"✅ Found club with ID: {airtable_id}")
+
+                    # Fetch full club details
+                    club_url = f'{self.clubs_base_url}/{airtable_id}'
+                    response = self._safe_request('GET', club_url, headers=self.headers)
+
+                    if response.status_code == 200:
+                        club_data = response.json()
+                        return (airtable_id, club_data.get('fields', {}))
+
+            logger.warning(f"⚠️  Could not find club '{club_name}' in Airtable")
+            return (None, None)
+
+        except Exception as e:
+            logger.error(f"Exception searching for club by name: {str(e)}")
+            return (None, None)
+
+    def update_club_suspension(self, airtable_id, suspended, club_name=None):
+        """Update club suspension status in Airtable
+
+        Args:
+            airtable_id: The Airtable record ID
+            suspended: Boolean suspension status
+            club_name: Optional club name for fallback search
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+
+        if not self.clubs_base_id or not self.clubs_table_id or not airtable_id:
+            logger.error(f"Missing required parameters for updating club suspension - Base: {self.clubs_base_id}, Table: {self.clubs_table_id}, ID: {airtable_id}")
+            return False
+
+        try:
+            update_url = f'{self.clubs_base_url}/{airtable_id}'
+
+            payload = {
+                'fields': {
+                    'Suspension Status': suspended
+                }
+            }
+
+            logger.info(f"Attempting to update club suspension in Airtable: {airtable_id} to {suspended}")
+            logger.debug(f"Update URL: {update_url}")
+            logger.debug(f"Payload: {payload}")
+
+            response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
+
+            if response.status_code == 200:
+                logger.info(f"✅ Successfully updated club suspension in Airtable: {airtable_id} - Suspended: {suspended}")
+                return True
+            elif response.status_code in [403, 404] and club_name:
+                # Fallback: Try finding by name
+                logger.warning(f"⚠️  Could not update by ID, trying fallback search by name")
+                new_id, _ = self._get_club_airtable_id_by_name(club_name)
+
+                if new_id:
+                    logger.info(f"💡 Found new ID: {new_id}, retrying update")
+                    return self.update_club_suspension(new_id, suspended, club_name=None)  # Retry without fallback
+                else:
+                    logger.error(f"❌ Could not find club by name for fallback")
+                    return False
+            else:
+                logger.error(f"❌ Failed to update club suspension: {response.status_code} - {response.text}")
+                logger.error(f"Request was to: {update_url} with payload: {payload}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception updating club suspension: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+
+    def mark_club_onboarded(self, airtable_id, club_name=None):
+        """Mark a club as onboarded to dashboard in Airtable
+
+        Args:
+            airtable_id: The Airtable record ID
+            club_name: Optional club name for fallback search
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+
+        if not self.clubs_base_id or not self.clubs_table_id or not airtable_id:
+            logger.error("Missing required parameters for marking club as onboarded")
+            return False
+
+        try:
+            update_url = f'{self.clubs_base_url}/{airtable_id}'
+
+            payload = {
+                'fields': {
+                    'Onboarded to Dashboard': True
+                }
+            }
+
+            response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
+
+            if response.status_code == 200:
+                logger.info(f"✅ Successfully marked club as onboarded in Airtable: {airtable_id}")
+                return True
+            elif response.status_code in [403, 404] and club_name:
+                # Fallback: Try finding by name
+                logger.warning(f"⚠️  Could not mark onboarded by ID, trying fallback search")
+                new_id, _ = self._get_club_airtable_id_by_name(club_name)
+
+                if new_id:
+                    logger.info(f"💡 Found new ID: {new_id}, retrying")
+                    return self.mark_club_onboarded(new_id, club_name=None)  # Retry without fallback
+                else:
+                    logger.error(f"❌ Could not find club by name for fallback")
+                    return False
+            else:
+                logger.error(f"❌ Failed to mark club as onboarded: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception marking club as onboarded: {str(e)}")
+            return False
+
+    def unmark_club_onboarded(self, airtable_id, club_name=None):
+        """Remove onboarded status from a club in Airtable
+        
+        Args:
+            airtable_id: The Airtable record ID
+            club_name: Optional club name for fallback search
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+        
+        if not self.clubs_base_id or not self.clubs_table_id or not airtable_id:
+            logger.error("Missing required parameters for unmarking club as onboarded")
+            return False
+        
+        try:
+            update_url = f'{self.clubs_base_url}/{airtable_id}'
+            
+            payload = {
+                'fields': {
+                    'Onboarded to Dashboard': False
+                }
+            }
+            
+            response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Successfully unmarked club as onboarded in Airtable: {airtable_id}")
+                return True
+            elif response.status_code in [403, 404] and club_name:
+                # Fallback: Try finding by name
+                logger.warning(f"⚠️  Could not unmark onboarded by ID, trying fallback search")
+                new_id, _ = self._get_club_airtable_id_by_name(club_name)
+                
+                if new_id:
+                    logger.info(f"💡 Found new ID: {new_id}, retrying")
+                    return self.unmark_club_onboarded(new_id, club_name=None)  # Retry without fallback
+                else:
+                    logger.error(f"❌ Could not find club by name for fallback")
+                    return False
+            else:
+                logger.error(f"❌ Failed to unmark club as onboarded: {response.status_code} - {response.text}")
+                return False
+        
+        except Exception as e:
+            logger.error(f"Exception unmarking club as onboarded: {str(e)}")
+            return False
+
+    def update_club_leader_email_direct(self, club_airtable_id, new_email, club_name=None):
+        """Update the email of the leader linked to a specific club
+        This finds the club's linked leader and updates that leader's email directly.
+        NEVER creates new leaders - only updates existing ones.
+
+        Args:
+            club_airtable_id: The Airtable record ID of the club
+            new_email: The new email to set for the leader
+            club_name: Optional club name to search by if ID doesn't work
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+
+        if not club_airtable_id:
+            logger.error("No club airtable_id provided")
+            return False
+
+        try:
+            # Step 1: Get the club record to find its linked leader
+            club_url = f'{self.clubs_base_url}/{club_airtable_id}'
+            logger.info(f"🔍 Fetching club {club_airtable_id} to find linked leader")
+
+            club_response = self._safe_request('GET', club_url, headers=self.headers)
+
+            if club_response.status_code != 200:
+                logger.warning(f"⚠️  Could not fetch club by ID: {club_response.status_code} - {club_response.text}")
+
+                # If we have a club name, try searching for it
+                if club_name:
+                    logger.info(f"🔍 Trying to find club by name: {club_name}")
+                    result = self._update_leader_email_by_club_search(club_name, new_email)
+                    if isinstance(result, tuple):
+                        success, new_id = result
+                        if success and new_id:
+                            logger.info(f"💡 Hint: Update club's airtable_data to use new ID: {new_id}")
+                        return success
+                    return result
+                else:
+                    logger.error(f"❌ No club name provided for fallback search")
+                    return False
+
+            club_data = club_response.json()
+            club_fields = club_data.get('fields', {})
+
+            # Step 2: Get the Leader field (linked record to Leaders table)
+            leader_ids = club_fields.get('Leader', [])
+
+            if not leader_ids:
+                logger.error(f"❌ Club {club_airtable_id} has no leader linked in Airtable")
+                return False
+
+            leader_id = leader_ids[0]  # Get the first/primary leader
+            logger.info(f"✅ Found linked leader: {leader_id}")
+
+            # Step 3: Get the current leader's email
+            leader_url = f'{self.leaders_base_url}/{leader_id}'
+            leader_response = self._safe_request('GET', leader_url, headers=self.headers)
+
+            if leader_response.status_code != 200:
+                logger.error(f"Failed to fetch leader from Airtable: {leader_response.status_code} - {leader_response.text}")
+                return False
+
+            leader_data = leader_response.json()
+            current_email = leader_data.get('fields', {}).get('Email', '')
+
+            logger.info(f"📧 Current leader email in Airtable: {current_email}")
+            logger.info(f"📧 New email from dashboard: {new_email}")
+
+            # Step 4: Check if emails match
+            if current_email == new_email:
+                logger.info(f"✅ Emails already match, no update needed")
+                return True
+
+            # Step 5: Update the leader's email in Airtable
+            update_payload = {
+                'fields': {
+                    'Email': new_email
+                }
+            }
+
+            logger.info(f"📝 Updating leader {leader_id} email from '{current_email}' to '{new_email}'")
+            update_response = self._safe_request('PATCH', leader_url, headers=self.headers, json=update_payload)
+
+            if update_response.status_code == 200:
+                logger.info(f"✅ Successfully updated leader email in Airtable")
+                return True
+            else:
+                logger.error(f"❌ Failed to update leader email: {update_response.status_code} - {update_response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception updating club leader email directly: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+
+    def _update_leader_email_by_club_search(self, club_name, new_email):
+        """Helper method: Find club by name and update its leader's email
+
+        Returns:
+            tuple: (success: bool, new_airtable_id: str or None)
+        """
+        try:
+            # Search for club by name
+            logger.info(f"🔍 Searching all clubs for '{club_name}'")
+            all_clubs = self.get_all_clubs()
+            matching_club = None
+
+            club_name_lower = club_name.lower().strip()
+            for club in all_clubs:
+                if club.get('name', '').lower().strip() == club_name_lower:
+                    matching_club = club
+                    break
+
+            if not matching_club:
+                logger.error(f"❌ Could not find club '{club_name}' in Airtable")
+                return (False, None)
+
+            club_airtable_id = matching_club.get('airtable_id')
+            logger.info(f"✅ Found club in Airtable with NEW ID: {club_airtable_id}")
+
+            # Now fetch the full club record and update leader
+            club_url = f'{self.clubs_base_url}/{club_airtable_id}'
+            club_response = self._safe_request('GET', club_url, headers=self.headers)
+
+            if club_response.status_code != 200:
+                logger.error(f"Failed to fetch club details: {club_response.status_code}")
+                return False
+
+            club_data = club_response.json()
+            club_fields = club_data.get('fields', {})
+            leader_ids = club_fields.get('Leader', [])
+
+            if not leader_ids:
+                logger.error(f"❌ Club has no leader linked in Airtable")
+                return False
+
+            # Update the leader's email
+            leader_id = leader_ids[0]
+            leader_url = f'{self.leaders_base_url}/{leader_id}'
+
+            update_payload = {
+                'fields': {
+                    'Email': new_email
+                }
+            }
+
+            logger.info(f"📝 Updating leader {leader_id} email to {new_email}")
+            update_response = self._safe_request('PATCH', leader_url, headers=self.headers, json=update_payload)
+
+            if update_response.status_code == 200:
+                logger.info(f"✅ Successfully updated leader email")
+                return (True, club_airtable_id)  # Return the new ID so caller can update it
+            else:
+                logger.error(f"❌ Failed to update leader email: {update_response.status_code} - {update_response.text}")
+                return (False, club_airtable_id)
+
+        except Exception as e:
+            logger.error(f"Exception in _update_leader_email_by_club_search: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return (False, None)
+
+    def update_leader_email_by_search(self, old_email, new_email):
+        """Update leader email in Leaders table by searching for old email
+        This is more reliable than trying to access club records.
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+
+        # If emails are the same, no update needed
+        if old_email == new_email:
+            logger.info(f"Old and new email are the same ({old_email}), no update needed")
+            return True
+
+        try:
+            # Properly escape email for Airtable formula (double quotes need escaping)
+            escaped_old_email = old_email.replace('"', '\\"')
+            escaped_new_email = new_email.replace('"', '\\"')
+
+            # Search for leader by old email in Leaders table
+            filter_params = {
+                'filterByFormula': f'{{Email}} = "{escaped_old_email}"'
+            }
+
+            logger.info(f"🔍 Searching for leader with email: {old_email}")
+            response = self._safe_request('GET', self.leaders_base_url, headers=self.headers, params=filter_params)
+
+            if response.status_code != 200:
+                logger.error(f"Failed to search for leader: {response.status_code} - {response.text}")
+                return False
+
+            data = response.json()
+            records = data.get('records', [])
+
+            if not records:
+                logger.warning(f"⚠️  No leader found with email {old_email} in Airtable Leaders table")
+                logger.warning(f"⚠️  This means the leader doesn't exist in Airtable yet")
+
+                # Check if new email already exists (to avoid duplicates)
+                check_filter = {
+                    'filterByFormula': f'{{Email}} = "{escaped_new_email}"'
+                }
+                check_response = self._safe_request('GET', self.leaders_base_url, headers=self.headers, params=check_filter)
+
+                if check_response.status_code == 200:
+                    existing = check_response.json().get('records', [])
+                    if existing:
+                        logger.info(f"✅ Leader with new email {new_email} already exists, no action needed")
+                        return True
+
+                # Create new leader with new email
+                logger.info(f"➕ Creating new leader with email: {new_email}")
+                leader_record = self._find_or_create_leader(new_email)
+                return leader_record is not None
+
+            # Found the leader(s), update their email
+            logger.info(f"✅ Found {len(records)} leader record(s) with email {old_email}")
+
+            updated_count = 0
+            for record in records:
+                leader_id = record.get('id')
+                leader_url = f'{self.leaders_base_url}/{leader_id}'
+
+                update_payload = {
+                    'fields': {
+                        'Email': new_email
+                    }
+                }
+
+                logger.info(f"📝 Updating leader {leader_id} email from {old_email} to {new_email}")
+                update_response = self._safe_request('PATCH', leader_url, headers=self.headers, json=update_payload)
+
+                if update_response.status_code == 200:
+                    logger.info(f"✅ Successfully updated leader {leader_id} email")
+                    updated_count += 1
+                else:
+                    logger.error(f"❌ Failed to update leader {leader_id}: {update_response.status_code} - {update_response.text}")
+
+            if updated_count > 0:
+                logger.info(f"✅ Successfully updated {updated_count} leader record(s) in Airtable: {old_email} -> {new_email}")
+                return True
+            else:
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception updating leader email by search: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+
+    def update_club_leader_email(self, airtable_id, email):
+        """Update club leader email in Airtable
+        Note: In the new base, Leader Email is a lookup field from the Leaders table.
+        This method updates the email in the Leaders table instead of modifying the linked record.
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+
+        if not self.clubs_base_id or not self.clubs_table_id or not airtable_id:
+            logger.error("Missing required parameters for updating club leader email")
+            return False
+
+        try:
+            # First, get the club to find its current leader
+            club_url = f'{self.clubs_base_url}/{airtable_id}'
+            club_response = self._safe_request('GET', club_url, headers=self.headers)
+
+            if club_response.status_code != 200:
+                logger.error(f"Failed to fetch club from Airtable: {club_response.status_code} - {club_response.text}")
+                return False
+
+            club_data = club_response.json()
+            club_fields = club_data.get('fields', {})
+
+            # Get the current leader record IDs (it's an array)
+            current_leader_ids = club_fields.get('Leader', [])
+
+            if not current_leader_ids:
+                logger.warning(f"Club {airtable_id} has no leader linked in Airtable, creating new leader")
+                # Create new leader and link to club
+                leader_record = self._find_or_create_leader(email)
+                if not leader_record:
+                    logger.error(f"Failed to create leader with email: {email}")
+                    return False
+
+                # Try to link the leader to the club (this might fail with 403)
+                try:
+                    payload = {
+                        'fields': {
+                            "Leader": [leader_record['id']]
+                        }
+                    }
+                    response = self._safe_request('PATCH', club_url, headers=self.headers, json=payload)
+                    if response.status_code == 200:
+                        logger.info(f"Successfully linked new leader to club: {airtable_id}")
+                        return True
+                    else:
+                        logger.warning(f"Could not link leader to club (permissions?): {response.status_code} - {response.text}")
+                        logger.info(f"Leader email updated in Leaders table, but not linked to club")
+                        return True  # Still return True since email is updated in Leaders table
+                except Exception as e:
+                    logger.warning(f"Could not link leader to club: {str(e)}")
+                    return True  # Email is still updated in Leaders table
+
+            # Update the email in the existing leader record(s)
+            leader_id = current_leader_ids[0]  # Get the first leader
+
+            # Get current leader to check if email change is needed
+            leader_url = f'{self.leaders_base_url}/{leader_id}'
+            leader_response = self._safe_request('GET', leader_url, headers=self.headers)
+
+            if leader_response.status_code == 200:
+                leader_data = leader_response.json()
+                current_email = leader_data.get('fields', {}).get('Email', '')
+
+                if current_email == email:
+                    logger.info(f"Leader email already set to {email}, no update needed")
+                    return True
+
+                # Update the email in the Leaders table
+                update_payload = {
+                    'fields': {
+                        'Email': email
+                    }
+                }
+
+                update_response = self._safe_request('PATCH', leader_url, headers=self.headers, json=update_payload)
+
+                if update_response.status_code == 200:
+                    logger.info(f"✅ Successfully updated leader email in Leaders table: {email}")
+                    return True
+                else:
+                    logger.error(f"❌ Failed to update leader email: {update_response.status_code} - {update_response.text}")
+                    return False
+            else:
+                logger.error(f"Failed to fetch leader from Airtable: {leader_response.status_code} - {leader_response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception updating club leader email: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+
+    def _find_or_create_leader(self, email):
+        """Find or create a leader record by email"""
+        try:
+            # Search for existing leader
+            filter_params = {
+                'filterByFormula': f'{{Email}} = "{email}"'
+            }
+
+            response = self._safe_request('GET', self.leaders_base_url, headers=self.headers, params=filter_params)
+
+            if response.status_code == 200:
+                data = response.json()
+                records = data.get('records', [])
+
+                if records:
+                    return records[0]  # Return existing leader
+
+                # Create new leader if not found
+                payload = {
+                    'records': [{
+                        'fields': {
+                            'Email': email,
+                            'First Name': '',
+                            'Last Name': ''
+                        }
+                    }]
+                }
+
+                create_response = self._safe_request('POST', self.leaders_base_url, headers=self.headers, json=payload)
+
+                if create_response.status_code in [200, 201]:
+                    result = create_response.json()
+                    return result.get('records', [{}])[0]
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Exception in _find_or_create_leader: {str(e)}")
+            return None
+
+    def get_leader_by_email(self, email):
+        """Get leader information from Leaders table by email"""
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return None
+
+        try:
+            filter_params = {
+                'filterByFormula': f'{{Email}} = "{email}"'
+            }
+
+            response = self._safe_request('GET', self.leaders_base_url, headers=self.headers, params=filter_params)
+
+            if response.status_code == 200:
+                data = response.json()
+                records = data.get('records', [])
+
+                if records:
+                    fields = records[0].get('fields', {})
+                    return {
+                        'id': records[0].get('id'),
+                        'email': fields.get('Email', ''),
+                        'first_name': fields.get('First Name', ''),
+                        'last_name': fields.get('Last Name', ''),
+                        'phone': fields.get('Phone Number', ''),
+                        'slack_id': fields.get('Slack ID', ''),
+                        'github': fields.get('link_github', ''),
+                        'dob': fields.get('DOB', ''),
+                        'graduation_year': fields.get('Graduation Year', '')
+                    }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Exception getting leader by email: {str(e)}")
+            return None
+
+    def update_leader_info(self, email, leader_data):
+        """Update leader information in Leaders table"""
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+
+        try:
+            # Find the leader record
+            leader_record = self._find_or_create_leader(email)
+            if not leader_record:
+                logger.error(f"Failed to find or create leader with email: {email}")
+                return False
+
+            update_url = f"{self.leaders_base_url}/{leader_record['id']}"
+
+            # Build update payload with available fields
+            fields = {}
+            if 'first_name' in leader_data and leader_data['first_name']:
+                fields['First Name'] = leader_data['first_name']
+            if 'last_name' in leader_data and leader_data['last_name']:
+                fields['Last Name'] = leader_data['last_name']
+            if 'phone' in leader_data and leader_data['phone']:
+                fields['Phone Number'] = leader_data['phone']
+            if 'slack_id' in leader_data and leader_data['slack_id']:
+                fields['Slack ID'] = leader_data['slack_id']
+            if 'github' in leader_data and leader_data['github']:
+                fields['link_github'] = leader_data['github']
+
+            if not fields:
+                logger.warning("No fields to update for leader")
+                return False
+
+            payload = {'fields': fields}
+
+            response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
+
+            if response.status_code == 200:
+                logger.info(f"Successfully updated leader info in Airtable for {email}")
+                return True
+            else:
+                logger.error(f"Failed to update leader info: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception updating leader info: {str(e)}")
+            return False
+
+    def sync_leader_with_user(self, user):
+        """Sync a user's information to the Leaders table in Airtable"""
+        if not user or not user.email:
+            logger.error("Invalid user for sync")
+            return False
+
+        leader_data = {
+            'first_name': user.first_name or '',
+            'last_name': user.last_name or '',
+            'slack_id': user.slack_id or '',
+            'github': user.github_username or ''
+        }
+
+        return self.update_leader_info(user.email, leader_data)
+
+    def update_club_info(self, airtable_id, club_data, club_name=None):
+        """Update club information in Airtable
+
+        Args:
+            airtable_id: The Airtable record ID
+            club_data: Dict with keys: name, description, location
+            club_name: Optional club name for fallback search
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+
+        if not self.clubs_base_id or not self.clubs_table_id or not airtable_id:
+            logger.error("Missing required parameters for updating club info")
+            return False
+
+        try:
+            update_url = f'{self.clubs_base_url}/{airtable_id}'
+
+            # Build payload with available fields
+            fields = {}
+
+            # Map club fields to Airtable fields
+            if 'name' in club_data and club_data['name']:
+                fields['Club Name'] = club_data['name']
+
+            if 'description' in club_data and club_data['description']:
+                fields['Description'] = club_data['description']
+
+            if 'location' in club_data and club_data['location']:
+                fields['Venue Name'] = club_data['location']
+
+            if not fields:
+                logger.warning("No fields to update in Airtable")
+                return False
+
+            payload = {'fields': fields}
+
+            logger.info(f"Updating club info in Airtable: {airtable_id}")
+            logger.debug(f"Fields to update: {list(fields.keys())}")
+
+            response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
+
+            if response.status_code == 200:
+                logger.info(f"✅ Successfully updated club info in Airtable")
+                return True
+            elif response.status_code in [403, 404] and club_name:
+                # Fallback: Try finding by name
+                logger.warning(f"⚠️  Could not update by ID, trying fallback search")
+                new_id, _ = self._get_club_airtable_id_by_name(club_name)
+
+                if new_id:
+                    logger.info(f"💡 Found new ID: {new_id}, retrying update")
+                    return self.update_club_info(new_id, club_data, club_name=None)
+                else:
+                    logger.error(f"❌ Could not find club by name for fallback")
+                    return False
+            else:
+                logger.error(f"❌ Failed to update club info: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception updating club info: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+
+    def update_club_team_notes(self, airtable_id, team_notes, club_name=None):
+        """Update club team notes in Airtable
+
+        Args:
+            airtable_id: The Airtable record ID
+            team_notes: The team notes text
+            club_name: Optional club name for fallback search
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return False
+
+        if not self.clubs_base_id or not self.clubs_table_id or not airtable_id:
+            logger.error("Missing required parameters for updating team notes")
+            return False
+
+        try:
+            update_url = f'{self.clubs_base_url}/{airtable_id}'
+
+            payload = {
+                'fields': {
+                    'Team Notes': team_notes or ''
+                }
+            }
+
+            logger.info(f"Updating team notes in Airtable: {airtable_id}")
+
+            response = self._safe_request('PATCH', update_url, headers=self.headers, json=payload)
+
+            if response.status_code == 200:
+                logger.info(f"✅ Successfully updated team notes in Airtable")
+                return True
+            elif response.status_code in [403, 404] and club_name:
+                # Fallback: Try finding by name
+                logger.warning(f"⚠️  Could not update by ID, trying fallback search")
+                new_id, _ = self._get_club_airtable_id_by_name(club_name)
+
+                if new_id:
+                    logger.info(f"💡 Found new ID: {new_id}, retrying update")
+                    return self.update_club_team_notes(new_id, team_notes, club_name=None)
+                else:
+                    logger.error(f"❌ Could not find club by name for fallback")
+                    return False
+            else:
+                logger.error(f"❌ Failed to update team notes: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception updating team notes: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+
+    def sync_club_suspension_from_airtable(self, club):
+        """Sync suspension status FROM Airtable TO database (bidirectional sync)"""
+        if not club:
+            logger.error("Invalid club for suspension sync")
+            return False
+
+        try:
+            # Get airtable_id from club's data
+            airtable_data = club.get_airtable_data()
+            airtable_id = airtable_data.get('airtable_id') if airtable_data else None
+
+            if not airtable_id:
+                logger.debug(f"Club {club.name} has no Airtable ID, skipping suspension sync")
+                return False
+
+            # Fetch the club from Airtable
+            club_url = f'{self.clubs_base_url}/{airtable_id}'
+            response = self._safe_request('GET', club_url, headers=self.headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                fields = data.get('fields', {})
+                airtable_suspended = fields.get('Suspension Status', False)
+
+                # Only update if different
+                if club.is_suspended != airtable_suspended:
+                    logger.info(f"🔄 Syncing suspension status for {club.name}: DB={club.is_suspended} -> Airtable={airtable_suspended}")
+                    club.is_suspended = airtable_suspended
+                    from extensions import db
+                    db.session.commit()
+                    return True
+                else:
+                    logger.debug(f"Suspension status for {club.name} already in sync")
+                    return False
+            elif response.status_code in [403, 404]:
+                # Fallback: Try finding by name
+                logger.warning(f"⚠️  Could not fetch club by ID, trying fallback search for {club.name}")
+                new_id, fields = self._get_club_airtable_id_by_name(club.name)
+
+                if new_id and fields:
+                    logger.info(f"💡 Found club with new ID: {new_id}, updating local data")
+
+                    # Update the club's airtable_id in database
+                    import json
+                    airtable_data = club.get_airtable_data() or {}
+                    airtable_data['airtable_id'] = new_id
+                    club.airtable_data = json.dumps(airtable_data)
+
+                    # Sync suspension status
+                    airtable_suspended = fields.get('Suspension Status', False)
+                    if club.is_suspended != airtable_suspended:
+                        logger.info(f"🔄 Syncing suspension status: DB={club.is_suspended} -> Airtable={airtable_suspended}")
+                        club.is_suspended = airtable_suspended
+
+                    from extensions import db
+                    db.session.commit()
+                    return True
+                else:
+                    logger.error(f"❌ Could not find club by name for fallback")
+                    return False
+            else:
+                logger.error(f"Failed to fetch club from Airtable for suspension sync: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Exception syncing suspension from Airtable: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return False
 
 

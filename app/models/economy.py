@@ -20,7 +20,7 @@ class ClubTransaction(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Admin who created the transaction
 
-    club = db.relationship('Club', backref=db.backref('transactions', lazy=True, order_by='ClubTransaction.created_at.desc()'))
+    club = db.relationship('Club', backref=db.backref('transactions', lazy=True, order_by='ClubTransaction.created_at.desc()', cascade='all, delete-orphan'))
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('club_transactions', lazy=True))
     created_by_user = db.relationship('User', foreign_keys=[created_by])
 
@@ -66,7 +66,7 @@ class ProjectSubmission(db.Model):
     approved_by = db.Column(db.Integer, db.ForeignKey('user.id'))
 
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('project_submissions', lazy=True))
-    club = db.relationship('Club', backref=db.backref('project_submissions', lazy=True))
+    club = db.relationship('Club', backref=db.backref('project_submissions', lazy=True, cascade='all, delete-orphan'))
     project = db.relationship('ClubProject', backref=db.backref('submissions', lazy=True))
     approver = db.relationship('User', foreign_keys=[approved_by], backref=db.backref('approved_submissions', lazy=True))
 
@@ -96,7 +96,7 @@ class ClubQuestProgress(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    club = db.relationship('Club', backref=db.backref('quest_progress', lazy=True))
+    club = db.relationship('Club', backref=db.backref('quest_progress', lazy=True, cascade='all, delete-orphan'))
     quest = db.relationship('WeeklyQuest', backref=db.backref('progress_records', lazy=True))
 
     __table_args__ = (db.UniqueConstraint('club_id', 'quest_id', 'week_start', name='_club_quest_week_uc'),)
@@ -110,7 +110,7 @@ class LeaderboardExclusion(db.Model):
     excluded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     reason = db.Column(db.Text)
 
-    club = db.relationship('Club', backref=db.backref('leaderboard_exclusions', lazy=True))
+    club = db.relationship('Club', backref=db.backref('leaderboard_exclusions', lazy=True, cascade='all, delete-orphan'))
     excluded_by_user = db.relationship('User', backref=db.backref('leaderboard_exclusions', lazy=True))
 
 

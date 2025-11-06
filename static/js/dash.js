@@ -2700,6 +2700,58 @@ if (clubSettingsForm) {
     clubSettingsForm.addEventListener('submit', updateClubSettings);
 }
 
+// Team Notes Form Handler
+const teamNotesForm = document.getElementById('teamNotesForm');
+if (teamNotesForm) {
+    teamNotesForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const teamNotes = document.getElementById('teamNotesContent').value;
+        const statusDiv = document.getElementById('teamNotesStatus');
+        const clubId = parseInt(document.body.dataset.clubId);
+        
+        try {
+            const response = await fetch(`/api/clubs/${clubId}/team-notes`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    team_notes: teamNotes
+                }),
+                credentials: 'same-origin'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                statusDiv.innerHTML = `
+                    <div style="padding: 1rem; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; color: #155724;">
+                        <i class="fas fa-check-circle"></i> ${data.message}
+                    </div>
+                `;
+                showToast('success', data.message);
+            } else {
+                throw new Error(data.error || 'Failed to save team notes');
+            }
+        } catch (error) {
+            console.error('Error saving team notes:', error);
+            statusDiv.innerHTML = `
+                <div style="padding: 1rem; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; color: #721c24;">
+                    <i class="fas fa-exclamation-circle"></i> ${error.message}
+                </div>
+            `;
+            showToast('error', error.message);
+        }
+        
+        // Clear status after 5 seconds
+        setTimeout(() => {
+            statusDiv.innerHTML = '';
+        }, 5000);
+    });
+}
+
+
 // Transfer confirmation input event listener
 const transferConfirmationInput = document.getElementById('transferConfirmationInput');
 if (transferConfirmationInput) {

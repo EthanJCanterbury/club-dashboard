@@ -144,6 +144,8 @@
     .stat-card.pending-projects::before { background: linear-gradient(135deg, #f59e0b, #d97706); }
     .stat-card.approved-projects::before { background: linear-gradient(135deg, #10b981, #059669); }
     .stat-card.rejected-projects::before { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .stat-card.airtable-status::before { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .stat-card.ratio::before { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
 
     .stat-card:hover {
         transform: translateY(-2px);
@@ -174,6 +176,8 @@
     .stat-card.pending-projects .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
     .stat-card.approved-projects .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
     .stat-card.rejected-projects .stat-icon { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .stat-card.airtable-status .stat-icon { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .stat-card.ratio .stat-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
 
     .stat-number {
         font-size: 1.75rem;
@@ -226,6 +230,57 @@
     .search-box:focus {
         outline: none;
         border-color: #ec3750;
+        box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.1);
+    }
+
+    /* Toggle Switch */
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        margin: 0;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e0;
+        transition: 0.3s;
+        border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+        background-color: #ec3750;
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(20px);
+    }
+
+    .toggle-switch input:focus + .toggle-slider {
         box-shadow: 0 0 0 3px rgba(236, 55, 80, 0.1);
     }
 
@@ -1417,6 +1472,22 @@
                 <div class="stat-number">{{ submitted_hours|default(0)|int }}</div>
                 <div class="stat-label">Total Hours</div>
             </div>
+            <div class="stat-card airtable-status">
+                <div class="stat-icon"><i class="fas fa-database"></i></div>
+                <div class="stat-number" style="font-size: 1.2rem;">
+                    {% if airtable_status == 'operational' %}
+                    <span style="color: #10b981;">✓ Connected</span>
+                    {% else %}
+                    <span style="color: #ef4444;">✗ Error</span>
+                    {% endif %}
+                </div>
+                <div class="stat-label">Airtable Status</div>
+            </div>
+            <div class="stat-card ratio">
+                <div class="stat-icon"><i class="fas fa-chart-pie"></i></div>
+                <div class="stat-number">{{ users_to_clubs_ratio|default(0) }}</div>
+                <div class="stat-label">Users/Clubs Ratio</div>
+            </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);"><i class="fas fa-hourglass-end"></i></div>
                 <div class="stat-number">{{ approved_hours|default(0)|int }}</div>
@@ -1562,6 +1633,15 @@
                 <h3>Club Management</h3>
                 <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                     <input type="text" class="search-box" placeholder="Search clubs..." id="clubSearch">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #f8fafc; border-radius: 8px; border: 2px solid #e2e8f0;">
+                        <label for="includeAirtableToggle" style="font-size: 0.9rem; color: #64748b; margin: 0; cursor: pointer; user-select: none;">
+                            Include non-onboarded clubs
+                        </label>
+                        <label class="toggle-switch" title="Search Airtable for non-onboarded clubs (resource intensive)">
+                            <input type="checkbox" id="includeAirtableToggle" onchange="handleClubSearch(document.getElementById('clubSearch').value)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                     <button class="btn btn-primary" onclick="openModal('createClubModal')">
                         <i class="fas fa-plus"></i> Create Club
                     </button>
@@ -2233,6 +2313,33 @@
 </div>
 
 
+<div class="modal-backdrop" id="clubTeamNotesModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-sticky-note"></i> Team Notes for <span id="clubTeamNotesName"></span></h3>
+            <button class="modal-close" onclick="closeModal('clubTeamNotesModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="clubTeamNotesId">
+            <div class="form-group">
+                <label class="form-label">Internal Notes</label>
+                <textarea id="clubTeamNotesText" rows="10" class="form-control" placeholder="Add internal notes about this club here..." style="font-family: inherit;"></textarea>
+                <small style="color: #64748b; font-size: 0.875rem;">
+                    <i class="fas fa-info-circle"></i> Use this space for planning, meeting notes, important reminders, or any internal club information. Changes sync to Airtable.
+                </small>
+            </div>
+            <div id="clubTeamNotesStatus"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('clubTeamNotesModal')">Close</button>
+            <button class="btn btn-primary" onclick="saveClubTeamNotes()">
+                <i class="fas fa-save"></i> Save Team Notes
+            </button>
+        </div>
+    </div>
+</div>
+
+
 <div class="modal-backdrop" id="roleUsersModal">
     <div class="modal-content" style="max-width: 900px;">
         <div class="modal-header">
@@ -2330,6 +2437,7 @@ window.canManageSettings = {{ 'true' if can_manage_settings else 'false' }};
 window.canViewActivity = {{ 'true' if can_view_activity else 'false' }};
 window.canEditClubs = {{ 'true' if 'clubs.edit' in user_permissions or current_user.is_admin else 'false' }};
 window.canDeleteClubs = {{ 'true' if 'clubs.delete' in user_permissions or current_user.is_admin else 'false' }};
+window.canSuspendClubs = {{ 'true' if 'clubs.suspend' in user_permissions or current_user.is_admin else 'false' }};
 window.canTransferClubLeadership = {{ 'true' if 'clubs.edit' in user_permissions or current_user.is_admin else 'false' }};
 window.canManageSyncImmune = {{ 'true' if 'clubs.edit' in user_permissions or current_user.is_admin else 'false' }};
 
@@ -2942,44 +3050,146 @@ function renderClubsTable(clubs) {
 
     clubs.forEach(club => {
         const row = document.createElement('tr');
+        const isAirtableOnly = club.is_airtable_only === true;
+
+        // Apply greyed out style for non-onboarded clubs
+        if (isAirtableOnly) {
+            row.style.opacity = '0.6';
+            row.style.background = '#f8fafc';
+            row.title = 'This club exists in Airtable but is not onboarded to the dashboard';
+        }
+
+        // Prepare club data with N/A for missing values
+        const displayLeader = isAirtableOnly ? '<em style="color: #94a3b8;">N/A</em>' : `${club.leader} (${club.leader_email})`;
+        const displayMembers = isAirtableOnly ? '<em style="color: #94a3b8;">N/A</em>' : `${club.member_count} members`;
+        const displayTokens = isAirtableOnly ? '<em style="color: #94a3b8;">N/A</em>' : `${Math.round(club.balance * 100)} tokens`;
+        const displayDate = isAirtableOnly ? '<em style="color: #94a3b8;">N/A</em>' : (club.created_at ? new Date(club.created_at).toLocaleDateString() : 'Unknown');
+
         row.innerHTML = `
-            <td><strong>${club.name}</strong></td>
-            <td>${club.leader} (${club.leader_email})</td>
-            <td>${club.member_count} members</td>
-            <td>${club.location || 'Not specified'}</td>
-            <td>${Math.round(club.balance * 100)} tokens</td>
-            <td>${club.created_at ? new Date(club.created_at).toLocaleDateString() : 'Unknown'}</td>
             <td>
-                <div class="action-dropdown">
-                    <button class="dropdown-toggle" onclick="toggleDropdown(this)">
-                        <i class="fas fa-cog"></i> Actions <i class="fas fa-chevron-down"></i>
+                <strong>${club.name}</strong>
+                ${isAirtableOnly ? ' <span class="status-badge status-warning" style="font-size: 0.7rem; margin-left: 0.5rem;">Not Onboarded</span>' : ''}
+            </td>
+            <td>${displayLeader}</td>
+            <td>${displayMembers}</td>
+            <td>${club.location || '<em style="color: #94a3b8;">Not specified</em>'}</td>
+            <td>${displayTokens}</td>
+            <td>${displayDate}</td>
+            <td>
+                ${isAirtableOnly ? `
+                    <button class="btn ${club.is_suspended ? 'btn-success' : 'btn-warning'} btn-sm"
+                            onclick="suspendAirtableClub('${club.airtable_id}', '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${!club.is_suspended})"
+                            style="padding: 0.4rem 0.8rem;">
+                        <i class="fas fa-${club.is_suspended ? 'check' : 'ban'}"></i> ${club.is_suspended ? 'Unsuspend' : 'Suspend'}
                     </button>
-                    <div class="dropdown-menu">
-                        <button class="dropdown-item" onclick="viewClub(${club.id}); closeDropdown(this)">
-                            <i class="fas fa-eye"></i> View Club
+                ` : `
+                    <div class="action-dropdown">
+                        <button class="dropdown-toggle" onclick="toggleDropdown(this)">
+                            <i class="fas fa-cog"></i> Actions <i class="fas fa-chevron-down"></i>
                         </button>
-                        ${window.canEditClubs ? `
-                        <button class="dropdown-item edit" onclick="editClub(${club.id}); closeDropdown(this)">
-                            <i class="fas fa-edit"></i> Edit Club
-                        </button>` : ''}
-                        ${window.canTransferClubLeadership ? `
-                        <button class="dropdown-item transfer" onclick="event.stopPropagation(); openTransferLeadershipModal(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${club.leader_id ?? 'null'}); closeDropdown(this); return false;">
-                            <i class="fas fa-exchange-alt"></i> Transfer Leadership
-                        </button>` : ''}
-                        ${window.canManageSyncImmune ? `
-                        <button class="dropdown-item" onclick="event.stopPropagation(); toggleSyncImmune(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${club.sync_immune ?? false}); closeDropdown(this); return false;">
-                            <i class="fas fa-shield-alt"></i> ${club.sync_immune ? 'Disable' : 'Enable'} Sync Immune
-                        </button>` : ''}
-                        ${window.canDeleteClubs ? `
-                        <button class="dropdown-item danger" onclick="event.stopPropagation(); deleteClub(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}'); closeDropdown(this); return false;">
-                            <i class="fas fa-trash"></i> Delete Club
-                        </button>` : ''}
+                        <div class="dropdown-menu">
+                            <button class="dropdown-item" onclick="viewClub(${club.id}); closeDropdown(this)">
+                                <i class="fas fa-eye"></i> View Club
+                            </button>
+                            ${window.canEditClubs ? `
+                            <button class="dropdown-item edit" onclick="editClub(${club.id}); closeDropdown(this)">
+                                <i class="fas fa-edit"></i> Edit Club
+                            </button>` : ''}
+                            <button class="dropdown-item" onclick="event.stopPropagation(); openClubTeamNotesModal(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}'); closeDropdown(this); return false;">
+                                <i class="fas fa-sticky-note"></i> View Team Notes
+                            </button>
+                            ${window.canSuspendClubs ? `
+                            <button class="dropdown-item ${club.is_suspended ? 'success' : 'warning'}" onclick="event.stopPropagation(); suspendDashboardClub(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${!club.is_suspended}, '${club.airtable_id || ''}'); closeDropdown(this); return false;">
+                                <i class="fas fa-${club.is_suspended ? 'check' : 'ban'}"></i> ${club.is_suspended ? 'Unsuspend' : 'Suspend'} Club
+                            </button>` : ''}
+                            ${window.canTransferClubLeadership ? `
+                            <button class="dropdown-item transfer" onclick="event.stopPropagation(); openTransferLeadershipModal(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${club.leader_id ?? 'null'}); closeDropdown(this); return false;">
+                                <i class="fas fa-exchange-alt"></i> Transfer Leadership
+                            </button>` : ''}
+                            ${window.canManageSyncImmune ? `
+                            <button class="dropdown-item" onclick="event.stopPropagation(); toggleSyncImmune(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}', ${club.sync_immune ?? false}); closeDropdown(this); return false;">
+                                <i class="fas fa-shield-alt"></i> ${club.sync_immune ? 'Disable' : 'Enable'} Sync Immune
+                            </button>` : ''}
+                            ${window.canDeleteClubs ? `
+                            <button class="dropdown-item danger" onclick="event.stopPropagation(); deleteClub(${club.id}, '${escapeHtml(club.name).replace(/'/g, '\\\'').replace(/"/g, '\\"')}'); closeDropdown(this); return false;">
+                                <i class="fas fa-trash"></i> Delete Club
+                            </button>` : ''}
+                        </div>
                     </div>
-                </div>
+                `}
             </td>
         `;
         tbody.appendChild(row);
     });
+}
+
+// Suspend non-onboarded club
+async function suspendAirtableClub(airtableId, clubName, suspended) {
+    const action = suspended ? 'suspend' : 'unsuspend';
+
+    const confirmed = confirm(`Are you sure you want to ${action} the club "${clubName}"?\n\nThis club exists in Airtable but is not onboarded to the dashboard.`);
+
+    if (!confirmed) return;
+
+    try {
+        const response = await makeSecureRequest('/api/admin/clubs/suspend', {
+            method: 'POST',
+            body: JSON.stringify({
+                airtable_id: airtableId,
+                suspended: suspended,
+                is_airtable_only: true,
+                club_name: clubName
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showToast('success', data.message);
+            // Reload clubs to reflect changes
+            handleClubSearch(document.getElementById('clubSearch').value);
+        } else {
+            showToast('error', data.error || `Failed to ${action} club`);
+        }
+    } catch (error) {
+        console.error('Error suspending Airtable club:', error);
+        showToast('error', `Error: ${error.message}`);
+    }
+}
+
+// Suspend dashboard club
+async function suspendDashboardClub(clubId, clubName, suspended, airtableId) {
+    const action = suspended ? 'suspend' : 'unsuspend';
+
+    const confirmed = confirm(`Are you sure you want to ${action} the club "${clubName}"?`);
+
+    if (!confirmed) return;
+
+    try {
+        const response = await makeSecureRequest('/api/admin/clubs/suspend', {
+            method: 'POST',
+            body: JSON.stringify({
+                club_id: clubId,
+                airtable_id: airtableId || null,
+                suspended: suspended,
+                is_airtable_only: false,
+                club_name: clubName
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showToast('success', data.message);
+            // Reload clubs to reflect changes
+            handleClubSearch(document.getElementById('clubSearch').value);
+        } else {
+            showToast('error', data.error || `Failed to ${action} club`);
+        }
+    } catch (error) {
+        console.error('Error suspending club:', error);
+        showToast('error', `Error: ${error.message}`);
+    }
 }
 
 // Pagination removed - search only mode
@@ -3069,29 +3279,77 @@ const handleClubSearch = debounce(async function(searchTerm) {
     if (searchTerm === '') {
         // Clear search results and show message
         const clubsTableBody = document.getElementById('clubsTableBody');
-        clubsTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 2rem;">Enter a search term to find clubs</td></tr>';
+        clubsTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #64748b; padding: 2rem;">Enter a search term to find clubs</td></tr>';
         return;
     }
 
     try {
         const clubsTableBody = document.getElementById('clubsTableBody');
+        const includeAirtable = document.getElementById('includeAirtableToggle').checked;
+
+        // Show initial loading state
         clubsTableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4">
+                <td colspan="7" class="text-center py-4">
                     <div class="loading-spinner"></div>
-                    <p class="mt-2">Searching clubs...</p>
+                    <p class="mt-2">Searching onboarded clubs...</p>
                 </td>
             </tr>`;
 
-        const response = await fetch(`/admin/search/clubs?q=${encodeURIComponent(searchTerm)}`);
-        const data = await response.json();
+        // First, load dashboard clubs (fast)
+        const dashboardResponse = await fetch(`/admin/search/clubs?q=${encodeURIComponent(searchTerm)}&include_airtable=false`);
+        const dashboardData = await dashboardResponse.json();
 
-        if (response.ok) {
-            const clubs = data.results || [];
-            clubsData = clubs;
-            renderClubsTable(clubs);
+        if (dashboardResponse.ok) {
+            const dashboardClubs = dashboardData.results || [];
+            clubsData = dashboardClubs;
+
+            // Render dashboard clubs immediately
+            renderClubsTable(dashboardClubs);
+
+            // If toggle is on, fetch Airtable clubs as well
+            if (includeAirtable) {
+                // Add loading indicator for non-onboarded clubs at the end of the table
+                const loadingRow = document.createElement('tr');
+                loadingRow.id = 'airtable-loading-row';
+                loadingRow.innerHTML = `
+                    <td colspan="7" class="text-center py-3" style="background: #f8fafc; border-top: 2px solid #e2e8f0;">
+                        <div class="loading-spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>
+                        <p class="mt-2" style="font-size: 0.9rem; color: #64748b;">Loading non-onboarded clubs...</p>
+                    </td>
+                `;
+                clubsTableBody.appendChild(loadingRow);
+
+                // Fetch Airtable clubs
+                const airtableResponse = await fetch(`/admin/search/clubs?q=${encodeURIComponent(searchTerm)}&include_airtable=true`);
+                const airtableData = await airtableResponse.json();
+
+                if (airtableResponse.ok) {
+                    // Remove loading row
+                    const loadingRowElement = document.getElementById('airtable-loading-row');
+                    if (loadingRowElement) {
+                        loadingRowElement.remove();
+                    }
+
+                    // Get only the Airtable clubs (filter out dashboard clubs)
+                    const allClubs = airtableData.results || [];
+                    const airtableOnlyClubs = allClubs.filter(club => club.is_airtable_only);
+
+                    // Combine and re-render
+                    const combinedClubs = [...dashboardClubs, ...airtableOnlyClubs];
+                    clubsData = combinedClubs;
+                    renderClubsTable(combinedClubs);
+                } else {
+                    // Remove loading row on error
+                    const loadingRowElement = document.getElementById('airtable-loading-row');
+                    if (loadingRowElement) {
+                        loadingRowElement.remove();
+                    }
+                    showToast('warning', 'Could not load non-onboarded clubs');
+                }
+            }
         } else {
-            throw new Error(data.error || 'Search failed');
+            throw new Error(dashboardData.error || 'Search failed');
         }
     } catch (error) {
         console.error('Error searching clubs:', error);
@@ -7011,6 +7269,68 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Club Team Notes Modal and Functions
+function openClubTeamNotesModal(clubId, clubName) {
+    const modal = document.getElementById('clubTeamNotesModal');
+    if (!modal) {
+        console.error('Club team notes modal not found');
+        return;
+    }
+    
+    document.getElementById('clubTeamNotesName').textContent = clubName;
+    document.getElementById('clubTeamNotesId').value = clubId;
+    document.getElementById('clubTeamNotesText').value = '';
+    document.getElementById('clubTeamNotesStatus').innerHTML = '';
+    
+    // Load team notes
+    fetch(`/api/clubs/${clubId}/team-notes`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('clubTeamNotesText').value = data.team_notes || '';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading team notes:', error);
+            showClubTeamNotesStatus('Error loading team notes', 'error');
+        });
+    
+    openModal('clubTeamNotesModal');
+}
+
+function saveClubTeamNotes() {
+    const clubId = document.getElementById('clubTeamNotesId').value;
+    const teamNotes = document.getElementById('clubTeamNotesText').value;
+    
+    fetch(`/api/clubs/${clubId}/team-notes`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ team_notes: teamNotes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showClubTeamNotesStatus(data.message || 'Team notes saved successfully!', 'success');
+        } else {
+            showClubTeamNotesStatus(data.error || 'Error saving team notes', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving team notes:', error);
+        showClubTeamNotesStatus('Error saving team notes', 'error');
+    });
+}
+
+function showClubTeamNotesStatus(message, type) {
+    const statusDiv = document.getElementById('clubTeamNotesStatus');
+    statusDiv.innerHTML = `<div style="padding: 0.75rem; border-radius: 5px; background: ${type === 'success' ? '#d1fae5' : '#fee2e2'}; color: ${type === 'success' ? '#059669' : '#dc2626'}; margin-top: 1rem;">${message}</div>`;
+    setTimeout(() => {
+        statusDiv.innerHTML = '';
+    }, 3000);
+}
 </script>
 
 {% endblock %}

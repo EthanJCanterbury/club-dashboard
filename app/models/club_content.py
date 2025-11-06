@@ -13,7 +13,7 @@ class ClubPost(db.Model):
     content_html = db.Column(db.Text)  # Stores rendered HTML content
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    club = db.relationship('Club', backref='posts')
+    club = db.relationship('Club', backref=db.backref('posts', cascade='all, delete-orphan'))
     user = db.relationship('User', backref='posts')
 
 
@@ -27,7 +27,7 @@ class ClubAssignment(db.Model):
     status = db.Column(db.String(20), default='active')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    club = db.relationship('Club', backref='assignments')
+    club = db.relationship('Club', backref=db.backref('assignments', cascade='all, delete-orphan'))
 
 
 class ClubMeeting(db.Model):
@@ -42,7 +42,7 @@ class ClubMeeting(db.Model):
     meeting_link = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    club = db.relationship('Club', backref='meetings')
+    club = db.relationship('Club', backref=db.backref('meetings', cascade='all, delete-orphan'))
 
 
 class ClubResource(db.Model):
@@ -54,7 +54,7 @@ class ClubResource(db.Model):
     icon = db.Column(db.String(50), default='book')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    club = db.relationship('Club', backref='resources')
+    club = db.relationship('Club', backref=db.backref('resources', cascade='all, delete-orphan'))
 
 
 class ClubProject(db.Model):
@@ -69,5 +69,5 @@ class ClubProject(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
-    club = db.relationship('Club', backref='projects')
+    club = db.relationship('Club', backref=db.backref('projects', cascade='all, delete-orphan'))
     user = db.relationship('User', backref='projects')
