@@ -1441,7 +1441,9 @@ def get_piggy_bank_transactions(club_id):
 @login_required
 @club_not_suspended
 def get_team_notes(club_id):
-    """Get team notes for a club"""
+    """Get team notes for a club - ALWAYS fetches fresh from Airtable"""
+    from app.services.airtable import AirtableService
+    
     current_user = get_current_user()
     club = Club.query.get_or_404(club_id)
 
@@ -1455,14 +1457,25 @@ def get_team_notes(club_id):
     if not has_permission:
         return jsonify({'error': 'You do not have permission to view team notes'}), 403
 
-    # ALWAYS get team notes from Airtable first (source of truth)
-    team_notes = ''
+    # Get Airtable ID
     airtable_data = club.get_airtable_data()
+    airtable_id = airtable_data.get('airtable_id') if airtable_data else None
     
-    if airtable_data and 'team_notes' in airtable_data:
-        team_notes = airtable_data.get('team_notes', '')
+    team_notes = ''
+    
+    if airtable_id:
+        try:
+            # Fetch fresh team notes from Airtable
+            airtable_service = AirtableService()
+            team_notes = airtable_service.get_club_team_notes(airtable_id)
+            
+            current_app.logger.info(f"Fetched team notes from Airtable for club {club.name}")
+        except Exception as e:
+            current_app.logger.error(f"Error fetching team notes from Airtable: {str(e)}")
+            # Fallback to cached data if Airtable fails
+            team_notes = airtable_data.get('team_notes', '') or club.team_notes or ''
     else:
-        # Fallback to database if Airtable doesn't have it
+        # No Airtable ID, use database fallback
         team_notes = club.team_notes or ''
 
     return jsonify({

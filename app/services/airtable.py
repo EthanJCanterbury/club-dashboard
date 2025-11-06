@@ -2452,6 +2452,44 @@ class AirtableService:
             logger.error(f"Traceback: {traceback.format_exc()}")
             return False
 
+    def get_club_team_notes(self, airtable_id):
+        """Get team notes for a club directly from Airtable
+        
+        Args:
+            airtable_id: The Airtable record ID
+            
+        Returns:
+            str: The team notes text, or empty string if not found
+        """
+        if not self.api_token:
+            logger.error("Airtable API token not configured")
+            return ''
+
+        if not self.clubs_base_id or not self.clubs_table_id or not airtable_id:
+            logger.error("Missing required parameters for fetching team notes")
+            return ''
+
+        try:
+            # Fetch the specific record from Airtable
+            record_url = f'{self.clubs_base_url}/{airtable_id}'
+            
+            response = self._safe_request('GET', record_url, headers=self.headers)
+            
+            if response.status_code == 200:
+                record = response.json()
+                fields = record.get('fields', {})
+                team_notes = fields.get('Team Notes', '')
+                
+                logger.debug(f"Fetched team notes from Airtable for record {airtable_id}: {len(team_notes)} chars")
+                return team_notes.strip() if team_notes else ''
+            else:
+                logger.warning(f"Failed to fetch team notes from Airtable: {response.status_code}")
+                return ''
+                
+        except Exception as e:
+            logger.error(f"Exception fetching team notes from Airtable: {str(e)}")
+            return ''
+
     def sync_club_suspension_from_airtable(self, club):
         """Sync suspension status FROM Airtable TO database (bidirectional sync)"""
         if not club:
