@@ -104,6 +104,7 @@ def dashboard():
     recent_clubs = Club.query.order_by(Club.created_at.desc()).limit(10).all()
 
     can_view_users = current_user.has_permission('users.view') or current_user.is_admin
+    can_create_users = current_user.has_permission('users.create') or current_user.is_admin
     can_view_clubs = current_user.has_permission('clubs.view') or current_user.is_admin
     can_view_content = current_user.has_permission('content.view') or current_user.is_admin
     can_manage_roles = current_user.has_permission('system.manage_roles') or current_user.has_role('super-admin')
@@ -138,6 +139,7 @@ def dashboard():
                          recent_users=recent_users,
                          recent_clubs=recent_clubs,
                          can_view_users=can_view_users,
+                         can_create_users=can_create_users,
                          can_view_clubs=can_view_clubs,
                          can_view_content=can_view_content,
                          can_manage_roles=can_manage_roles,

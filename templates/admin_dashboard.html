@@ -1550,8 +1550,13 @@
                             <i class="fas fa-users"></i> Group by Club
                         </button>
                     </div>
+                    {% if can_create_users %}
+                    <button class="btn btn-success btn-sm" onclick="openModal('createUsersModal')">
+                        <i class="fas fa-user-plus"></i> Create Users
+                    </button>
+                    {% endif %}
                     {% if can_view_users %}
-                    <button class="btn btn-primary btn-sm" onclick="exportData('users')" style="margin-left: auto;">
+                    <button class="btn btn-primary btn-sm" onclick="exportData('users')">
                         <i class="fas fa-download"></i> Export JSON
                     </button>
                     {% endif %}
@@ -2334,6 +2339,122 @@
             <button class="btn btn-secondary" onclick="closeModal('clubTeamNotesModal')">Close</button>
             <button class="btn btn-primary" onclick="saveClubTeamNotes()">
                 <i class="fas fa-save"></i> Save Team Notes
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Create Users Modal (Choose Method) -->
+<div class="modal-backdrop" id="createUsersModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Create Users</h3>
+            <button class="modal-close" onclick="closeModal('createUsersModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom: 1.5rem; color: #64748b;">Choose how you want to create users:</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <button class="btn btn-primary" onclick="closeModal('createUsersModal'); openModal('createSingleUserModal')" style="padding: 2rem 1rem; height: auto; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <i class="fas fa-user" style="font-size: 2rem;"></i>
+                    <span style="font-weight: 600;">Create Single User</span>
+                    <small style="opacity: 0.8;">Manually create one user</small>
+                </button>
+                <button class="btn btn-success" onclick="closeModal('createUsersModal'); openModal('bulkCreateUsersModal')" style="padding: 2rem 1rem; height: auto; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <i class="fas fa-file-csv" style="font-size: 2rem;"></i>
+                    <span style="font-weight: 600;">Bulk Upload CSV</span>
+                    <small style="opacity: 0.8;">Upload multiple users at once</small>
+                </button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('createUsersModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Create Single User Modal -->
+<div class="modal-backdrop" id="createSingleUserModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user"></i> Create Single User</h3>
+            <button class="modal-close" onclick="closeModal('createSingleUserModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="createSingleUserForm">
+                <div class="form-group">
+                    <label class="form-label">Username *</label>
+                    <input type="text" class="form-control" id="newUsername" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" class="form-control" id="newEmail" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">First Name</label>
+                    <input type="text" class="form-control" id="newFirstName">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="newLastName">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password *</label>
+                    <input type="password" class="form-control" id="newPassword" required minlength="6">
+                    <small style="color: #64748b;">Minimum 6 characters</small>
+                </div>
+            </form>
+            <div id="createUserStatus"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('createSingleUserModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="createSingleUser()">
+                <i class="fas fa-user-plus"></i> Create User
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Bulk Create Users Modal -->
+<div class="modal-backdrop" id="bulkCreateUsersModal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-file-csv"></i> Bulk Create Users from CSV</h3>
+            <button class="modal-close" onclick="closeModal('bulkCreateUsersModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #475569;">
+                    <i class="fas fa-info-circle"></i> CSV Format
+                </h4>
+                <p style="margin: 0; font-size: 0.875rem; color: #64748b;">
+                    Upload a CSV file with columns: <strong>username, email, first_name, last_name, password</strong><br>
+                    First row should be headers. Password column is optional (random password will be generated if not provided).
+                </p>
+                <button class="btn btn-secondary btn-sm" onclick="downloadCSVTemplate()" style="margin-top: 0.5rem;">
+                    <i class="fas fa-download"></i> Download Template
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Upload CSV File</label>
+                <input type="file" class="form-control" id="bulkUsersCSV" accept=".csv" onchange="previewCSV()">
+            </div>
+            
+            <div id="csvPreview" style="display: none; margin-top: 1rem;">
+                <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">Preview (first 5 rows):</h4>
+                <div id="csvPreviewContent" style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.5rem; font-size: 0.85rem; background: white;"></div>
+                <p id="csvRowCount" style="margin-top: 0.5rem; font-size: 0.875rem; color: #64748b;"></p>
+            </div>
+            
+            <div id="bulkCreateStatus" style="margin-top: 1rem;"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('bulkCreateUsersModal')">Cancel</button>
+            <button class="btn btn-success" onclick="bulkCreateUsers()" id="bulkCreateBtn" disabled>
+                <i class="fas fa-upload"></i> Upload & Create Users
             </button>
         </div>
     </div>
@@ -7330,6 +7451,162 @@ function showClubTeamNotesStatus(message, type) {
     setTimeout(() => {
         statusDiv.innerHTML = '';
     }, 3000);
+}
+
+// User Creation Functions
+function createSingleUser() {
+    const username = document.getElementById('newUsername').value;
+    const email = document.getElementById('newEmail').value;
+    const firstName = document.getElementById('newFirstName').value;
+    const lastName = document.getElementById('newLastName').value;
+    const password = document.getElementById('newPassword').value;
+    
+    console.log('Form values:', { username, email, firstName, lastName, password: password ? '***' : '(empty)' });
+    
+    if (!username || !email || !password) {
+        showCreateUserStatus('Please fill in all required fields (username, email, password)', 'error');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showCreateUserStatus('Password must be at least 6 characters', 'error');
+        return;
+    }
+    
+    const statusDiv = document.getElementById('createUserStatus');
+    statusDiv.innerHTML = '<div style="text-align: center;"><i class="fas fa-spinner fa-spin"></i> Creating user...</div>';
+    
+    fetch('/api/admin/users/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            username: username.trim(),
+            email: email.trim(),
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            password: password
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showCreateUserStatus('User created successfully!', 'success');
+            document.getElementById('createSingleUserForm').reset();
+            setTimeout(() => {
+                closeModal('createSingleUserModal');
+                loadUsers();
+            }, 1500);
+        } else {
+            showCreateUserStatus(data.error || 'Failed to create user', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showCreateUserStatus('Error creating user', 'error');
+    });
+}
+
+function showCreateUserStatus(message, type) {
+    const statusDiv = document.getElementById('createUserStatus');
+    statusDiv.innerHTML = `<div style="padding: 0.75rem; border-radius: 5px; background: ${type === 'success' ? '#d1fae5' : '#fee2e2'}; color: ${type === 'success' ? '#059669' : '#dc2626'}; margin-top: 1rem;">${message}</div>`;
+}
+
+function downloadCSVTemplate() {
+    const csv = 'username,email,first_name,last_name,password\njohn_doe,john@example.com,John,Doe,password123\njane_smith,jane@example.com,Jane,Smith,securepass456';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'users_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+let csvData = null;
+
+function previewCSV() {
+    const fileInput = document.getElementById('bulkUsersCSV');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+            alert('CSV file must have at least a header row and one data row');
+            fileInput.value = '';
+            return;
+        }
+        
+        csvData = lines;
+        
+        // Show preview
+        const previewDiv = document.getElementById('csvPreview');
+        const contentDiv = document.getElementById('csvPreviewContent');
+        const rowCount = document.getElementById('csvRowCount');
+        
+        const previewLines = lines.slice(0, 6); // Header + 5 rows
+        contentDiv.innerHTML = '<pre style="margin: 0;">' + previewLines.join('\n') + '</pre>';
+        rowCount.textContent = `Total rows to import: ${lines.length - 1}`;
+        
+        previewDiv.style.display = 'block';
+        document.getElementById('bulkCreateBtn').disabled = false;
+    };
+    
+    reader.readAsText(file);
+}
+
+function bulkCreateUsers() {
+    if (!csvData || csvData.length < 2) {
+        alert('Please upload a valid CSV file');
+        return;
+    }
+    
+    const statusDiv = document.getElementById('bulkCreateStatus');
+    statusDiv.innerHTML = '<div style="text-align: center; padding: 1rem;"><i class="fas fa-spinner fa-spin"></i> Creating users...</div>';
+    
+    const btn = document.getElementById('bulkCreateBtn');
+    btn.disabled = true;
+    
+    fetch('/api/admin/users/bulk-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv_data: csvData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const message = `Successfully created ${data.created} user(s)!` +
+                (data.failed > 0 ? `<br>${data.failed} failed. Check errors below.` : '');
+            statusDiv.innerHTML = `<div style="padding: 1rem; border-radius: 5px; background: #d1fae5; color: #059669;">${message}</div>`;
+            
+            if (data.errors && data.errors.length > 0) {
+                statusDiv.innerHTML += '<div style="margin-top: 0.5rem; max-height: 150px; overflow-y: auto; background: #fee2e2; padding: 0.5rem; border-radius: 5px; font-size: 0.85rem;">' +
+                    '<strong>Errors:</strong><br>' + data.errors.join('<br>') +
+                    '</div>';
+            }
+            
+            setTimeout(() => {
+                if (data.failed === 0) {
+                    closeModal('bulkCreateUsersModal');
+                }
+                loadUsers();
+            }, 3000);
+        } else {
+            statusDiv.innerHTML = `<div style="padding: 1rem; border-radius: 5px; background: #fee2e2; color: #dc2626;">${data.error || 'Failed to create users'}</div>`;
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        statusDiv.innerHTML = '<div style="padding: 1rem; border-radius: 5px; background: #fee2e2; color: #dc2626;">Error creating users</div>';
+        btn.disabled = false;
+    });
 }
 </script>
 

@@ -768,6 +768,176 @@ def admin_update_user(user_id):
     })
 
 
+@api_bp.route('/api/admin/users/create', methods=['POST'])
+@login_required
+@permission_required('users.create')
+def admin_create_user():
+    """Create a single user (requires users.create permission)"""
+    import secrets
+    
+    current_user = get_current_user()
+    data = request.get_json()
+    
+    username = sanitize_string(data.get('username', ''), max_length=80).strip()
+    email = sanitize_string(data.get('email', ''), max_length=120).strip()
+    first_name = sanitize_string(data.get('first_name', ''), max_length=50).strip()
+    last_name = sanitize_string(data.get('last_name', ''), max_length=50).strip()
+    password = data.get('password', '').strip()
+    
+    if not username or not email:
+        return jsonify({'error': 'Username and email are required'}), 400
+    
+    if not password:
+        password = secrets.token_urlsafe(12)
+    elif len(password) < 6:
+        return jsonify({'error': 'Password must be at least 6 characters'}), 400
+    
+    # Check if username or email already exists
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': f'Username "{username}" already exists'}), 400
+    
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': f'Email "{email}" already exists'}), 400
+    
+    try:
+        # Create the user
+        user = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name
+        )
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        create_audit_log(
+            action_type='user_created',
+            description=f'Admin {current_user.username} created user {username}',
+            user=current_user,
+            target_type='user',
+            target_id=user.id,
+            admin_action=True,
+            category='admin'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'User created successfully',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating user: {str(e)}")
+        return jsonify({'error': 'Failed to create user'}), 500
+
+
+@api_bp.route('/api/admin/users/bulk-create', methods=['POST'])
+@login_required
+@permission_required('users.create')
+def admin_bulk_create_users():
+    """Bulk create users from CSV data (requires users.create permission)"""
+    import secrets
+    import csv
+    from io import StringIO
+    
+    current_user = get_current_user()
+    data = request.get_json()
+    csv_data = data.get('csv_data', [])
+    
+    if not csv_data or len(csv_data) < 2:
+        return jsonify({'error': 'Invalid CSV data'}), 400
+    
+    created = 0
+    failed = 0
+    errors = []
+    
+    try:
+        # Parse CSV
+        csv_text = '\n'.join(csv_data)
+        csv_file = StringIO(csv_text)
+        reader = csv.DictReader(csv_file)
+        
+        for row_num, row in enumerate(reader, start=2):  # Start at 2 to account for header
+            try:
+                username = sanitize_string(row.get('username', ''), max_length=80).strip()
+                email = sanitize_string(row.get('email', ''), max_length=120).strip()
+                first_name = sanitize_string(row.get('first_name', ''), max_length=50).strip()
+                last_name = sanitize_string(row.get('last_name', ''), max_length=50).strip()
+                password = row.get('password', '').strip()
+                
+                if not username or not email:
+                    errors.append(f'Row {row_num}: Username and email are required')
+                    failed += 1
+                    continue
+                
+                # Check if user already exists
+                if User.query.filter_by(username=username).first():
+                    errors.append(f'Row {row_num}: Username "{username}" already exists')
+                    failed += 1
+                    continue
+                
+                if User.query.filter_by(email=email).first():
+                    errors.append(f'Row {row_num}: Email "{email}" already exists')
+                    failed += 1
+                    continue
+                
+                # Generate password if not provided
+                if not password:
+                    password = secrets.token_urlsafe(12)
+                elif len(password) < 6:
+                    errors.append(f'Row {row_num}: Password must be at least 6 characters')
+                    failed += 1
+                    continue
+                
+                # Create user
+                user = User(
+                    username=username,
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name
+                )
+                user.set_password(password)
+                
+                db.session.add(user)
+                created += 1
+                
+            except Exception as e:
+                errors.append(f'Row {row_num}: {str(e)}')
+                failed += 1
+                continue
+        
+        db.session.commit()
+        
+        create_audit_log(
+            action_type='users_bulk_created',
+            description=f'Admin {current_user.username} bulk created {created} users',
+            user=current_user,
+            details={'created': created, 'failed': failed},
+            admin_action=True,
+            category='admin'
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Created {created} users, {failed} failed',
+            'created': created,
+            'failed': failed,
+            'errors': errors[:10]  # Limit to first 10 errors
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error bulk creating users: {str(e)}")
+        return jsonify({'error': f'Failed to process CSV: {str(e)}'}), 500
+
+
 @api_bp.route('/admin/users/<int:user_id>/suspend', methods=['PUT'])
 @login_required
 @permission_required('users.suspend')
